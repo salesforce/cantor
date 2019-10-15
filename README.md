@@ -214,7 +214,7 @@ More details on how to instantiate instances can be found in javadocs.
 
 Clone the repository:
 ```bash
-$ git clone https://git.soma.salesforce.com/CASP/cantor.git
+$ git clone https://github.com/salesforce/cantor.git
 ```
 
 Compile like this:

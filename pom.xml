@@ -16,7 +16,7 @@
     <packaging>pom</packaging>
     <name>cantor-parent</name>
     <version>2.7.28-SNAPSHOT</version>
-    <url>https://git.soma.salesforce.com/CASP/cantor</url>
+    <url>https://github.com/salesforce/cantor</url>
 
     <description>Generic DAO Layer</description>
 
@@ -38,23 +38,51 @@
         <mvn.plugins.resources.version>2.7</mvn.plugins.resources.version>
         <mvn.plugins.source.version>2.4</mvn.plugins.source.version>
         <mvn.plugins.release.version>2.5.3</mvn.plugins.release.version>
+        <mvn.plugins.gpg.version>1.6</mvn.plugins.gpg.version>
         <mvn.plugins.enforcer.version>3.0.0-M1</mvn.plugins.enforcer.version>
         <mvn.plugins.surefire.version>2.19.1</mvn.plugins.surefire.version>
         <mvn.plugins.failsafe.version>2.19.1</mvn.plugins.failsafe.version>
     </properties>
 
+    <licenses>
+        <license>
+            <name>BSD 3-Clause License</name>
+            <url>https://github.com/salesforce/cantor/blob/master/LICENSE.txt</url>
+        </license>
+    </licenses>
+
     <distributionManagement>
+        <snapshotRepository>
+            <id>nexus-oss</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
         <repository>
-            <id>nexus</id>
-            <url>https://nexus.soma.salesforce.com/nexus/content/repositories/releases/</url>
+            <id>nexus-oss</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
         </repository>
     </distributionManagement>
 
     <developers>
         <developer>
-            <name>CASP team</name>
-            <organization>CASP</organization>
-            <organizationUrl>https://sites.google.com/a/salesforce.com/web-services-api/Home</organizationUrl>
+            <id>pteyer</id>
+            <name>Paymon Teyer</name>
+            <email>pteyer@salesforce.com</email>
+            <organization>Salesforce</organization>
+            <organizationUrl>https://www.salesforce.com/</organizationUrl>
+        </developer>
+        <developer>
+            <id>paul.howden</id>
+            <name>Paul Howden</name>
+            <email>paul.howden@salesforce.com</email>
+            <organization>Salesforce</organization>
+            <organizationUrl>https://www.salesforce.com/</organizationUrl>
+        </developer>
+        <developer>
+            <id>akouthoofd</id>
+            <name>Alex Kouthoofd</name>
+            <email>akouthoofd@salesforce.com</email>
+            <organization>Salesforce</organization>
+            <organizationUrl>https://www.salesforce.com/</organizationUrl>
         </developer>
     </developers>
 
@@ -63,9 +91,9 @@
     </prerequisites>
 
     <scm>
-        <connection>scm:git:https://git@git.soma.salesforce.com/CASP/cantor.git</connection>
-        <developerConnection>scm:git:git@git.soma.salesforce.com:CASP/cantor.git</developerConnection>
-        <url>https://git.soma.salesforce.com/CASP/cantor</url>
+        <connection>scm:git:git:github.com/salesforce/cantor.git</connection>
+        <developerConnection>scm:git:git@github.com:salesforce/cantor.git</developerConnection>
+        <url>https://github.com/salesforce/cantor</url>
         <tag>HEAD</tag>
     </scm>
 
@@ -202,6 +230,21 @@
                 <configuration>
                     <tagNameFormat>v@{project.version}</tagNameFormat>
                 </configuration>
+            </plugin>
+            <!--GPG-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>${mvn.plugins.gpg.version}</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <!--SUREFIRE-->
             <plugin>
