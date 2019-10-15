@@ -1,0 +1,30 @@
+*.class
+target/
+logs
+
+# Package Files #
+*.war
+*.ear
+
+# IntelliJ
+.idea/
+*.iml
+
+# docs
+apidocs/
+
+# mac stuff
+.DS_Store
+
+*.log
+
+# vim
+*.swp
+
+# cantor directories
+data/
+default/
+*.db
+
+# benchmark directories
+benchmark-results/

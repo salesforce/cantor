@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.salesforce.cantor.grpc.events";
+option java_outer_classname = "Events";
+option objc_class_prefix = "EventsProtos";
+
+package com.salesforce.cantor.grpc.events;
+
+message VoidResponse {}
+
+message NamespacesRequest {}
+
+message NamespacesResponse {
+    repeated string namespaces = 1;
+}
+
+message EventProto {
+    uint64 timestamp_millis = 1;
+    map<string, string> metadata = 2;
+    map<string, double> dimensions = 3;
+    bytes payload = 4;
+}
+
+// events.create()
+message CreateRequest {
+    string namespace = 1;
+}
+
+// events.drop()
+message DropRequest {
+    string namespace = 1;
+}
+
+// events.store()
+message StoreRequest {
+    string namespace = 1;
+    repeated EventProto batch = 2;
+}
+
+// events.get()
+message GetRequest {
+    string namespace = 1;
+    uint64 start_timestamp_millis = 2;
+    uint64 end_timestamp_millis = 3;
+    map<string, string> metadata_query = 4;
+    map<string, string> dimensions_query = 5;
+    bool include_payloads = 6;
+}
+
+message GetResponse {
+    repeated EventProto results = 1;
+}
+
+// events.delete()
+message DeleteRequest {
+    string namespace = 1;
+    uint64 start_timestamp_millis = 2;
+    uint64 end_timestamp_millis = 3;
+    map<string, string> metadata_query = 4;
+    map<string, string> dimensions_query = 5;
+}
+
+message DeleteResponse {
+    int32 results = 1;
+}
+
+// events.aggregate()
+message AggregateRequest {
+    string namespace = 1;
+    string dimension = 2;
+    uint64 start_timestamp_millis = 3;
+    uint64 end_timestamp_millis = 4;
+    map<string, string> metadata_query = 5;
+    map<string, string> dimensions_query = 6;
+    uint32 aggregation_interval_millis = 7;
+    enum AggregationFunction {
+        AVG = 0;
+        MIN = 1;
+        MAX = 2;
+        SUM = 3;
+        COUNT = 4;
+        STDDEV_POP = 5;
+        STDDEV_SAMP = 6;
+        VAR_POP = 7;
+        VAR_SAMP = 8;
+    }
+    AggregationFunction aggregation_function = 8;
+}
+
+message AggregateResponse {
+    map<uint64, double> results = 1;
+}
+
+// events.metadata()
+message MetadataRequest {
+    string namespace = 1;
+    string metadata_key = 2;
+    uint64 start_timestamp_millis = 3;
+    uint64 end_timestamp_millis = 4;
+    map<string, string> metadata_query = 5;
+    map<string, string> dimensions_query = 6;
+}
+
+message MetadataResponse {
+    repeated string values = 1;
+}
+
+// events.expire()
+message ExpireRequest {
+    string namespace = 1;
+    uint64 end_timestamp_millis = 2;
+}
+
+service EventsService {
+    rpc namespaces (NamespacesRequest) returns (NamespacesResponse) {}
+    rpc get (GetRequest) returns (GetResponse) {}
+    rpc delete (DeleteRequest) returns (DeleteResponse) {}
+    rpc create (CreateRequest) returns (VoidResponse) {}
+    rpc drop (DropRequest) returns (VoidResponse) {}
+    rpc store (StoreRequest) returns (VoidResponse) {}
+    rpc aggregate (AggregateRequest) returns (AggregateResponse) {}
+    rpc metadata (MetadataRequest) returns (MetadataResponse) {}
+    rpc expire (ExpireRequest) returns (VoidResponse) {}
+}
+

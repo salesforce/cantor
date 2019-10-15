@@ -1,0 +1,10 @@
+pipeline_template: docker/Jenkinsfile-1
+email_reply_to: coreappserverperformance@salesforce.com
+time_out_mins: 180
+number_of_artifacts_to_keep: 3
+compliance_required: false
+docker_test_images: dva/sfdc_centos7_java_build
+unit_tests_command: ./bang.sh build_jar prep_docker_internal
+integration_tests_command: echo "disabled"
+docker_images:
+    casp/cantor_strata:  env/dockers/cantor/Dockerfile

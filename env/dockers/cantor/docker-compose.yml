@@ -1,0 +1,7 @@
+version: '2'
+services:
+  cantor-server:
+    build: .
+    ports:
+     - "7443:7443"
+
