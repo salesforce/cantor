@@ -1,4 +1,4 @@
-FROM dva-registry.internal.salesforce.com/dva/sfdc_centos7_java:17
+FROM centos:8
 
 ARG version
 ARG pipeline_args
@@ -17,15 +17,6 @@ RUN yum install java -y
 
 # work in cantor home directory
 WORKDIR /home/sfdc-cantor/
-
-# add maiev
-ADD maiev.repo /etc/yum.repos.d/maiev.repo
-ADD start_maiev.sh /home/sfdc-cantor/start_maiev.sh
-RUN yum install sysstat -y; yum clean all
-RUN yum install maiev -y; yum clean all
-RUN chown -R sfdc-cantor /opt/maiev/
-RUN chown -R sfdc-cantor /etc/init.d/maiev
-
 
 # add start script and cantor jar
 ADD start.sh /home/sfdc-cantor/start.sh

@@ -3,9 +3,6 @@
 # set x so we can see the actual java command run
 set -x
 
-# first start maiev
-/bin/sh start_maiev.sh &>/dev/null &
-
 if [[ -n ${MYSQL_SHARDS} ]]; then
     # evaluate referenced environment variables
     mysql_shards=$(eval echo ${MYSQL_SHARDS})
