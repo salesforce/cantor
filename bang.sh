@@ -1,12 +1,35 @@
 #!/bin/sh
 
-install() {
-    build_jar
+set -e
+
+help() {
+    echo "*** available commands:"
+    typeset -F | awk 'NF>1{print $NF}' | grep -v 'internal$'
 }
 
-build_jar() {
-    echo "*** running maven..."
-    mvn clean install -DskipTests;
+clean() {
+    echo "*** running maven clean..."
+    mvn clean
+}
+
+compile() {
+    echo "*** running maven install..."
+    mvn compile
+}
+
+test() {
+    echo "*** running maven test..."
+    mvn test
+}
+
+install() {
+    echo "*** running maven clean/install..."
+    mvn clean install
+}
+
+install_skip_tests() {
+    echo "*** running maven clean/install..."
+    mvn clean install -DskipTests
 }
 
 run_jar() {
@@ -35,8 +58,6 @@ kill_docker() {
     echo "*** killing cantor docker container"
     docker kill cantor ; docker rm -v cantor
 }
-
-set -e
 
 if [ "$#" = 0 ]
 then
