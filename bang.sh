@@ -23,12 +23,12 @@ build_docker() {
     prep_docker_internal
 
     echo "*** building cantor docker"
-    docker build --tag=sfdc-cantor env/dockers/cantor
+    docker build --tag=cantor env/dockers/cantor
 }
 
 run_docker() {
     echo "*** running cantor in docker container"
-    docker run -d --publish=7443:7443 --user 7447:7447 --name=cantor sfdc-cantor
+    docker run -d --publish=7443:7443 --user 7447:7447 --name=cantor cantor
 }
 
 kill_docker() {
