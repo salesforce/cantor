@@ -84,7 +84,14 @@
             <organization>Salesforce</organization>
             <organizationUrl>https://www.salesforce.com/</organizationUrl>
         </developer>
-    </developers>
+        <developer>
+            <id>dtupper</id>
+            <name>Dean Tupper</name>
+            <email>dtupper@salesforce.com</email>
+            <organization>Salesforce</organization>
+            <organizationUrl>https://www.salesforce.com/</organizationUrl>
+        </developer>
+  </developers>
 
     <prerequisites>
         <maven>3.0</maven>
