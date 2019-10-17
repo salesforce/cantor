@@ -188,7 +188,7 @@
                 <executions>
                     <execution>
                         <id>attach-sources</id>
-                        <phase>deploy</phase>
+                        <phase>compile</phase>
                         <goals>
                             <goal>jar</goal>
                         </goals>
