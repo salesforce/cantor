@@ -26,6 +26,7 @@
 
     <properties>
         <s3-sdk.version>1.11.538</s3-sdk.version>
+        <mockito.version>2.21.0</mockito.version>
     </properties>
 
     <dependencies>
@@ -52,6 +53,13 @@
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
             <version>${testng.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!--MOCKITO-->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
             <scope>test</scope>
         </dependency>
         <!--CANTOR COMMON TEST JAR-->
