@@ -37,8 +37,6 @@ public class H2DataSourceProvider {
                 "jdbc:h2:%s:%s;" +
                         "MODE=MYSQL;" +
                         "COMPRESS=" + String.valueOf(builder.isCompressed()).toUpperCase() + ";" +
-                        "MULTI_THREADED=1;" +
-                        "MVCC=TRUE;" +
                         "LOCK_TIMEOUT=30000;" +
                         "DB_CLOSE_ON_EXIT=FALSE;" +
                         "TRACE_LEVEL_FILE=1;" +

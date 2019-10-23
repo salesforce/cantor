@@ -75,21 +75,22 @@ public class EventsOnH2 extends AbstractBaseEventsOnJdbc implements Events {
         final StringBuilder sqlBuilder = new StringBuilder();
         sqlBuilder.append("CREATE TABLE IF NOT EXISTS ")
                 .append(getTableFullName(namespace, chunkTableName)).append(" (")
-                .append(quote(getEventTimestampColumnName())).append(" BIGINT, ");
+                .append(quote(getEventTimestampColumnName())).append(" BIGINT,");
         for (final String metadataKey : getOrderedKeys(metadata)) {
             sqlBuilder.append(quote(getMetadataKeyColumnName(metadataKey))).append(" VARCHAR, ");
         }
         for (final String dimensionKey : getOrderedKeys(dimensions)) {
             sqlBuilder.append(quote(getDimensionKeyColumnName(dimensionKey))).append(" DOUBLE, ");
         }
-        sqlBuilder.append(quote(getPayloadColumnName())).append(" BINARY, ");
-        sqlBuilder.append("INDEX ").append(" (").append(quote(getEventTimestampColumnName())).append("), ");
+        sqlBuilder.append(quote(getPayloadColumnName())).append(" BINARY,");
+        sqlBuilder.append("INDEX ").append("(").append(quote(getEventTimestampColumnName())).append("),");
         for (final String metadataKey : getOrderedKeys(metadata)) {
-            sqlBuilder.append("INDEX ").append(" (").append(quote(getMetadataKeyColumnName(metadataKey))).append("), ");
+            sqlBuilder.append("INDEX ").append("(").append(quote(getMetadataKeyColumnName(metadataKey))).append("),");
         }
         for (final String dimensionKey : getOrderedKeys(dimensions)) {
-            sqlBuilder.append("INDEX ").append(" (").append(quote(getDimensionKeyColumnName(dimensionKey))).append("), ");
+            sqlBuilder.append("INDEX ").append("(").append(quote(getDimensionKeyColumnName(dimensionKey))).append("),");
         }
+        sqlBuilder.delete(sqlBuilder.length() - 1, sqlBuilder.length());
         sqlBuilder.append(")");
         return sqlBuilder.toString();
     }
