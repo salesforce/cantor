@@ -19,7 +19,6 @@ import java.io.InputStream;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 import static com.salesforce.cantor.common.CommonPreconditions.checkCreate;
@@ -35,7 +34,6 @@ public class ObjectsOnS3 implements StreamingObjects {
     private static final Logger logger = LoggerFactory.getLogger(ObjectsOnS3.class);
 
     private static final String bucketNameFormat = "%s-cantor-namespace-%d";
-    private static final Pattern bucketNamespaceRegex = Pattern.compile("^.+-cantor-namespace-(?<namespace>.*)$");
 
     // read objects in 4MB chunks
     private static final int streamingChunkSize = 4 * 1024 * 1024;
