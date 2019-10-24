@@ -228,7 +228,6 @@ public class ObjectsOnS3 implements StreamingObjects {
         this.s3Client.deleteBucket(bucket);
 
         // check bucket deleted successfully
-        // todo: remove this check? race condition exists where current thread deletes a bucket and another thread creates a bucket right after, causing this to throw an exception
         if (this.s3Client.doesBucketExistV2(bucket)) {
             throw new IOException("failed to drop namespace on s3 with bucket name: " + bucket);
         }
