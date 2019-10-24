@@ -1,6 +1,6 @@
 # Cantor
 
-[![Build Status](https://github.com/salesforce/cantor/workflows/maven/badge.svg)](https://github.com/salesforce/cantor/actions)
+[![Build Status](https://github.com/salesforce/cantor/workflows/cantor-build-ci/badge.svg)](https://github.com/salesforce/cantor/actions)
 
 
 Cantor is a *persistent data abstraction layer*; it provides functionalities to query and retrieve data stored 
