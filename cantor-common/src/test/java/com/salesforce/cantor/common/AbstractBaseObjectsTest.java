@@ -32,7 +32,7 @@ public abstract class AbstractBaseObjectsTest extends AbstractBaseCantorTest {
     }
 
     // override to store less (for impls that storing is more expensive) by setting to less than 1
-    private double getStoreMagnitude() {
+    protected double getStoreMagnitude() {
         return 1.0D;
     }
 

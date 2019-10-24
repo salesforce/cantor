@@ -2,7 +2,6 @@ package com.salesforce.cantor.s3;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
-import com.amazonaws.services.s3.model.Bucket;
 import com.amazonaws.services.s3.model.ListVersionsRequest;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.ObjectMetadata;
@@ -17,13 +16,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 import static com.salesforce.cantor.common.CommonPreconditions.checkCreate;
@@ -39,23 +34,31 @@ public class ObjectsOnS3 implements StreamingObjects {
     private static final Logger logger = LoggerFactory.getLogger(ObjectsOnS3.class);
 
     private static final String bucketNameFormat = "%s-cantor-namespace-%d";
-    private static final Pattern bucketNamespaceRegex = Pattern.compile("^.+-cantor-namespace-(?<namespace>.*)$");
 
     // read objects in 4MB chunks
     private static final int streamingChunkSize = 4 * 1024 * 1024;
 
     private final AmazonS3 s3Client;
     private final String bucketPrefix;
+    private final String bucketNameAllNamespaces;
 
-    public ObjectsOnS3(final AmazonS3 s3Client) {
+    public ObjectsOnS3(final AmazonS3 s3Client) throws IOException {
         this(s3Client, "default");
     }
 
-    public ObjectsOnS3(final AmazonS3 s3Client, final String bucketPrefix) {
+    public ObjectsOnS3(final AmazonS3 s3Client, final String bucketPrefix) throws IOException {
+        // todo: ensure bucket prefix doesn't include periods (or at least doesn't start/end w/ periods)
         checkArgument(s3Client != null, "null s3 client");
         checkString(bucketPrefix, "null/empty bucket prefix");
         this.s3Client = s3Client;
         this.bucketPrefix = bucketPrefix;
+        this.bucketNameAllNamespaces = String.format("%s-all-namespaces", bucketPrefix);
+        try {
+            this.s3Client.createBucket(bucketNameAllNamespaces);
+        } catch (final AmazonS3Exception e) {
+            logger.warn("exception creating required buckets for objects on s3:", e);
+            throw new IOException("exception creating required buckets for objects on s3:", e);
+        }
     }
 
     @Override
@@ -176,13 +179,15 @@ public class ObjectsOnS3 implements StreamingObjects {
             logger.info("bucket '{}' already exists; ignoring create", bucket);
             return;
         }
-        logger.info("bucket '{}' doesn't exist; creating it", bucket);
+        logger.info("bucket '{}' for namespace '{}' doesn't exist; creating it", bucket, namespace);
         this.s3Client.createBucket(bucket);
 
         // check bucket created successfully
         if (!this.s3Client.doesBucketExistV2(bucket)) {
             throw new IOException("failed to create namespace on s3 with bucket name: " + bucket);
         }
+        // keep a record of the namespace in the namespaces bucket
+        this.s3Client.putObject(bucketNameAllNamespaces, namespace, bucket);
     }
 
     private void doDrop(final String namespace) throws IOException {
@@ -226,6 +231,9 @@ public class ObjectsOnS3 implements StreamingObjects {
         if (this.s3Client.doesBucketExistV2(bucket)) {
             throw new IOException("failed to drop namespace on s3 with bucket name: " + bucket);
         }
+
+        // delete the record in the namespaces bucket
+        deleteObject(bucketNameAllNamespaces, namespace);
     }
 
     private void doStore(final String namespace, final String key, final byte[] bytes) {
@@ -233,6 +241,7 @@ public class ObjectsOnS3 implements StreamingObjects {
         final ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentLength(bytes.length);
         logger.info("storing {} object bytes at '{}.{}'", bytes.length, bucket, key);
+        // if no exception is thrown, the object was put successfully - ignore response value
         this.s3Client.putObject(bucket, key, new ByteArrayInputStream(bytes), metadata);
     }
 
@@ -241,6 +250,7 @@ public class ObjectsOnS3 implements StreamingObjects {
         final ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentLength(length);
         logger.info("storing stream with length={} at '{}.{}'", length, bucket, key);
+        // if no exception is thrown, the object was put successfully - ignore response value
         this.s3Client.putObject(bucket, key, stream, metadata);
     }
 
@@ -291,17 +301,7 @@ public class ObjectsOnS3 implements StreamingObjects {
         if (!this.s3Client.doesObjectExist(bucket, key)) {
             return false;
         }
-        try {
-            this.s3Client.deleteObject(toBucketName(namespace), key);
-            final VersionListing versionList = this.s3Client.listVersions(bucket, key);
-            for (final S3VersionSummary summary : versionList.getVersionSummaries()) {
-                logger.debug("deleting version {}", summary.getKey());
-                this.s3Client.deleteVersion(bucket, summary.getKey(), summary.getVersionId());
-            }
-            return true;
-        } catch (final AmazonS3Exception exception) {
-            throw new IOException(exception);
-        }
+        return deleteObject(bucket, key);
     }
 
     private int doSize(final String namespace) {
@@ -321,13 +321,15 @@ public class ObjectsOnS3 implements StreamingObjects {
         return totalSize;
     }
 
-
     private Collection<String> doKeys(final String namespace, final int start, final int count) throws IOException {
         final String bucket = toBucketName(namespace);
         if (!this.s3Client.doesBucketExistV2(bucket)) {
             throw new IOException(String.format("couldn't find bucket '%s' for namespace '%s'", bucket, namespace));
         }
+        return getKeys(bucket, start, count);
+    }
 
+    private Collection<String> getKeys(final String bucket, final int start, final int count) {
         final Set<String> keys = new HashSet<>();
         int index = 0;
         ObjectListing listing = this.s3Client.listObjects(bucket);
@@ -352,19 +354,19 @@ public class ObjectsOnS3 implements StreamingObjects {
         return keys;
     }
 
-    private Collection<String> doGetNamespaces() {
-        final List<Bucket> buckets = this.s3Client.listBuckets();
-        final List<String> namespaces = new ArrayList<>(buckets.size());
-
-        for (final Bucket bucket : buckets) {
-            final Matcher matcher = bucketNamespaceRegex.matcher(bucket.getName());
-            if (!matcher.matches() || matcher.group("namespace") == null) {
-                continue;
-            }
-            namespaces.add(matcher.group("namespace"));
+    private boolean deleteObject(final String bucket, final String key) {
+        this.s3Client.deleteObject(bucket, key);
+        final VersionListing versionList = this.s3Client.listVersions(bucket, key);
+        for (final S3VersionSummary summary : versionList.getVersionSummaries()) {
+            logger.debug("deleting version {}", summary.getKey());
+            this.s3Client.deleteVersion(bucket, summary.getKey(), summary.getVersionId());
         }
 
-        return namespaces;
+        return true;
+    }
+
+    private Collection<String> doGetNamespaces() {
+        return getKeys(bucketNameAllNamespaces, 0, -1);
     }
 
     private String toBucketName(final String namespace) {
