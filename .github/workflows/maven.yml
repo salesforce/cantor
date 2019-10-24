@@ -13,5 +13,9 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 1.8
+    - name: Set up MySQL 8
+      uses: mirromutth/mysql-action@master
+      with:
+        mysql version: 8.0
     - name: Build with Maven
       run: mvn -B package --file pom.xml
