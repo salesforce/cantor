@@ -100,7 +100,7 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         final long timestamp = System.currentTimeMillis();
         final Map<String, String> metadata = getRandomMetadata(100);
         final Map<String, Double> dimensions = getRandomDimensions(400);
-        final byte[] payload = getRandomPayload(16 * 1024 * 1024);
+        final byte[] payload = getRandomPayload(8 * 1024 * 1024);
         events.store(this.namespace, timestamp, metadata, dimensions, payload);
         final List<Events.Event> results = events.get(
                 this.namespace,
