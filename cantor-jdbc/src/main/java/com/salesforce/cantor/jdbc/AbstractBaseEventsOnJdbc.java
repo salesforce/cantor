@@ -18,10 +18,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 import static com.salesforce.cantor.common.CommonUtils.nullToEmpty;
@@ -480,6 +477,7 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
                                           final Map<String, String> metadataQuery,
                                           final Map<String, String> dimensionsQuery,
                                           final boolean includePayloads) throws IOException {
+        Thread.currentThread().setName(String.format("get-chunk-%s.%s", namespace, chunkTableName));
         final String sqlFormat = "SELECT %s %s %s %s %s FROM %s WHERE %s BETWEEN ? AND ?";
         final Map<String, String> keyHashToName = getColumnNameToKeyNameMap(namespace, chunkTableName);
         final StringBuilder sqlBuilder = new StringBuilder(String.format(sqlFormat,
