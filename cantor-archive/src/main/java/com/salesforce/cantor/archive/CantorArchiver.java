@@ -34,18 +34,20 @@ public class CantorArchiver {
         checkArgument(Files.notExists(destination), "destination already exists, can't archive");
 
         final int size = objects.size(namespace);
-        // todo: handle empty namespace (size == 0)
-        int start = 0;
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
             // todo: add metadata tar entry?
-            do {
+
+            // get objects to archive in chunks in case of large namespaces
+            int start = 0;
+            while (start != size) {
                 final Map<String, byte[]> chunk = objects.get(namespace, objects.keys(namespace, start, maxObjectChunkSize));
                 final int end = start + chunk.size();
                 final String name = String.format("objects-%s-%s-%s", namespace, start, end);
+                // store chunks as tar archives so we can restore them in chunks too
                 writeArchiveEntry(archive, name, getBytes(chunk));
                 logger.info("archived {} objects ({}-{} out of {}) into chunk '{}'", chunk.size(), start, end, size, name);
                 start = end;
-            } while (start != size);
+            }
         }
     }
 
@@ -54,10 +56,11 @@ public class CantorArchiver {
         checkString(namespace, "null/empty namespace, can't restore");
         checkArgument(Files.exists(archiveFile), "can't locate archive file, can't restore");
 
-        // todo: should we do this? or require the user create this themselves?
+        // todo: should we create this namespace? or require the user create this themselves?
         objects.create(namespace);
         try (final ArchiveInputStream archive = getArchiveInputStream(archiveFile)) {
             ArchiveEntry entry;
+            int total = 0;
             while ((entry = archive.getNextEntry()) != null) {
                 final ObjectsChunk chunk = ObjectsChunk.parseFrom(archive);
                 // todo: store these all at once? converting will double memory we hold onto, but will store quicker
@@ -65,7 +68,9 @@ public class CantorArchiver {
                     objects.store(namespace, chunkEntry.getKey(), chunkEntry.getValue().toByteArray());
                 }
                 logger.info("read {} objects from chunk {} ({} bytes) into {}", chunk.getObjectsCount(), entry.getName(), entry.getSize(), objects);
+                total += chunk.getObjectsCount();
             }
+            logger.info("restored {} objects into namespace '{}' from archive file {}", total, namespace, archiveFile);
         }
     }
 

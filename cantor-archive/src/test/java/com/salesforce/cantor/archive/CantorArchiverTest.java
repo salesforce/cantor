@@ -31,7 +31,7 @@ public class CantorArchiverTest {
         assertEquals(cantor.objects().size(namespace), stored.size(), "didn't store expected values");
 
         Files.createDirectories(Paths.get(basePath, "output"));
-        final Path outputPath = Paths.get(basePath, "output", namespace + ".tar.gz");
+        final Path outputPath = Paths.get(basePath, "output",  "test-archive.tar.gz");
         CantorArchiver.archive(cantor.objects(), namespace, outputPath);
 
         assertTrue(Files.exists(outputPath), "archive file missing");
@@ -47,6 +47,22 @@ public class CantorArchiverTest {
         for (final String key : vKeys) {
             assertEquals(vCantor.objects().get(vNamespace, key), stored.get(key), "restored object doesn't match stored");
         }
+    }
+
+    @Test
+    public void testArchiveZeroObjectsNamespace() throws IOException {
+        final String basePath = "/tmp/cantor-archive-objects-test-zero/" + UUID.randomUUID().toString();
+        final Cantor cantor = getCantor(basePath  + "/input/");
+        final String namespace = UUID.randomUUID().toString();
+        cantor.objects().create(namespace);
+
+        Files.createDirectories(Paths.get(basePath, "output"));
+        final Path outputPath = Paths.get(basePath, "output", "test-archive.tar.gz");
+        CantorArchiver.archive(cantor.objects(), namespace, outputPath);
+        assertTrue(Files.exists(outputPath), "archiving zero objects should still produce file");
+
+        CantorArchiver.restore(cantor.objects(), namespace, outputPath);
+        assertEquals(cantor.objects().size(namespace), 0,  "shouldn't have restored any objects");
     }
 
     private static Map<String, byte[]> populateObjects(final Objects objects, final String namespace, final int count) throws IOException {
