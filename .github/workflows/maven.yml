@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       mysql:
-        image: mysql:8
+        image: mariadb:10.4
         env:
           MYSQL_ROOT_PASSWORD: root
         ports:
