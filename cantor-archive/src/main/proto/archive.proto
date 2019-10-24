@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.salesforce.cantor.archive";
+option java_outer_classname = "Archive";
+option objc_class_prefix = "ArchiveProtos";
+// todo: set compiler options to minimize byte[] representation
+
+import "google/protobuf/any.proto";
+
+//message Archive {
+//    string hash = 1;
+//    map<string, string> metadata = 2;
+//    map<string, double> dimensions = 3;
+//    repeated google.protobuf.Any items = 4;
+//}
+
+message ObjectsChunk {
+    map<string, bytes> objects = 1;
+}
+
