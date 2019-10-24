@@ -446,21 +446,15 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
         final ExecutorService executorService = Executors.newFixedThreadPool(10);
         final List<Event> results = new CopyOnWriteArrayList<>();
         for (final String chunkTableName : chunkTables) {
-            executorService.submit(() -> {
-                        Thread.currentThread().setName(String.format("get-chunk-%s.%s", namespace, chunkTableName));
-                        try {
-                            results.addAll(doGetOnChunkTable(namespace,
-                                    chunkTableName,
-                                    startTimestampMillis,
-                                    endTimestampMillis,
-                                    metadataQuery,
-                                    dimensionsQuery,
-                                    includePayloads)
-                            );
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
+            executorService.submit(() ->
+                    results.addAll(doGetOnChunkTable(namespace,
+                            chunkTableName,
+                            startTimestampMillis,
+                            endTimestampMillis,
+                            metadataQuery,
+                            dimensionsQuery,
+                            includePayloads)
+                    )
             );
         }
         executorService.shutdown();
