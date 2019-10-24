@@ -54,12 +54,16 @@
             <artifactId>commons-compress</artifactId>
             <version>${apache.commons-compress.version}</version>
         </dependency>
+
+        <!-- TEST DEPENDENCIES -->
+        <!--TESTNG-->
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
             <version>${testng.version}</version>
             <scope>test</scope>
         </dependency>
+        <!--CANTOR H2-->
         <dependency>
             <groupId>com.salesforce.cantor</groupId>
             <artifactId>cantor-h2</artifactId>
@@ -76,6 +80,7 @@
 
     <build>
         <extensions>
+            <!--OS EXTENSION-->
             <extension>
                 <groupId>kr.motd.maven</groupId>
                 <artifactId>os-maven-plugin</artifactId>
@@ -83,6 +88,7 @@
             </extension>
         </extensions>
         <plugins>
+            <!--PROTOBUF COMPILER-->
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
