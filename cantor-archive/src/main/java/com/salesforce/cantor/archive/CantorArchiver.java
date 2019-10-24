@@ -35,8 +35,6 @@ public class CantorArchiver {
 
         final int size = objects.size(namespace);
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
-            // todo: add metadata tar entry?
-
             // get objects to archive in chunks in case of large namespaces
             int start = 0;
             while (start != size) {
@@ -56,14 +54,13 @@ public class CantorArchiver {
         checkString(namespace, "null/empty namespace, can't restore");
         checkArgument(Files.exists(archiveFile), "can't locate archive file, can't restore");
 
-        // todo: should we create this namespace? or require the user create this themselves?
+        // create the namespace, in case the user hasn't already
         objects.create(namespace);
         try (final ArchiveInputStream archive = getArchiveInputStream(archiveFile)) {
             ArchiveEntry entry;
             int total = 0;
             while ((entry = archive.getNextEntry()) != null) {
                 final ObjectsChunk chunk = ObjectsChunk.parseFrom(archive);
-                // todo: store these all at once? converting will double memory we hold onto, but will store quicker
                 for (final Map.Entry<String, ByteString> chunkEntry : chunk.getObjectsMap().entrySet()) {
                     objects.store(namespace, chunkEntry.getKey(), chunkEntry.getValue().toByteArray());
                 }
