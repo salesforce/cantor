@@ -17,5 +17,6 @@ jobs:
       uses: mirromutth/mysql-action@master
       with:
         mysql version: 8.0
+        mysql root password: root
     - name: Build with Maven
       run: mvn -B package --file pom.xml
