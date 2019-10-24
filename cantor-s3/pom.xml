@@ -15,7 +15,7 @@
     <packaging>jar</packaging>
     <name>cantor-s3</name>
 
-    <description>Cantor on top of H2</description>
+    <description>Cantor on top of S3</description>
 
     <parent>
         <groupId>com.salesforce.cantor</groupId>
