@@ -18,6 +18,7 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.Map;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
@@ -33,18 +34,19 @@ public class CantorArchiver {
         checkString(namespace, "null/empty namespace, can't archive");
         checkArgument(Files.notExists(destination), "destination already exists, can't archive");
 
-        final int size = objects.size(namespace);
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
             // get objects to archive in chunks in case of large namespaces
             int start = 0;
-            while (start != size) {
-                final Map<String, byte[]> chunk = objects.get(namespace, objects.keys(namespace, start, maxObjectChunkSize));
+            Collection<String> keys = objects.keys(namespace, start, maxObjectChunkSize);
+            while (!keys.isEmpty()) {
+                final Map<String, byte[]> chunk = objects.get(namespace, keys);
                 final int end = start + chunk.size();
                 final String name = String.format("objects-%s-%s-%s", namespace, start, end);
                 // store chunks as tar archives so we can restore them in chunks too
                 writeArchiveEntry(archive, name, getBytes(chunk));
-                logger.info("archived {} objects ({}-{} out of {}) into chunk '{}'", chunk.size(), start, end, size, name);
+                logger.info("archived {} objects ({}-{}) into chunk '{}'", chunk.size(), start, end, name);
                 start = end;
+                keys = objects.keys(namespace, start, maxObjectChunkSize);
             }
         }
     }
