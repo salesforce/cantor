@@ -2,6 +2,7 @@ package com.salesforce.cantor.archive;
 
 import com.google.protobuf.ByteString;
 import com.salesforce.cantor.Objects;
+import com.salesforce.cantor.Sets;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveOutputStream;
@@ -28,12 +29,10 @@ public class CantorArchiver {
     private static final Logger logger = LoggerFactory.getLogger(CantorArchiver.class);
 
     private static final int maxObjectChunkSize = 1_000;
+    private static final int maxSetsChunkSize = 1_000;
 
     public static void archive(final Objects objects, final String namespace, final Path destination) throws IOException {
-        checkArgument(objects != null, "null objects, can't archive");
-        checkString(namespace, "null/empty namespace, can't archive");
-        checkArgument(Files.notExists(destination), "destination already exists, can't archive");
-
+        checkArchiveArguments(objects, namespace, destination);
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
             // get objects to archive in chunks in case of large namespaces
             int start = 0;
@@ -51,11 +50,32 @@ public class CantorArchiver {
         }
     }
 
-    public static void restore(final Objects objects, final String namespace, final Path archiveFile) throws IOException {
-        checkArgument(objects != null, "null objects, can't restore");
-        checkString(namespace, "null/empty namespace, can't restore");
-        checkArgument(Files.exists(archiveFile), "can't locate archive file, can't restore");
+    public static void archive(final Sets sets, final String namespace, final Path destination) throws IOException {
+        checkArchiveArguments(sets, namespace, destination);
+        // get all sets for the namespace, any sets added after won't be archived
+        final Collection<String> setNames = sets.sets(namespace);
+        try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
+            // archive each set one at a time
+            for (final String set : setNames) {
+                logger.info("archiving set {}.{}", namespace, set);
+                int start = 0;
+                Map<String, Long> entries = sets.get(namespace, set, start, maxSetsChunkSize);
+                while (!entries.isEmpty()) {
+                    final int end = start + entries.size();
+                    final String name = String.format("sets-%s-%s-%s-%s", namespace, set, start, end);
+                    // store chunks as tar archives so we can restore them in chunks too
+                    final SetsChunk chunk = SetsChunk.newBuilder().setSet(set).putAllEntries(entries).build();
+                    writeArchiveEntry(archive, name, chunk.toByteArray());
+                    logger.info("archived {} entries ({}-{}) into chunk '{}' for set {}.{}", entries.size(), start, end, name, namespace, set);
+                    start = end;
+                    entries = sets.get(namespace, set, start, maxSetsChunkSize);
+                }
+            }
+        }
+    }
 
+    public static void restore(final Objects objects, final String namespace, final Path archiveFile) throws IOException {
+        checkRestoreArguments(objects, namespace, archiveFile);
         // create the namespace, in case the user hasn't already
         objects.create(namespace);
         try (final ArchiveInputStream archive = getArchiveInputStream(archiveFile)) {
@@ -70,6 +90,23 @@ public class CantorArchiver {
                 total += chunk.getObjectsCount();
             }
             logger.info("restored {} objects into namespace '{}' from archive file {}", total, namespace, archiveFile);
+        }
+    }
+
+    public static void restore(final Sets sets, final String namespace, final Path archiveFile) throws IOException {
+        checkRestoreArguments(sets, namespace, archiveFile);
+        // create the namespace, in case the user hasn't already
+        sets.create(namespace);
+        try (final ArchiveInputStream archive = getArchiveInputStream(archiveFile)) {
+            ArchiveEntry entry;
+            int total = 0;
+            while ((entry = archive.getNextEntry()) != null) {
+                final SetsChunk chunk = SetsChunk.parseFrom(archive);
+                sets.add(namespace, chunk.getSet(), chunk.getEntriesMap());
+                logger.info("read {} entries from chunk {} ({} bytes) into {}.{}", chunk.getEntriesCount(), entry.getName(), entry.getSize(), namespace, chunk.getSet());
+                total += chunk.getEntriesCount();
+            }
+            logger.info("restored {} entries int namespace '{}' from archive file {}", total, namespace, archiveFile);
         }
     }
 
@@ -98,4 +135,15 @@ public class CantorArchiver {
         return new TarArchiveInputStream(new GzipCompressorInputStream(new BufferedInputStream(Files.newInputStream(archiveFile))));
     }
 
+    private static void checkArchiveArguments(final Object instance, final String namespace, final Path destination) {
+        checkArgument(instance != null, "null cantor instance, can't archive");
+        checkString(namespace, "null/empty namespace, can't archive");
+        checkArgument(Files.notExists(destination), "destination already exists, can't archive");
+    }
+
+    private static void checkRestoreArguments(final Object instance, final String namespace, final Path archiveFile) {
+        checkArgument(instance != null, "null objects, can't restore");
+        checkString(namespace, "null/empty namespace, can't restore");
+        checkArgument(Files.exists(archiveFile), "can't locate archive file, can't restore");
+    }
 }

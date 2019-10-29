@@ -11,3 +11,8 @@ message ObjectsChunk {
     map<string, bytes> objects = 1;
 }
 
+message SetsChunk {
+    string set = 1;
+    map<string, int64> entries = 2;
+}
+
