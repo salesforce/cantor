@@ -1,6 +1,7 @@
 package com.salesforce.cantor.archive;
 
 import com.salesforce.cantor.Cantor;
+import com.salesforce.cantor.Events;
 import com.salesforce.cantor.Objects;
 import com.salesforce.cantor.Sets;
 import com.salesforce.cantor.h2.CantorOnH2;
@@ -10,8 +11,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -70,7 +73,7 @@ public class CantorArchiverTest {
 
     @Test
     public void testArchiveSets() throws IOException {
-        final String basePath = "/tmp/cantor-archive-objects-test/" + UUID.randomUUID().toString();
+        final String basePath = "/tmp/cantor-archive-sets-test/" + UUID.randomUUID().toString();
         final Cantor cantor = getCantor(basePath  + "/input/");
         final String namespace = UUID.randomUUID().toString();
 
@@ -108,6 +111,35 @@ public class CantorArchiverTest {
         }
     }
 
+    @Test
+    public void testArchiveEvents() throws IOException {
+        final String basePath = "/tmp/cantor-archive-events-test/" + UUID.randomUUID().toString();
+        final Cantor cantor = getCantor(basePath  + "/input/");
+        final String namespace = UUID.randomUUID().toString();
+
+        // todo:  test standard
+
+        // todo: test partial overlap
+
+        // todo: test empty
+    }
+
+    private static List<Events.Event> populateEvents(final Events events, final String namespace, final long start,  final long end, final int count) throws IOException {
+        events.create(namespace);
+        final List<Events.Event> stored = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            final Events.Event event;
+            if (ThreadLocalRandom.current().nextBoolean()) {
+                event = new Events.Event(ts(start, end), meta(), dim(), UUID.randomUUID().toString().getBytes());
+            } else {
+                event = new Events.Event(ts(start, end), meta(), dim());
+            }
+            events.store(namespace, event);
+            stored.add(event);
+        }
+        return stored;
+    }
+
     private static Map<String, Long> populateSet(final Sets sets, final String namespace, final String set, final int count) throws IOException {
         sets.create(namespace);
         final Map<String, Long> stored = new TreeMap<>();
@@ -129,6 +161,26 @@ public class CantorArchiverTest {
             objects.store(namespace, key, key.getBytes());
         }
         return stored;
+    }
+
+    private static long ts(final long start, final long end) {
+        return ThreadLocalRandom.current().nextLong(start, end);
+    }
+
+    private static Map<String, String> meta() {
+        final Map<String, String> meta = new HashMap<>();
+        for (int i = 0; i < ThreadLocalRandom.current().nextInt(0, 10); i++) {
+            meta.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        }
+        return meta;
+    }
+
+    private static Map<String, Double> dim() {
+        final Map<String, Double> dim = new HashMap<>();
+        for (int i = 0; i < ThreadLocalRandom.current().nextInt(0, 10); i++) {
+            dim.put(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble());
+        }
+        return dim;
     }
 
     private static Cantor getCantor(final String path) throws IOException {
