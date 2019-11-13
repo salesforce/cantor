@@ -17,6 +17,7 @@ import java.sql.*;
 import java.util.*;
 
 import static com.salesforce.cantor.common.SetsPreconditions.*;
+import static com.salesforce.cantor.jdbc.JdbcUtils.addParameters;
 import static com.salesforce.cantor.jdbc.JdbcUtils.getPlaceholders;
 import static com.salesforce.cantor.jdbc.JdbcUtils.quote;
 
@@ -284,27 +285,31 @@ public abstract class AbstractBaseSetsOnJdbc extends AbstractBaseCantorOnJdbc im
                                           final int start,
                                           final int count,
                                           final String orderby) throws IOException {
-        final String partialSql = String.format("SELECT %s, %s FROM %s WHERE %s = ? AND %s BETWEEN ? AND ?",
+        int index = 0;
+        final Object[] parameters = new Object[sets.size() + 2];
+        parameters[index++] = min;
+        parameters[index++] = max;
+        // set keys are OR'd together to get all matching set entries
+        final StringJoiner setsJoiner = new StringJoiner(" OR ");
+        final String clause = getSetKeyColumnName() + " = ?";
+        for (final String set : sets) {
+            parameters[index++] = set;
+            setsJoiner.add(clause);
+        }
+        final String sql = String.format("SELECT %s, %s FROM %s WHERE %s BETWEEN ? AND ? AND %s %s %s",
                 quote(getEntryColumnName()),
                 quote(getWeightColumnName()),
                 getTableFullName(namespace, getSetsTableName()),
-                quote(getSetKeyColumnName()),
-                quote(getWeightColumnName())
-        );
-        final String sql = String.format("%s %s %s",
-                String.join(" INTERSECT ", Collections.nCopies(sets.size(), partialSql)),
+                quote(getWeightColumnName()),
+                setsJoiner.toString(),
                 orderby,
                 getLimitString(start, count)
         );
         final Map<String, Long> items = new LinkedHashMap<>();
         try (final Connection connection = getConnection()) {
+            logger.debug("executing sql query: {}", sql);
             try (final PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-                int index = 1;
-                for (final String set : sets) {
-                    preparedStatement.setString(index++, set);
-                    preparedStatement.setLong(index++, min);
-                    preparedStatement.setLong(index++, max);
-                }
+                addParameters(preparedStatement, parameters);
                 try (final ResultSet resultSet = preparedStatement.executeQuery()) {
                     while (resultSet.next()) {
                         final String key = resultSet.getString(1);

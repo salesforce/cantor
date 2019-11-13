@@ -829,8 +829,9 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
         final Object[] parameters = new Object[2 + metadataKeys.size() + dimensionKeys.size()];
         sqlFormatBuilder.append("SELECT DISTINCT ").append(quote(getTableNameColumnName()))
                 .append(" FROM ").append(getTableFullName(namespace, getChunksLookupTableName()))
-                .append(" WHERE ")
-                .append(quote(getStartTimestampMillisColumnName())).append(" BETWEEN ? AND ? ")
+                .append(" WHERE (")
+                .append(quote(getStartTimestampMillisColumnName()))
+                .append(" BETWEEN ? AND ?)")
         ;
         int index = 0;
         final long startWindow = getWindowForTimestamp(startTimestampMillis) - getWindowSizeMillis();
@@ -840,25 +841,32 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
                 ? getWindowForTimestamp(endTimestampMillis) + getWindowSizeMillis()
                 : Long.MAX_VALUE;
         parameters[index++] = endTimestampWindow;
+
+        // metadata table names are OR'd together, find table names that have matching column names
+        final StringBuilder clauseBuilder = new StringBuilder();
+        final StringJoiner tableNameWhere = new StringJoiner(" OR ", "(", ")");
         for (final String metadataKey : metadataKeys) {
-            sqlFormatBuilder.append(" INTERSECT SELECT DISTINCT ").append(quote(getTableNameColumnName()))
-                    .append(" FROM ").append(getTableFullName(namespace, getChunksLookupTableName()))
-                    .append(" WHERE ")
-                    .append(quote(getColumnColumnName())).append(" = ? ");
+            clauseBuilder.setLength(0);
+            clauseBuilder.append("(").append(quote(getColumnColumnName())).append(" = ?)");
+            tableNameWhere.add(clauseBuilder.toString());
             parameters[index++] = getMetadataKeyColumnName(metadataKey);
         }
         for (final String dimensionKey : dimensionKeys) {
-            sqlFormatBuilder.append(" INTERSECT SELECT DISTINCT ").append(quote(getTableNameColumnName()))
-                    .append(" FROM ").append(getTableFullName(namespace, getChunksLookupTableName()))
-                    .append(" WHERE ")
-                    .append(quote(getColumnColumnName())).append(" = ? ");
+            clauseBuilder.setLength(0);
+            clauseBuilder.append("(").append(quote(getColumnColumnName())).append(" = ?)");
+            tableNameWhere.add(clauseBuilder.toString());
             parameters[index++] = getDimensionKeyColumnName(dimensionKey);
         }
+        if (!metadataKeys.isEmpty() || !dimensionKeys.isEmpty()) {
+            sqlFormatBuilder.append(" AND (").append(tableNameWhere.toString()).append(")");
+        }
+
         final List<String> tables = new ArrayList<>();
         final String sql = sqlFormatBuilder.toString();
         try (final Connection connection = getConnection()) {
             try (final PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
                 addParameters(preparedStatement, parameters);
+                logger.debug("executing sql query [[{}]] with parameters (({}))", sql, parameters);
                 try (final ResultSet resultSet = preparedStatement.executeQuery()) {
                     while (resultSet.next()) {
                         tables.add(resultSet.getString(1));

@@ -13,17 +13,28 @@ import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.IOException;
-import java.sql.*;
-import java.util.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.StringJoiner;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkCreate;
 import static com.salesforce.cantor.common.CommonPreconditions.checkDrop;
-import static com.salesforce.cantor.common.MapsPreconditions.*;
+import static com.salesforce.cantor.common.MapsPreconditions.checkDelete;
+import static com.salesforce.cantor.common.MapsPreconditions.checkGet;
+import static com.salesforce.cantor.common.MapsPreconditions.checkStore;
 import static com.salesforce.cantor.jdbc.JdbcUtils.addParameters;
 import static com.salesforce.cantor.jdbc.JdbcUtils.quote;
 
@@ -322,24 +333,25 @@ public abstract class AbstractBaseMapsOnJdbc extends AbstractBaseCantorOnJdbc im
 
     // find the list of all map tables containing the given keys
     private List<String> getMapTableNames(final String namespace, final Collection<String> keys) throws IOException {
-        final StringBuilder sqlFormatBuilder = new StringBuilder();
-        final Object[] parameters = new Object[keys.size()];
-        sqlFormatBuilder.append("SELECT DISTINCT ").append(quote(getTableNameColumnName()))
-                .append(" FROM ").append(getTableFullName(namespace, getChunksLookupTableName()))
-        ;
-        // TODO go through this query see if it needs to be updated
         int index = 0;
+        final Object[] parameters = new Object[keys.size()];
+        // build the where clause by OR'ing all column checks together
+        final StringBuilder clauseBuilder = new StringBuilder();
+        final StringJoiner whereJoiner = new StringJoiner(" OR ");
         for (final String key : keys) {
-            sqlFormatBuilder.append(" INTERSECT SELECT DISTINCT ").append(quote(getTableNameColumnName()))
-                    .append(" FROM ").append(getTableFullName(namespace, getChunksLookupTableName()))
-                    .append(" WHERE ")
-                    .append(quote(getColumnColumnName())).append(" = ? ");
+            clauseBuilder.setLength(0);
+            whereJoiner.add(clauseBuilder.append(quote(getColumnColumnName())).append(" = ? ").toString());
             parameters[index++] = getMapKeyColumnName(key);
         }
         final List<String> tables = new ArrayList<>();
-        final String sql = sqlFormatBuilder.toString();
+        final String sql = String.format("SELECT DISTINCT %s FROM %s WHERE %s",
+                quote(getTableNameColumnName()),
+                getTableFullName(namespace, getChunksLookupTableName()),
+                whereJoiner.toString()
+        );
         try (final Connection connection = getConnection()) {
             try (final PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                logger.debug("executing sql query [[{}]] with parameters (({}))", sql, parameters);
                 addParameters(preparedStatement, parameters);
                 try (final ResultSet resultSet = preparedStatement.executeQuery()) {
                     while (resultSet.next()) {
