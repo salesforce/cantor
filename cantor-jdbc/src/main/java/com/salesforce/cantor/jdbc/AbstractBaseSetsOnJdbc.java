@@ -285,12 +285,13 @@ public abstract class AbstractBaseSetsOnJdbc extends AbstractBaseCantorOnJdbc im
                                           final int start,
                                           final int count,
                                           final String orderby) throws IOException {
-        final StringJoiner setsJoiner = new StringJoiner(" OR ");
-        final String clause = getSetKeyColumnName() + " = ?";
         int index = 0;
         final Object[] parameters = new Object[sets.size() + 2];
         parameters[index++] = min;
         parameters[index++] = max;
+        // set keys are OR'd together to get all matching set entries
+        final StringJoiner setsJoiner = new StringJoiner(" OR ");
+        final String clause = getSetKeyColumnName() + " = ?";
         for (final String set : sets) {
             parameters[index++] = set;
             setsJoiner.add(clause);
