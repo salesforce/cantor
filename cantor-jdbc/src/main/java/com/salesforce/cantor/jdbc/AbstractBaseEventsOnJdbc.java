@@ -866,7 +866,7 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
         try (final Connection connection = getConnection()) {
             try (final PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
                 addParameters(preparedStatement, parameters);
-                logger.info("executing sql query [[{}]] with parameters (({}))", sql, parameters);
+                logger.debug("executing sql query [[{}]] with parameters (({}))", sql, parameters);
                 try (final ResultSet resultSet = preparedStatement.executeQuery()) {
                     while (resultSet.next()) {
                         tables.add(resultSet.getString(1));
