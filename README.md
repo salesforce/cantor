@@ -1,7 +1,6 @@
 # Cantor
 
-[![Build Status](https://github.com/salesforce/cantor/workflows/cantor-build-ci/badge.svg)](https://github.com/salesforce/cantor/actions)
-
+[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) [![Build Status](https://github.com/salesforce/cantor/workflows/cantor-build-ci/badge.svg)](https://github.com/salesforce/cantor/actions)
 
 Cantor is a *persistent data abstraction layer*; it provides functionalities to query and retrieve data stored 
 as *key/value pairs*, *sorted sets*, *map of key/values*, or *multi-dimensional time-series data points*.
