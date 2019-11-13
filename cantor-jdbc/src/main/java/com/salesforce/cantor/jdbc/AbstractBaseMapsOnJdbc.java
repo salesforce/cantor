@@ -13,17 +13,27 @@ import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.IOException;
-import java.sql.*;
-import java.util.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkCreate;
 import static com.salesforce.cantor.common.CommonPreconditions.checkDrop;
-import static com.salesforce.cantor.common.MapsPreconditions.*;
+import static com.salesforce.cantor.common.MapsPreconditions.checkDelete;
+import static com.salesforce.cantor.common.MapsPreconditions.checkGet;
+import static com.salesforce.cantor.common.MapsPreconditions.checkStore;
 import static com.salesforce.cantor.jdbc.JdbcUtils.addParameters;
 import static com.salesforce.cantor.jdbc.JdbcUtils.quote;
 
@@ -340,6 +350,7 @@ public abstract class AbstractBaseMapsOnJdbc extends AbstractBaseCantorOnJdbc im
         final String sql = sqlFormatBuilder.toString();
         try (final Connection connection = getConnection()) {
             try (final PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                logger.info("executing sql query [[{}]] with parameters (({}))", sql, parameters);
                 addParameters(preparedStatement, parameters);
                 try (final ResultSet resultSet = preparedStatement.executeQuery()) {
                     while (resultSet.next()) {

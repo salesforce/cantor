@@ -298,6 +298,7 @@ public abstract class AbstractBaseSetsOnJdbc extends AbstractBaseCantorOnJdbc im
         );
         final Map<String, Long> items = new LinkedHashMap<>();
         try (final Connection connection = getConnection()) {
+            logger.debug("executing sql query: {}", sql);
             try (final PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
                 int index = 1;
                 for (final String set : sets) {
