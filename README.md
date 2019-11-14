@@ -224,13 +224,3 @@ Compile like this:
 $ cd cantor/
 $ ./bang.sh
 ```
-
-### Modules
-
-The project is divided into a number of modules to encapsulate components:
-
-- `cantor-base` contains only the most basic interfaces: `Objects`, `Sets`, and `Events`.
-- `cantor-common` contains internal classes commonly used by other modules (e.g., argument validators, etc.) 
-- `cantor-jdbc` contains base implementations of `Objects` and `Sets` on top of SQL
-- `cantor-h2` extends `cantor-jdbc` base implementations to work with H2 database
-- `cantor-mysql` extends `cantor-jdbc` base implementations to work with MySQL database
