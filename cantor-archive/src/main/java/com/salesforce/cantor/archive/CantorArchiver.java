@@ -31,17 +31,18 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkString;
 public class CantorArchiver {
     private static final Logger logger = LoggerFactory.getLogger(CantorArchiver.class);
 
-    private static final int maxObjectChunkSize = 1_000;
-    private static final int maxSetsChunkSize = 1_000;
-    private static final long minAllowedChunkMillis = TimeUnit.MINUTES.toMillis(1);
-    private static final long maxAllowedChunkMillis = TimeUnit.MINUTES.toMillis(60);
+    public static final int MAX_OBJECT_CHUNK_SIZE = 1_000;
+    public static final int MAX_SETS_CHUNK_SIZE = 1_000;
+    public static final long MIN_ALLOWED_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(1);
+    public static final long MAX_ALLOWED_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(60);
 
-    public static void archive(final Objects objects, final String namespace, final Path destination) throws IOException {
+    public static void archive(final Objects objects, final String namespace, final Path destination, int chunkSize) throws IOException {
         checkArchiveArguments(objects, namespace, destination);
+        checkArgument(chunkSize <= MAX_OBJECT_CHUNK_SIZE, "chunk size must be <=" + MAX_OBJECT_CHUNK_SIZE);
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
             // get objects to archive in chunks in case of large namespaces
             int start = 0;
-            Collection<String> keys = objects.keys(namespace, start, maxObjectChunkSize);
+            Collection<String> keys = objects.keys(namespace, start, chunkSize);
             while (!keys.isEmpty()) {
                 final Map<String, byte[]> chunk = objects.get(namespace, keys);
                 final int end = start + chunk.size();
@@ -50,13 +51,14 @@ public class CantorArchiver {
                 writeArchiveEntry(archive, name, getBytes(chunk));
                 logger.info("archived {} objects ({}-{}) into chunk '{}'", chunk.size(), start, end, name);
                 start = end;
-                keys = objects.keys(namespace, start, maxObjectChunkSize);
+                keys = objects.keys(namespace, start, chunkSize);
             }
         }
     }
 
-    public static void archive(final Sets sets, final String namespace, final Path destination) throws IOException {
+    public static void archive(final Sets sets, final String namespace, final Path destination, final int chunkSize) throws IOException {
         checkArchiveArguments(sets, namespace, destination);
+        checkArgument(chunkSize <= MAX_SETS_CHUNK_SIZE, "chunk size must be <=" + MAX_SETS_CHUNK_SIZE);
         // get all sets for the namespace, any sets added after won't be archived
         final Collection<String> setNames = sets.sets(namespace);
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
@@ -64,7 +66,7 @@ public class CantorArchiver {
             for (final String set : setNames) {
                 logger.info("archiving set {}.{}", namespace, set);
                 int start = 0;
-                Map<String, Long> entries = sets.get(namespace, set, start, maxSetsChunkSize);
+                Map<String, Long> entries = sets.get(namespace, set, start, chunkSize);
                 while (!entries.isEmpty()) {
                     final int end = start + entries.size();
                     final String name = String.format("sets-%s-%s-%s-%s", namespace, set, start, end);
@@ -73,7 +75,7 @@ public class CantorArchiver {
                     writeArchiveEntry(archive, name, chunk.toByteArray());
                     logger.info("archived {} entries ({}-{}) into chunk '{}' for set {}.{}", entries.size(), start, end, name, namespace, set);
                     start = end;
-                    entries = sets.get(namespace, set, start, maxSetsChunkSize);
+                    entries = sets.get(namespace, set, start, chunkSize);
                 }
             }
         }
@@ -84,8 +86,8 @@ public class CantorArchiver {
         checkArchiveArguments(events, namespace, destination);
         checkArgument(startTimestampMillis > 0, "start timestamp must be positive");
         checkArgument(startTimestampMillis < endTimestampMillis, "start timestamp must be before end timestamp");
-        checkArgument(chunkMillis >= minAllowedChunkMillis, "archive chunk millis must be greater than " + minAllowedChunkMillis);
-        checkArgument(chunkMillis <= maxAllowedChunkMillis, "archive chunk millis must be less than " + maxAllowedChunkMillis);
+        checkArgument(chunkMillis >= MIN_ALLOWED_CHUNK_MILLIS, "archive chunk millis must be greater than " + MIN_ALLOWED_CHUNK_MILLIS);
+        checkArgument(chunkMillis <= MAX_ALLOWED_CHUNK_MILLIS, "archive chunk millis must be less than " + MAX_ALLOWED_CHUNK_MILLIS);
 
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
             long chunkStart = startTimestampMillis;
