@@ -33,8 +33,8 @@ public class CantorArchiverTest {
 
     @Test
     public void testArchiveRestoreObjects() throws IOException {
-        final String basePath = "/tmp/cantor-archive-objects-test/" + UUID.randomUUID().toString();
-        final Cantor cantor = getCantor(basePath  + "/input/");
+        final String basePath = Paths.get(System.getProperty("java.io.tmpdir"), "cantor-archive-objects-test", UUID.randomUUID().toString()).toString();
+        final Cantor cantor = getCantor(Paths.get(basePath, "input").toString());
         final String namespace = UUID.randomUUID().toString();
         final Map<String, byte[]> stored = populateObjects(cantor.objects(), namespace, ThreadLocalRandom.current().nextInt(1_000, 5_000));
         assertEquals(cantor.objects().size(namespace), stored.size(), "didn't store expected values");
@@ -47,7 +47,7 @@ public class CantorArchiverTest {
         assertNotEquals(Files.size(outputPath), 0, "empty archive file shouldn't exist");
 
         final String vNamespace = UUID.randomUUID().toString();
-        final Cantor vCantor = getCantor(basePath + "/verify/");
+        final Cantor vCantor = getCantor(Paths.get(basePath, "verify").toString());
         assertThrows(IOException.class, () -> vCantor.objects().size(vNamespace));
         CantorArchiver.restore(vCantor.objects(), vNamespace, outputPath);
 
@@ -60,8 +60,8 @@ public class CantorArchiverTest {
 
     @Test
     public void testArchiveZeroObjectsNamespace() throws IOException {
-        final String basePath = "/tmp/cantor-archive-objects-test-zero/" + UUID.randomUUID().toString();
-        final Cantor cantor = getCantor(basePath  + "/input/");
+        final String basePath = Paths.get(System.getProperty("java.io.tmpdir"), "cantor-archive-zero-objects-test", UUID.randomUUID().toString()).toString();
+        final Cantor cantor = getCantor(Paths.get(basePath, "input").toString());
         final String namespace = UUID.randomUUID().toString();
         cantor.objects().create(namespace);
 
@@ -76,8 +76,8 @@ public class CantorArchiverTest {
 
     @Test
     public void testArchiveSets() throws IOException {
-        final String basePath = "/tmp/cantor-archive-sets-test/" + UUID.randomUUID().toString();
-        final Cantor cantor = getCantor(basePath  + "/input/");
+        final String basePath = Paths.get(System.getProperty("java.io.tmpdir"), "cantor-archive-sets-test", UUID.randomUUID().toString()).toString();
+        final Cantor cantor = getCantor(Paths.get(basePath, "input").toString());
         final String namespace = UUID.randomUUID().toString();
 
         final Map<String, Map<String, Long>> allSets = new HashMap<>();
@@ -98,7 +98,7 @@ public class CantorArchiverTest {
         assertNotEquals(Files.size(outputPath), 0, "empty archive file shouldn't exist");
 
         final String vNamespace = UUID.randomUUID().toString();
-        final Cantor vCantor = getCantor(basePath + "/verify/");
+        final Cantor vCantor = getCantor(Paths.get(basePath, "verify").toString());
         // sanity check
         for (final String set : allSets.keySet()) {
             assertThrows(IOException.class, () -> vCantor.sets().size(vNamespace, set));
@@ -116,8 +116,8 @@ public class CantorArchiverTest {
 
     @Test
     public void testArchiveEvents() throws IOException {
-        final String basePath = "/tmp/cantor-archive-events-test/" + UUID.randomUUID().toString();
-        final Cantor cantor = getCantor(basePath  + "/input/");
+        final String basePath = Paths.get(System.getProperty("java.io.tmpdir"), "cantor-archive-sets-test", UUID.randomUUID().toString()).toString();
+        final Cantor cantor = getCantor(Paths.get(basePath, "input").toString());
         final String namespace = UUID.randomUUID().toString();
 
         final long now = System.currentTimeMillis();
@@ -143,7 +143,7 @@ public class CantorArchiverTest {
 
         // choose a new cantor/namespace to restore to
         final String vNamespace = UUID.randomUUID().toString();
-        final Cantor vCantor = getCantor(basePath + "/verify/");
+        final Cantor vCantor = getCantor(Paths.get(basePath, "verify").toString());
         // sanity check
         assertThrows(IOException.class, () -> vCantor.events().get(namespace, standardStart, now, true));
 
