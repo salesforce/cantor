@@ -15,3 +15,13 @@ message SetsChunk {
     string set = 1;
     map<string, int64> entries = 2;
 }
+
+message EventsChunk {
+    repeated Event events = 1;
+    message Event {
+        uint64 timestamp_millis = 1;
+        map<string, string> metadata = 2;
+        map<string, double> dimensions = 3;
+        bytes payload = 4;
+    }
+}
