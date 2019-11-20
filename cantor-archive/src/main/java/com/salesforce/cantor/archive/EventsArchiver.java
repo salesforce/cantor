@@ -12,7 +12,6 @@ import com.salesforce.cantor.Events;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveOutputStream;
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,16 +25,16 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 public class EventsArchiver extends AbstractBaseArchiver {
     private static final Logger logger = LoggerFactory.getLogger(EventsArchiver.class);
 
-    public static final long MIN_ALLOWED_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(1);
-    public static final long MAX_ALLOWED_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(60);
+    public static final long MIN_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(1);
+    public static final long MAX_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(60);
 
     public static void archive(final Events events, final String namespace, final long startTimestampMillis,
                                final long endTimestampMillis, final long chunkMillis, final Path destination) throws IOException {
         checkArchiveArguments(events, namespace, destination);
         checkArgument(startTimestampMillis > 0, "start timestamp must be positive");
         checkArgument(startTimestampMillis < endTimestampMillis, "start timestamp must be before end timestamp");
-        checkArgument(chunkMillis >= MIN_ALLOWED_CHUNK_MILLIS, "archive chunk millis must be greater than " + MIN_ALLOWED_CHUNK_MILLIS);
-        checkArgument(chunkMillis <= MAX_ALLOWED_CHUNK_MILLIS, "archive chunk millis must be less than " + MAX_ALLOWED_CHUNK_MILLIS);
+        checkArgument(chunkMillis >= MIN_CHUNK_MILLIS, "archive chunk millis must be greater than " + MIN_CHUNK_MILLIS);
+        checkArgument(chunkMillis <= MAX_CHUNK_MILLIS, "archive chunk millis must be less than " + MAX_CHUNK_MILLIS);
 
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
             long chunkStart = startTimestampMillis;
@@ -61,6 +60,7 @@ public class EventsArchiver extends AbstractBaseArchiver {
             }
         }
     }
+
     public static void restore(final Events events, final String namespace, final Path archiveFile) throws IOException {
         checkRestoreArguments(events, namespace, archiveFile);
         // create the namespace, in case the user hasn't already

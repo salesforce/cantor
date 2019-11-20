@@ -33,7 +33,7 @@ public class ObjectsArchiverTest {
 
         Files.createDirectories(Paths.get(basePath, "output"));
         final Path outputPath = Paths.get(basePath, "output",  "test-archive.tar.gz");
-        ObjectsArchiver.archive(cantor.objects(), namespace, outputPath, ObjectsArchiver.MAX_OBJECT_CHUNK_SIZE);
+        ObjectsArchiver.archive(cantor.objects(), namespace, outputPath, ObjectsArchiver.MAX_CHUNK_SIZE);
 
         assertTrue(Files.exists(outputPath), "archive file missing");
         assertNotEquals(Files.size(outputPath), 0, "empty archive file shouldn't exist");
@@ -59,7 +59,7 @@ public class ObjectsArchiverTest {
 
         Files.createDirectories(Paths.get(basePath, "output"));
         final Path outputPath = Paths.get(basePath, "output", "test-archive.tar.gz");
-        ObjectsArchiver.archive(cantor.objects(), namespace, outputPath, ObjectsArchiver.MAX_OBJECT_CHUNK_SIZE);
+        ObjectsArchiver.archive(cantor.objects(), namespace, outputPath, ObjectsArchiver.MAX_CHUNK_SIZE);
         assertTrue(Files.exists(outputPath), "archiving zero objects should still produce file");
 
         ObjectsArchiver.restore(cantor.objects(), namespace, outputPath);

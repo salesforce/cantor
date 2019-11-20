@@ -12,7 +12,6 @@ import com.salesforce.cantor.Objects;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveOutputStream;
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,11 +25,11 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 public class ObjectsArchiver extends AbstractBaseArchiver {
     private static final Logger logger = LoggerFactory.getLogger(ObjectsArchiver.class);
 
-    public static final int MAX_OBJECT_CHUNK_SIZE = 1_000;
+    public static final int MAX_CHUNK_SIZE = 1_000;
 
     public static void archive(final Objects objects, final String namespace, final Path destination, int chunkSize) throws IOException {
         checkArchiveArguments(objects, namespace, destination);
-        checkArgument(chunkSize <= MAX_OBJECT_CHUNK_SIZE, "chunk size must be <=" + MAX_OBJECT_CHUNK_SIZE);
+        checkArgument(chunkSize <= MAX_CHUNK_SIZE, "chunk size must be <=" + MAX_CHUNK_SIZE);
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
             // get objects to archive in chunks in case of large namespaces
             int start = 0;

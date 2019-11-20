@@ -24,11 +24,11 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 public class SetsArchiver extends AbstractBaseArchiver {
     private static final Logger logger = LoggerFactory.getLogger(SetsArchiver.class);
 
-    public static final int MAX_SETS_CHUNK_SIZE = 1_000;
+    public static final int MAX_CHUNK_SIZE = 1_000;
 
     public static void archive(final Sets sets, final String namespace, final Path destination, final int chunkSize) throws IOException {
         checkArchiveArguments(sets, namespace, destination);
-        checkArgument(chunkSize <= MAX_SETS_CHUNK_SIZE, "chunk size must be <=" + MAX_SETS_CHUNK_SIZE);
+        checkArgument(chunkSize <= MAX_CHUNK_SIZE, "chunk size must be <=" + MAX_CHUNK_SIZE);
         // get all sets for the namespace, any sets added after won't be archived
         final Collection<String> setNames = sets.sets(namespace);
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
