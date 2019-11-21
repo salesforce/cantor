@@ -8,7 +8,6 @@ import java.io.IOException;
 import static org.testng.Assert.*;
 
 public class MetricCollectingSetsTest extends AbstractBaseSetsTest {
-
     @Override
     protected Cantor getCantor() throws IOException {
         return MetricCollectingTests.getCantor();

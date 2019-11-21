@@ -11,7 +11,6 @@ import java.util.Set;
 import java.util.function.Function;
 
 public class MetricCollectingEvents extends BaseMetricCollectingCantor implements Events {
-
    private final Events delegate;
 
     public MetricCollectingEvents(final MetricRegistry metrics, final Events delegate) {

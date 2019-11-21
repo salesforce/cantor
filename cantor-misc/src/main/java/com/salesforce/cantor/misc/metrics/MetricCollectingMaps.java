@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.function.Function;
 
 public class MetricCollectingMaps extends BaseMetricCollectingCantor implements Maps {
-
     private final Maps delegate;
 
     public MetricCollectingMaps(final MetricRegistry metrics, final Maps delegate) {

@@ -8,7 +8,6 @@ import com.salesforce.cantor.Objects;
 import com.salesforce.cantor.Sets;
 
 public class MetricCollectingCantor implements Cantor {
-
     private final Objects objects;
     private final Sets sets;
     private final Maps maps;
@@ -16,7 +15,7 @@ public class MetricCollectingCantor implements Cantor {
 
     public MetricCollectingCantor(final MetricRegistry metrics, final Cantor delegate) {
         this.objects = new MetricCollectingObjects(metrics, delegate.objects());
-        sets = new MetricCollectingSets(metrics, delegate.sets());
+        this.sets = new MetricCollectingSets(metrics, delegate.sets());
         this.maps = new MetricCollectingMaps(metrics, delegate.maps());
         this.events = new MetricCollectingEvents(metrics, delegate.events());
     }

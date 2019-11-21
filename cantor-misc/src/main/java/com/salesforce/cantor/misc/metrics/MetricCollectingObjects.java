@@ -8,7 +8,6 @@ import java.util.Collection;
 import java.util.function.Function;
 
 public class MetricCollectingObjects extends BaseMetricCollectingCantor implements Objects {
-    
     private final Objects delegate;
     
     public MetricCollectingObjects(final MetricRegistry metrics, final Objects delegate) {

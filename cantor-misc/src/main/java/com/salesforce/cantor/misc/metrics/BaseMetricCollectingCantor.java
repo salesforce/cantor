@@ -16,7 +16,7 @@ public class BaseMetricCollectingCantor {
         this.delegate = delegate;
     }
 
-    // collects timer/meter metrics and uses the given function to transform the cantor result into an integer for a histogram
+    // collects timer metrics and uses the given function to transform the cantor result into an integer for a histogram
     <R> R metrics(final Callable<R> callable, final String methodName, final String namespace, final Function<R, Integer> resultToHistogramValue) throws IOException {
         final R result = metrics(callable, methodName, namespace);
         try {
@@ -43,7 +43,7 @@ public class BaseMetricCollectingCantor {
     }
 
     void metrics(final IORunnable runnable, final String methodName, final String namespace) throws IOException {
-        try (Timer.Context ignored = metrics.timer(getTimerName(namespace, methodName)).time()) {
+        try (final Timer.Context ignored = metrics.timer(getTimerName(namespace, methodName)).time()) {
             runnable.run();
         } catch (final IllegalArgumentException e) {
             // rethrow illegal arguments, so we don't have to do checks ourselves...
@@ -54,11 +54,11 @@ public class BaseMetricCollectingCantor {
     }
 
     private String getTimerName(final String namespace, final String method) {
-        return MetricRegistry.name(delegate.getClass(), namespace, method, "calls");
+        return MetricRegistry.name(this.delegate.getClass(), namespace, method, "calls");
     }
 
     private String getHistogramName(final String namespace, final String method) {
-        return MetricRegistry.name(delegate.getClass(), namespace, method, "response-size");
+        return MetricRegistry.name(this.delegate.getClass(), namespace, method, "response-size");
     }
 
     interface IORunnable {

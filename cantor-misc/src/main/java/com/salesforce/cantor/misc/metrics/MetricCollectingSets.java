@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.function.Function;
 
 public class MetricCollectingSets extends BaseMetricCollectingCantor implements Sets {
-
     private final Sets delegate;
 
     public MetricCollectingSets(final MetricRegistry metrics, final Sets delegate) {
