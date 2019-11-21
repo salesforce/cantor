@@ -24,6 +24,10 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
+    <properties>
+        <metrics.version>4.1.0</metrics.version>
+    </properties>
+
     <dependencies>
         <!-- CANTOR BASE -->
         <dependency>
@@ -42,6 +46,12 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.version}</version>
+        </dependency>
+        <!-- DROPWIZARD -->
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
+            <version>${metrics.version}</version>
         </dependency>
         <!-- LOGBACK -->
         <dependency>
