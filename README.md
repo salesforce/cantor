@@ -129,9 +129,9 @@ Note that an event cannot contain more than 100 metadata and 400 dimension keys.
 
 The projects is divided into a number of sub-modules to allow users to only pull in dependencies that are necessary.
 
-### Embedded on top of H2
+### Embedded Cantor
 
-To use embedded Cantor library which is implemented on top of H2 database, include the following dependency:
+To use the embedded Cantor library which is implemented on top of H2, include the following dependency:
 ```xml
 <dependency>
     <groupId>com.salesforce.cantor</groupId>
@@ -142,11 +142,6 @@ To use embedded Cantor library which is implemented on top of H2 database, inclu
 <p align="center">
   <img src="docs/cantor-h2.svg" alt="Embedded Cantor on H2"/>
 </p>
-
-#### Why H2?
-
-H2 is mature and performant open source relational database implementation written purly in Java which can be used embedded in an 
-application, and supports MySQL compliant SQL dialect which simplifies the implementation.
 
 #### On top of MySQL
 
