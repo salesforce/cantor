@@ -41,37 +41,13 @@ The library allows users to persist and query data stored in one of the followin
 other key/value storage solutions: there are methods to create and drop namespaces, as well as methods to persist 
 and retrieve objects. 
 
-| KEY (string) | VALUE (bytes) |
-| --- | --- |
-| `object-key-1` | `b2ggbmljZSwgeW91J3JlIHB1dHRpbmcgZWZmb3J0IGludG8gdGhpcyB0aGluZwo=` |
-| `object-key-2` | `aHVoISB0aGVzZSBhcmUganVzdCBzYW1wbGVzLCB5b3UgZG9uJ3QgbmVlZCB0byBkbyB0aGlzLg==` |
-| `object-key-3` | `YXJlIHlvdSBzZXJpb3VzbHkgbG9va2luZyB0aGlzIHVwPyE=` |
-
 - *Sorted sets* - each set is identified with a unique string as the set name, and a number of entries, each 
 associated with a numerical value as the weight of the entry. Functions on sets allow users to create and drop 
 namespaces, as well as slice and paginate sets based on the weight of the entries.
 
-| SET (string) | ENTRY (string) | WEIGHT (long) |
-| --- | --- | --- |
-| `sample-set-1` | `entry-1` | `0` |
-| `sample-set-1` | `entry-2` | `1` |
-| `sample-set-1` | `entry-3` | `2` |
-| `sample-set-2` | `entry-1` | `1` |
-| `sample-set-2` | `entry-2` | `2` |
-
 - *Fat Events* - multi-dimensional time-series data points; where each data point has a timestamp along with an 
 arbitrary list of metadata (key/value strings), a number of dimensions (double values), and a payload (arbitrary 
 byte array).
-
-| Timestamp (long) | Tenant (string) | Host (string) | CPU (double) | Memory (double) | Disk (double) | Payload |
-| --- | --- | --- | --- | --- | --- | --- |
-| `1547147796712` | `tenant-1` | `host-1.dc1.salesforce.com` | `0.31` | `0.041` | `0.0051` | `NULL` |
-| `1547147796923` | `tenant-1` | `host-2.dc1.salesforce.com` | `0.43` | `0.171` | `0.1082` | `NULL` |
-| `1547147796899` | `tenant-1` | `host-3.dc1.salesforce.com` | `0.47` | `0.263` | `0.0454` | `NULL` |
-| `1547147797812` | `tenant-2` | `host-1.dc2.salesforce.com` | `0.31` | `0.221` | `0.0358` | `NULL` |
-| `1547147796413` | `tenant-2` | `host-2.dc2.salesforce.com` | `0.62` | `0.341` | `0.0157` | `NULL` |
-| `1547147796316` | `tenant-2` | `host-3.dc2.salesforce.com` | `0.64` | `0.133` | `0.0177` | `NULL` |
-| `1547147798811` | `tenant-2` | `host-4.dc2.salesforce.com` | `0.57` | `0.182` | `0.0196` | `NULL` |
 
 These data structures can be used to solve variety of use-cases for applications; and they are straight forward to 
 implement simply and efficiently on top of relational databases. Cantor provides this implementaion. It also tries to 
