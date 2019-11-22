@@ -140,7 +140,7 @@ To use the embedded Cantor library which is implemented on top of H2, include th
 </dependency>
 ```
 <p align="center">
-  <img src="docs/cantor-h2.svg" alt="Embedded Cantor on H2"/>
+  <img src="docs/cantor-h2.svg" alt="Embedded Cantor on H2"/ height="480">
 </p>
 
 #### On top of MySQL
