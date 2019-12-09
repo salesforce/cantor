@@ -1,4 +1,4 @@
-package com.salesforce.cantor.misc.metrics;
+package com.salesforce.cantor.metrics;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;

@@ -1,14 +1,13 @@
-package com.salesforce.cantor.misc.metrics;
+package com.salesforce.cantor.metrics;
 
 import com.salesforce.cantor.Cantor;
-import com.salesforce.cantor.common.AbstractBaseObjectsTest;
+import com.salesforce.cantor.common.AbstractBaseSetsTest;
 
 import java.io.IOException;
 
 import static org.testng.Assert.*;
 
-public class MetricCollectingObjectsTest extends AbstractBaseObjectsTest {
-
+public class MetricCollectingSetsTest extends AbstractBaseSetsTest {
     @Override
     protected Cantor getCantor() throws IOException {
         return MetricCollectingTests.getCantor();

@@ -1,4 +1,4 @@
-package com.salesforce.cantor.misc.metrics;
+package com.salesforce.cantor.metrics;
 
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.common.AbstractBaseEventsTest;

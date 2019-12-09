@@ -11,9 +11,9 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>cantor-misc</artifactId>
+    <artifactId>cantor-metrics</artifactId>
     <packaging>jar</packaging>
-    <name>cantor-misc</name>
+    <name>cantor-metrics</name>
 
     <description>Cantor Miscellaneous Utilities</description>
 
@@ -23,6 +23,10 @@
         <version>0.0.5-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
+
+    <properties>
+        <metrics.version>4.1.0</metrics.version>
+    </properties>
 
     <dependencies>
         <!-- CANTOR BASE -->
@@ -42,6 +46,12 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.version}</version>
+        </dependency>
+        <!-- DROPWIZARD -->
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
+            <version>${metrics.version}</version>
         </dependency>
         <!-- LOGBACK -->
         <dependency>
