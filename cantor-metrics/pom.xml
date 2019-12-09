@@ -15,7 +15,7 @@
     <packaging>jar</packaging>
     <name>cantor-metrics</name>
 
-    <description>Cantor Miscellaneous Utilities</description>
+    <description>Cantor Metrics Wrapper</description>
 
     <parent>
         <groupId>com.salesforce.cantor</groupId>
@@ -77,12 +77,6 @@
         <dependency>
             <groupId>com.salesforce.cantor</groupId>
             <artifactId>cantor-h2</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <!--CANTOR MYSQL-->
-        <dependency>
-            <groupId>com.salesforce.cantor</groupId>
-            <artifactId>cantor-mysql</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
