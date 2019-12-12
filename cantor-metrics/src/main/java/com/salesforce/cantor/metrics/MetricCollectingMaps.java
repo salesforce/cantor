@@ -25,7 +25,7 @@ public class MetricCollectingMaps extends BaseMetricCollectingCantor implements 
 
     @Override
     public Collection<String> namespaces() throws IOException {
-        return metrics(this.delegate::namespaces, "namespaces", "cantor", Collection::size);
+        return metrics(this.delegate::namespaces, "namespaces", "cantor", super::size);
     }
 
     @Override
@@ -45,7 +45,7 @@ public class MetricCollectingMaps extends BaseMetricCollectingCantor implements 
 
     @Override
     public Collection<Map<String, String>> get(final String namespace, final Map<String, String> query) throws IOException {
-        return metrics(() -> this.delegate.get(namespace, query), "get", "cantor", Collection::size);
+        return metrics(() -> this.delegate.get(namespace, query), "get", "cantor", super::size);
     }
 
     @Override

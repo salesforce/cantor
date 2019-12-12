@@ -9,12 +9,16 @@ package com.salesforce.cantor.metrics;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
 
 public class BaseMetricCollectingCantor {
+    private static final Logger logger = LoggerFactory.getLogger(BaseMetricCollectingCantor.class);
     private final MetricRegistry metrics;
     private final Object delegate;
 
@@ -32,7 +36,7 @@ public class BaseMetricCollectingCantor {
                 this.metrics.histogram(getHistogramName(namespace, methodName)).update(value);
             }
         } catch (final Exception e) {
-           // ignore exceptions due to metrics
+           logger.warn("exception transforming result to histogram value: ", e);
         }
         return result;
     }
@@ -58,6 +62,10 @@ public class BaseMetricCollectingCantor {
         } catch (final Exception e) {
             throw new IOException(e);
         }
+    }
+
+    Integer size(final Collection<?> collection) {
+        return collection != null ? collection.size() : 0;
     }
 
     private String getTimerName(final String namespace, final String method) {

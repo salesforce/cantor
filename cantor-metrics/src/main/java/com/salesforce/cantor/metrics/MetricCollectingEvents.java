@@ -27,7 +27,7 @@ public class MetricCollectingEvents extends BaseMetricCollectingCantor implement
 
     @Override
     public Collection<String> namespaces() throws IOException {
-        return metrics(this.delegate::namespaces, "namespaces", "cantor", Collection::size);
+        return metrics(this.delegate::namespaces, "namespaces", "cantor", super::size);
     }
 
     @Override
@@ -53,7 +53,7 @@ public class MetricCollectingEvents extends BaseMetricCollectingCantor implement
                            final Map<String, String> dimensionsQuery,
                            final boolean includePayloads) throws IOException {
         return metrics(() -> this.delegate.get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads),
-                "get", namespace, List::size);
+                "get", namespace, super::size);
     }
 
     @Override
@@ -84,7 +84,7 @@ public class MetricCollectingEvents extends BaseMetricCollectingCantor implement
                         dimensionsQuery,
                         aggregateIntervalMillis,
                         aggregationFunction
-                ), "aggregate", namespace, Map::size);
+                ), "aggregate", namespace, m -> m != null ? m.size() : 0);
     }
 
     @Override
@@ -101,7 +101,7 @@ public class MetricCollectingEvents extends BaseMetricCollectingCantor implement
                         endTimestampMillis,
                         metadataQuery,
                         dimensionsQuery
-                ), "metadata", namespace, Set::size);
+                ), "metadata", namespace, super::size);
     }
 
     @Override

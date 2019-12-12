@@ -24,7 +24,7 @@ public class MetricCollectingObjects extends BaseMetricCollectingCantor implemen
 
     @Override
     public Collection<String> namespaces() throws IOException {
-        return metrics(this.delegate::namespaces, "namespaces", "cantor", Collection::size);
+        return metrics(this.delegate::namespaces, "namespaces", "cantor", super::size);
     }
 
     @Override
@@ -54,7 +54,7 @@ public class MetricCollectingObjects extends BaseMetricCollectingCantor implemen
 
     @Override
     public Collection<String> keys(final String namespace, final int start, final int count) throws IOException {
-        return metrics(() -> this.delegate.keys(namespace, start, count), "keys", "cantor", Collection::size);
+        return metrics(() -> this.delegate.keys(namespace, start, count), "keys", "cantor", super::size);
     }
 
     @Override

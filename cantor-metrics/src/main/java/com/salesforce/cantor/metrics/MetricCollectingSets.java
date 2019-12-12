@@ -25,7 +25,7 @@ public class MetricCollectingSets extends BaseMetricCollectingCantor implements 
 
     @Override
     public Collection<String> namespaces() throws IOException {
-        return metrics(this.delegate::namespaces, "namespaces", "cantor", Collection::size);
+        return metrics(this.delegate::namespaces, "namespaces", "cantor", super::size);
     }
 
     @Override
@@ -57,13 +57,13 @@ public class MetricCollectingSets extends BaseMetricCollectingCantor implements 
                                       final int count,
                                       final boolean ascending) throws IOException {
         return metrics(() -> this.delegate.entries(namespace, set, min, max, start, count, ascending),
-                "entries", "cantor", Collection::size);
+                "entries", "cantor", super::size);
     }
 
     @Override
     public Map<String, Long> get(final String namespace, final String set, final long min, final long max, final int start, final int count, final boolean ascending) throws IOException {
         return metrics(() -> this.delegate.get(namespace, set, min, max, start, count, ascending),
-                "get", "cantor", Map::size);
+                "get", "cantor", m -> m != null ? m.size() : 0);
     }
 
     @Override
@@ -84,24 +84,24 @@ public class MetricCollectingSets extends BaseMetricCollectingCantor implements 
     @Override
     public Map<String, Long> union(final String namespace, final Collection<String> sets, final long min, final long max, final int start, final int count, final boolean ascending) throws IOException {
         return metrics(() -> this.delegate.union(namespace, sets, min, max, start, count, ascending),
-                "union", "cantor", Map::size);
+                "union", "cantor", m -> m != null ? m.size() : 0);
     }
 
     @Override
     public Map<String, Long> intersect(final String namespace, final Collection<String> sets, final long min, final long max, final int start, final int count, final boolean ascending) throws IOException {
         return metrics(() -> this.delegate.intersect(namespace, sets, min, max, start, count, ascending),
-                "intersect", "cantor", Map::size);
+                "intersect", "cantor", m -> m != null ? m.size() : 0);
     }
 
     @Override
     public Map<String, Long> pop(final String namespace, final String set, final long min, final long max, final int start, final int count, final boolean ascending) throws IOException {
         return metrics(() -> this.delegate.pop(namespace, set, min, max, start, count, ascending),
-                "pop", "cantor", Map::size);
+                "pop", "cantor", m -> m != null ? m.size() : 0);
     }
 
     @Override
     public Collection<String> sets(final String namespace) throws IOException {
-        return metrics(() -> this.delegate.sets(namespace), "sets", namespace, Collection::size);
+        return metrics(() -> this.delegate.sets(namespace), "sets", namespace, super::size);
     }
 
     @Override
