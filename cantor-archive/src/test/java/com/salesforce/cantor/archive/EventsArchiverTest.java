@@ -110,6 +110,29 @@ public class EventsArchiverTest {
         final String emptyVerificationNamespace = UUID.randomUUID().toString();
         EventsArchiver.restore(vCantor.events(), emptyVerificationNamespace, emptyOutputPath);
         assertTrue(vCantor.events().get(emptyVerificationNamespace, standardStart, now).isEmpty(), "should be no events");
+
+        // check queries
+        final String queryNamespace = UUID.randomUUID().toString();
+        cantor.events().create(queryNamespace);
+        final Map<String, Event> queryStored = populateEvents(cantor.events(), queryNamespace, standardStart, now, 1_000);
+
+        final Path queryOutputPath = Paths.get(basePath, "output", "test-query-archive.tar.gz");
+        final Double dimTarget = ThreadLocalRandom.current().nextBoolean() ? 1D : 0D;
+        final Map<String, String> dims = Collections.singletonMap("dim-check", dimTarget.toString());
+        final String metaTarget = String.valueOf(ThreadLocalRandom.current().nextBoolean());
+        final Map<String, String> meta = Collections.singletonMap("meta-check", metaTarget);
+        EventsArchiver.archive(cantor.events(), queryNamespace, standardStart, now, meta, dims,  60_000L, queryOutputPath);
+        assertTrue(Files.exists(queryOutputPath), "archiving events with queries should still produce file");
+
+        // verify
+        final String queryVerificationNamespace = UUID.randomUUID().toString();
+        EventsArchiver.restore(vCantor.events(), queryVerificationNamespace, queryOutputPath);
+        final List<Event> queryEvents = vCantor.events().get(queryVerificationNamespace, standardStart, now, true);
+        for (final Event event : queryEvents) {
+            assertEquals(event.getDimensions().get("dim-check"), dimTarget);
+            assertEquals(event.getMetadata().get("meta-check"), metaTarget);
+            assertEventsEqual(event, queryStored.get(event.getMetadata().get("guid")));
+        }
     }
 
     private void assertEventsEqual(final Event actual, final Event expected) {
@@ -158,7 +181,7 @@ public class EventsArchiverTest {
         final Map<String, Double> dim = new HashMap<>();
         for (int i = 0; i < ThreadLocalRandom.current().nextInt(0, 10); i++) {
             dim.put(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble());
-            dim.put("dim-check", ThreadLocalRandom.current().nextDouble());
+            dim.put("dim-check", ThreadLocalRandom.current().nextBoolean() ? 1D : 0D);
         }
         return dim;
     }
