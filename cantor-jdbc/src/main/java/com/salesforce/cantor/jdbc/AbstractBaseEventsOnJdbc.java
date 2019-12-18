@@ -29,9 +29,8 @@ import static com.salesforce.cantor.jdbc.JdbcUtils.quote;
 public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc implements Events {
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    protected AbstractBaseEventsOnJdbc(final DataSource dataSource) throws IOException {
+    protected AbstractBaseEventsOnJdbc(final DataSource dataSource) {
         super(dataSource);
-        doCreateInternalDatabase();
     }
 
     @Override
