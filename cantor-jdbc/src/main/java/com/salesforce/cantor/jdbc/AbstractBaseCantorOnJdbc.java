@@ -16,6 +16,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.salesforce.cantor.jdbc.JdbcUtils.addParameters;
 import static com.salesforce.cantor.jdbc.JdbcUtils.quote;
@@ -28,12 +29,13 @@ abstract class AbstractBaseCantorOnJdbc {
     private static final int maxQueryTimeoutSeconds = 30;
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
+    private final AtomicBoolean isInitialized = new AtomicBoolean(false);
     private final DataSource dataSource;
 
     // used by underlying implementation to create whatever internal tables are needed as part of namespace creation
     protected abstract void createInternalTables(Connection connection, String namespace) throws IOException;
 
-    protected AbstractBaseCantorOnJdbc(final DataSource dataSource) throws IOException {
+    protected AbstractBaseCantorOnJdbc(final DataSource dataSource) {
         this.dataSource = dataSource;
     }
 
@@ -43,22 +45,9 @@ abstract class AbstractBaseCantorOnJdbc {
 
     protected abstract String getNamespaceLookupTableName();
 
-    protected void doCreateInternalDatabase() throws IOException {
-        Connection connection = null;
-        try {
-            // open a transaction
-            connection = openTransaction(getConnection());
+    protected void createNamespace(final String namespace) throws IOException {
+        init();
 
-            // create cantor internal database if not exists
-            executeUpdate(connection, getCreateInternalDatabaseSql());
-            executeUpdate(connection, getCreateNamespaceLookupTableSql());
-        } finally {
-            closeConnection(connection);
-        }
-    }
-
-    protected void createNamespace(final String namespace)
-            throws IOException {
         final String databaseName = getDatabaseNameForNamespace(namespace);
         logger.info("creating namespace: '{}' database name: '{}'", namespace, databaseName);
 
@@ -91,6 +80,26 @@ abstract class AbstractBaseCantorOnJdbc {
         }
     }
 
+    private void init() throws IOException {
+        if (!this.isInitialized.getAndSet(true)) {
+            doCreateInternalDatabase();
+        }
+    }
+
+    private void doCreateInternalDatabase() throws IOException {
+        Connection connection = null;
+        try {
+            // open a transaction
+            connection = openTransaction(getConnection());
+
+            // create cantor internal database if not exists
+            executeUpdate(connection, getCreateInternalDatabaseSql());
+            executeUpdate(connection, getCreateNamespaceLookupTableSql());
+        } finally {
+            closeConnection(connection);
+        }
+    }
+
     private String getCreateNamespaceLookupTableSql() {
         return String.format("CREATE TABLE IF NOT EXISTS %s.%s ( " +
                         " %s VARCHAR(512) NOT NULL, " +
@@ -105,6 +114,8 @@ abstract class AbstractBaseCantorOnJdbc {
     }
 
     protected Collection<String> getNamespaces() throws IOException {
+        init();
+
         final String sql = String.format("SELECT %s FROM %s.%s",
                 quote(getNamespaceColumnName()),
                 quote(cantorInternalDatabaseName),
@@ -128,6 +139,8 @@ abstract class AbstractBaseCantorOnJdbc {
     }
 
     protected void dropNamespace(final String namespace) throws IOException {
+        init();
+
         final String databaseName = getDatabaseNameForNamespace(namespace);
         logger.info("dropping namespace '{}' database name: '{}' if exists", namespace, databaseName);
         Connection connection = null;

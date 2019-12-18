@@ -29,9 +29,8 @@ public abstract class AbstractBaseObjectsOnJdbc
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    protected AbstractBaseObjectsOnJdbc(final DataSource dataSource) throws IOException {
+    protected AbstractBaseObjectsOnJdbc(final DataSource dataSource) {
         super(dataSource);
-        doCreateInternalDatabase();
     }
 
     @Override

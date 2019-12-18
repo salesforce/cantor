@@ -41,9 +41,8 @@ import static com.salesforce.cantor.jdbc.JdbcUtils.quote;
 public abstract class AbstractBaseMapsOnJdbc extends AbstractBaseCantorOnJdbc implements Maps {
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    protected AbstractBaseMapsOnJdbc(final DataSource dataSource) throws IOException {
+    protected AbstractBaseMapsOnJdbc(final DataSource dataSource) {
         super(dataSource);
-        doCreateInternalDatabase();
     }
 
     @Override
