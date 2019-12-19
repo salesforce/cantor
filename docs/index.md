@@ -1,17 +1,6 @@
-# Welcome to MkDocs
+# Cantor
 
-For full documentation visit [mkdocs.org](https://mkdocs.org).
+## About
 
-## Commands
+After reviewing currently available open source monitoring and metrics solutions while considering our use-cases and requirements, Cantor was created from ground up to provide a simple yet powerful and flexible solution for storing, querying, and processing blobs and multi-dimensional time-series data points.
 
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs help` - Print this help message.
-
-## Project layout
-
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
