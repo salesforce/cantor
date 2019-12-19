@@ -1,0 +1,6 @@
+site_name: Cantor
+theme:
+  name: 'material'
+nav:
+    - Home: index.md
+    - About: about.md
