@@ -11,10 +11,19 @@ theme:
   logo: 'cantor-logo.png'
 
 
-# Navigation
-nav:
-    - Home: index.md
-    - About: about.md
+# Pages
+pages:
+  - "Introduction": "index.md"
+  - "Overview":
+    - "Motivation": "motivation.md"
+    - "Components": "components.md"
+    - "Objects": "objects.md"
+    - "Sets": "sets.md"
+    - "Maps": "maps.md"
+    - "Events": "events.md"
+  - "Getting started":
+    - "Components": "components.md"
+  - "License": "license.md"
 
 # Github repository
 repo_name: 'salesforce/cantor'
