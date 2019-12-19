@@ -1,0 +1,38 @@
+site_name: Cantor Documentation
+
+# Theme
+theme:
+  name: 'material'
+  language: 'en'
+  palette:
+    primary: 'white'
+    accent: 'white'
+  favicon: 'favicon.ico'
+  logo: 'cantor-logo.png'
+
+
+# Navigations
+nav:
+  - "Introduction": "index.md"
+  - "Overview":
+    - "Motivation": "motivation.md"
+    - "Components": "components.md"
+    - "Namespaces": "namespaces.md"
+    - "Objects": "objects.md"
+    - "Sets": "sets.md"
+    - "Maps": "maps.md"
+    - "Events": "events.md"
+  - "Getting started":
+    - "Embedded": "embedded.md"
+    - "MySQL implementation": "mysql.md"
+    - "H2 implementation": "h2.md"
+    - "Server": "server.md"
+  - "License": "license.md"
+
+# Github repository
+repo_name: 'salesforce/cantor'
+repo_url: 'https://github.com/salesforce/cantor'
+
+# Copyright
+copyright: 'Copyright &copy; 2019 Salesforce'
+
