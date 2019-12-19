@@ -1,4 +1,4 @@
-site_name: Cantor
+site_name: Cantor Documentation
 theme:
   name: 'material'
 nav:
