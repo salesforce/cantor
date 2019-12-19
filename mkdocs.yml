@@ -11,18 +11,22 @@ theme:
   logo: 'cantor-logo.png'
 
 
-# Pages
-pages:
+# Navigations
+nav:
   - "Introduction": "index.md"
   - "Overview":
     - "Motivation": "motivation.md"
     - "Components": "components.md"
+    - "Namespaces": "namespaces.md"
     - "Objects": "objects.md"
     - "Sets": "sets.md"
     - "Maps": "maps.md"
     - "Events": "events.md"
   - "Getting started":
-    - "Components": "components.md"
+    - "Embedded": "embedded.md"
+    - "MySQL implementation": "mysql.md"
+    - "H2 implementation": "h2.md"
+    - "Server": "server.md"
   - "License": "license.md"
 
 # Github repository
