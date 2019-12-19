@@ -1,6 +1,25 @@
 site_name: Cantor Documentation
+
+# Theme
 theme:
   name: 'material'
+  language: 'en'
+  palette:
+    primary: 'white'
+    accent: 'white'
+  favicon: 'favicon.ico'
+  logo: 'cantor-logo.png'
+
+
+# Navigation
 nav:
     - Home: index.md
     - About: about.md
+
+# Github repository
+repo_name: 'salesforce/cantor'
+repo_url: 'https://github.com/salesforce/cantor'
+
+# Copyright
+copyright: 'Copyright &copy; 2019 Salesforce'
+
