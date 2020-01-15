@@ -340,22 +340,31 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
 
         int count = 0;
         double sum = 0.0;
+        double trueSum = 0.0;
         double min = Double.MAX_VALUE;
         double max = Double.MIN_VALUE;
         long startTimestampMillis = System.currentTimeMillis();
+
+        final Map<String, String> boolMetadata = new HashMap<>();
+        boolMetadata.put("bool-meta1", String.valueOf(true));
+        boolMetadata.put("bool-meta2", String.valueOf(true));
 
         final int total = ThreadLocalRandom.current().nextInt(500, 1000);
         logger.info("storing {} random events", total);
         for (int i = 0; i < total; ++i) {
             final double value = ThreadLocalRandom.current().nextDouble();
+            final boolean bool = ThreadLocalRandom.current().nextBoolean();
             sum += value;
+            trueSum += bool ? value : 0;
             min = Math.min(min, value);
             max = Math.max(max, value);
             count++;
 
             final Map<String, Double> dimensions = new HashMap<>();
             dimensions.put("value", value);
-            events.store(this.namespace, startTimestampMillis + i, null, dimensions);
+            dimensions.put("bool-dim", bool ? 1.0D : 0.0D);
+            final Map<String, String> metadata = bool ? boolMetadata : Collections.emptyMap();
+            events.store(this.namespace, startTimestampMillis + i, metadata, dimensions);
         }
 
         // test sum
@@ -369,14 +378,43 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
                 ThreadLocalRandom.current().nextInt(1, count),
                 Events.AggregationFunction.SUM
         );
-        logger.info("{}", sumResults);
-        double returnedSum = 0.0;
-        for (final Map.Entry<Long, Double> entry : sumResults.entrySet()) {
-            returnedSum += entry.getValue();
-        }
-        // can't rely on operations on double values with high precision,
-        // so just check that the returned sum is close enough to expected
-        assertTrue(Math.abs(sum - returnedSum) < 0.1);
+        checkSum(sumResults, sum);
+        // test sum with meta query
+        final Map<Long, Double> metaTrueSumResult = events.aggregate(
+                this.namespace,
+                "value",
+                startTimestampMillis,
+                startTimestampMillis + count,
+                boolMetadata,
+                null,
+                ThreadLocalRandom.current().nextInt(1, count),
+                Events.AggregationFunction.SUM
+        );
+        checkSum(metaTrueSumResult, trueSum);
+        // test sum with dim query
+        final Map<Long, Double> dimTrueSumResult = events.aggregate(
+                this.namespace,
+                "value",
+                startTimestampMillis,
+                startTimestampMillis + count,
+                null,
+                Collections.singletonMap("bool-dim", String.valueOf(1.0D)),
+                ThreadLocalRandom.current().nextInt(1, count),
+                Events.AggregationFunction.SUM
+        );
+        checkSum(dimTrueSumResult, trueSum);
+        // test sum with meta AND dim query
+        final Map<Long, Double> bothTrueSumResult = events.aggregate(
+                this.namespace,
+                "value",
+                startTimestampMillis,
+                startTimestampMillis + count,
+                boolMetadata,
+                Collections.singletonMap("bool-dim", String.valueOf(1.0D)),
+                ThreadLocalRandom.current().nextInt(1, count),
+                Events.AggregationFunction.SUM
+        );
+        checkSum(bothTrueSumResult, trueSum);
 
         // test average
         final Map<Long, Double> avgResults = events.aggregate(
@@ -478,6 +516,17 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         for (final String entry : metadataValues) {
             assertTrue(metadataResults.contains(entry));
         }
+    }
+
+    private void checkSum(final Map<Long, Double> sumResults, final double sum) {
+        logger.info("{}", sumResults);
+        double returnedSum = 0.0;
+        for (final Map.Entry<Long, Double> entry : sumResults.entrySet()) {
+            returnedSum += entry.getValue();
+        }
+        // can't rely on operations on double values with high precision,
+        // so just check that the returned sum is close enough to expected
+        assertTrue(Math.abs(sum - returnedSum) < 0.1);
     }
 
     private Map<String, Double> getRandomDimensions(final int count) {

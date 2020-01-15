@@ -841,23 +841,38 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
                 : Long.MAX_VALUE;
         parameters[index++] = endTimestampWindow;
 
-        // metadata table names are OR'd together, find table names that have matching column names
-        final StringBuilder clauseBuilder = new StringBuilder();
-        final StringJoiner tableNameWhere = new StringJoiner(" OR ", "(", ")");
+        // need to find the table names that have ALL of the metadata/dimension key columns using nested selects
+        final String tableNameInSeparator = " AND " + quote(getTableNameColumnName()) + " IN (";
+        final StringJoiner tableNameSelectJoiner = new StringJoiner(tableNameInSeparator);
+        final StringBuilder innerSelectBuilder = new StringBuilder();
         for (final String metadataKey : metadataKeys) {
-            clauseBuilder.setLength(0);
-            clauseBuilder.append("(").append(quote(getColumnColumnName())).append(" = ?)");
-            tableNameWhere.add(clauseBuilder.toString());
+            innerSelectBuilder.setLength(0);
+            innerSelectBuilder.append("SELECT ").append(quote(getTableNameColumnName()))
+                    .append(" FROM ").append(getTableFullName(namespace, getChunksLookupTableName()))
+                    .append(" WHERE ").append(quote(getColumnColumnName())).append(" = ?");
+            tableNameSelectJoiner.add(innerSelectBuilder.toString());
             parameters[index++] = getMetadataKeyColumnName(metadataKey);
         }
         for (final String dimensionKey : dimensionKeys) {
-            clauseBuilder.setLength(0);
-            clauseBuilder.append("(").append(quote(getColumnColumnName())).append(" = ?)");
-            tableNameWhere.add(clauseBuilder.toString());
+            innerSelectBuilder.setLength(0);
+            innerSelectBuilder.append("SELECT ").append(quote(getTableNameColumnName()))
+                    .append(" FROM ").append(getTableFullName(namespace, getChunksLookupTableName()))
+                    .append(" WHERE ").append(quote(getColumnColumnName())).append(" = ?");
+            tableNameSelectJoiner.add(innerSelectBuilder.toString());
             parameters[index++] = getDimensionKeyColumnName(dimensionKey);
         }
+
         if (!metadataKeys.isEmpty() || !dimensionKeys.isEmpty()) {
-            sqlFormatBuilder.append(" AND (").append(tableNameWhere.toString()).append(")");
+            sqlFormatBuilder.append(" AND (")
+                    .append(quote(getTableNameColumnName()))
+                    .append(" IN (")
+                    .append(tableNameSelectJoiner.toString());
+            // close all open parentheses from metadata/dimension inner selects
+            for (int i = 0; i < metadataKeys.size() + dimensionKeys.size(); i++) {
+                sqlFormatBuilder.append(")");
+            }
+            // close single open paren from IN (
+            sqlFormatBuilder.append(")");
         }
 
         final List<String> tables = new ArrayList<>();
@@ -865,7 +880,7 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
         try (final Connection connection = getConnection()) {
             try (final PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
                 addParameters(preparedStatement, parameters);
-                logger.debug("executing sql query [[{}]] with parameters (({}))", sql, parameters);
+                logger.debug("executing chunk table sql query [[{}]] with parameters (({}))", sql, parameters);
                 try (final ResultSet resultSet = preparedStatement.executeQuery()) {
                     while (resultSet.next()) {
                         tables.add(resultSet.getString(1));
