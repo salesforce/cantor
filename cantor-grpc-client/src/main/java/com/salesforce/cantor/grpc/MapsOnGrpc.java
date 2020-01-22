@@ -23,8 +23,12 @@ import static com.salesforce.cantor.common.MapsPreconditions.checkStore;
 
 public class MapsOnGrpc extends AbstractBaseGrpcClient<MapsServiceBlockingStub> implements Maps {
 
-    public MapsOnGrpc(final String hostPort) {
-        super(MapsServiceGrpc::newBlockingStub, hostPort);
+    public MapsOnGrpc(final String target) {
+        super(MapsServiceGrpc::newBlockingStub, target);
+    }
+
+    public MapsOnGrpc(final String target, final long timeoutMillis) {
+        super(MapsServiceGrpc::newBlockingStub, target, timeoutMillis);
     }
 
     @Override

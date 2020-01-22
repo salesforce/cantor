@@ -11,21 +11,19 @@ import com.google.protobuf.ByteString;
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Objects;
 import com.salesforce.cantor.grpc.objects.*;
+import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Map;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
-import static com.salesforce.cantor.grpc.GrpcUtils.sendError;
-import static com.salesforce.cantor.grpc.GrpcUtils.sendResponse;
+import static com.salesforce.cantor.grpc.GrpcUtils.*;
 
 public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBase {
 
-    private static final Logger logger = LoggerFactory.getLogger(ObjectsGrpcService.class);
     private final Cantor cantor;
 
     public ObjectsGrpcService(final Cantor cantor) {
@@ -34,39 +32,55 @@ public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBas
     }
 
     @Override
-    public void namespaces(final NamespacesRequest request, final StreamObserver<NamespacesResponse> streamObserver) {
+    public void namespaces(final NamespacesRequest request, final StreamObserver<NamespacesResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final NamespacesResponse response = NamespacesResponse.newBuilder()
                     .addAllNamespaces(getObjects().namespaces())
                     .build();
-            GrpcUtils.sendResponse(streamObserver, response);
+            GrpcUtils.sendResponse(responseObserver, response);
         } catch (IOException e) {
-            sendError(streamObserver, e);
+            sendError(responseObserver, e);
         }
     }
 
     @Override
-    public void create(final CreateRequest request, final StreamObserver<VoidResponse> streamObserver) {
+    public void create(final CreateRequest request, final StreamObserver<VoidResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             getObjects().create(request.getNamespace());
-            sendResponse(streamObserver, VoidResponse.getDefaultInstance());
+            sendResponse(responseObserver, VoidResponse.getDefaultInstance());
         } catch (IOException e) {
-            sendError(streamObserver, e);
+            sendError(responseObserver, e);
         }
     }
 
     @Override
-    public void drop(final DropRequest request, final StreamObserver<VoidResponse> streamObserver) {
+    public void drop(final DropRequest request, final StreamObserver<VoidResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             getObjects().drop(request.getNamespace());
-            sendResponse(streamObserver, VoidResponse.getDefaultInstance());
+            sendResponse(responseObserver, VoidResponse.getDefaultInstance());
         } catch (IOException e) {
-            sendError(streamObserver, e);
+            sendError(responseObserver, e);
         }
     }
 
     @Override
-    public void keys(final KeysRequest request, final StreamObserver<KeysResponse> streamObserver) {
+    public void keys(final KeysRequest request, final StreamObserver<KeysResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final KeysResponse.Builder resultsBuilder = KeysResponse.newBuilder();
             final Collection<String> results = getObjects()
@@ -74,14 +88,18 @@ public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBas
             if (results != null) {
                 resultsBuilder.addAllKeys(results);
             }
-            sendResponse(streamObserver, resultsBuilder.build());
+            sendResponse(responseObserver, resultsBuilder.build());
         } catch (IOException e) {
-            sendError(streamObserver, e);
+            sendError(responseObserver, e);
         }
     }
 
     @Override
-    public void get(final GetRequest request, final StreamObserver<GetResponse> streamObserver) {
+    public void get(final GetRequest request, final StreamObserver<GetResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final GetResponse.Builder resultsBuilder = GetResponse.newBuilder();
             final byte[] value = getObjects()
@@ -89,39 +107,51 @@ public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBas
             if (value != null) {
                 resultsBuilder.setValue(ByteString.copyFrom(value));
             }
-            sendResponse(streamObserver, resultsBuilder.build());
+            sendResponse(responseObserver, resultsBuilder.build());
         } catch (IOException e) {
-            sendError(streamObserver, e);
+            sendError(responseObserver, e);
         }
     }
 
     @Override
-    public void store(final StoreRequest request, final StreamObserver<VoidResponse> streamObserver) {
+    public void store(final StoreRequest request, final StreamObserver<VoidResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             getObjects().store(request.getNamespace(), request.getKey(), request.getValue().toByteArray());
-            sendResponse(streamObserver, VoidResponse.getDefaultInstance());
+            sendResponse(responseObserver, VoidResponse.getDefaultInstance());
         } catch (IOException e) {
-            sendError(streamObserver, e);
+            sendError(responseObserver, e);
         }
     }
 
     @Override
-    public void delete(final DeleteRequest request, final StreamObserver<DeleteResponse> streamObserver) {
+    public void delete(final DeleteRequest request, final StreamObserver<DeleteResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final boolean result = getObjects().delete(request.getNamespace(), request.getKey());
-            sendResponse(streamObserver, DeleteResponse.newBuilder().setResult(result).build());
+            sendResponse(responseObserver, DeleteResponse.newBuilder().setResult(result).build());
         } catch (IOException e) {
-            sendError(streamObserver, e);
+            sendError(responseObserver, e);
         }
     }
 
     @Override
-    public void size(final SizeRequest request, final StreamObserver<SizeResponse> streamObserver) {
+    public void size(final SizeRequest request, final StreamObserver<SizeResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final int size = getObjects().size(request.getNamespace());
-            sendResponse(streamObserver, SizeResponse.newBuilder().setSize(size).build());
+            sendResponse(responseObserver, SizeResponse.newBuilder().setSize(size).build());
         } catch (IOException e) {
-            sendError(streamObserver, e);
+            sendError(responseObserver, e);
         }
     }
 

@@ -11,16 +11,14 @@ import com.google.protobuf.ByteString;
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Events;
 import com.salesforce.cantor.grpc.events.*;
+import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
-import static com.salesforce.cantor.grpc.GrpcUtils.sendError;
-import static com.salesforce.cantor.grpc.GrpcUtils.sendResponse;
+import static com.salesforce.cantor.grpc.GrpcUtils.*;
 
 public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
 
@@ -32,39 +30,55 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
     }
 
     @Override
-    public void namespaces(final NamespacesRequest request, final StreamObserver<NamespacesResponse> streamObserver) {
+    public void namespaces(final NamespacesRequest request, final StreamObserver<NamespacesResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final NamespacesResponse response = NamespacesResponse.newBuilder()
                     .addAllNamespaces(getEvents().namespaces())
                     .build();
-            sendResponse(streamObserver, response);
+            sendResponse(responseObserver, response);
         } catch (IOException e) {
-            sendError(streamObserver, e);
+            sendError(responseObserver, e);
         }
     }
 
     @Override
-    public void create(final CreateRequest request, final StreamObserver<VoidResponse> streamObserver) {
+    public void create(final CreateRequest request, final StreamObserver<VoidResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             getEvents().create(request.getNamespace());
-            sendResponse(streamObserver, VoidResponse.getDefaultInstance());
+            sendResponse(responseObserver, VoidResponse.getDefaultInstance());
         } catch (IOException e) {
-            sendError(streamObserver, e);
+            sendError(responseObserver, e);
         }
     }
 
     @Override
-    public void drop(final DropRequest request, final StreamObserver<VoidResponse> streamObserver) {
+    public void drop(final DropRequest request, final StreamObserver<VoidResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             getEvents().drop(request.getNamespace());
-            sendResponse(streamObserver, VoidResponse.getDefaultInstance());
+            sendResponse(responseObserver, VoidResponse.getDefaultInstance());
         } catch (IOException e) {
-            sendError(streamObserver, e);
+            sendError(responseObserver, e);
         }
     }
 
     @Override
     public void get(final GetRequest request, final StreamObserver<GetResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final GetResponse.Builder responseBuilder = GetResponse.newBuilder();
             final List<Events.Event> results = getEvents().get(
@@ -96,6 +110,10 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
 
     @Override
     public void delete(final DeleteRequest request, final StreamObserver<DeleteResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final DeleteResponse.Builder responseBuilder = DeleteResponse.newBuilder();
             final int results = getEvents().delete(
@@ -114,6 +132,10 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
 
     @Override
     public void store(final StoreRequest request, final StreamObserver<VoidResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final Collection<Events.Event> batch = new ArrayList<>();
             for (final EventProto eventProto : request.getBatchList()) {
@@ -132,6 +154,10 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
 
     @Override
     public void aggregate(final AggregateRequest request, final StreamObserver<AggregateResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final Map<Long, Double> results = getEvents().aggregate(
                     request.getNamespace(),
@@ -152,6 +178,10 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
 
     @Override
     public void metadata(final MetadataRequest request, final StreamObserver<MetadataResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final Set<String> results = getEvents().metadata(
                     request.getNamespace(),
@@ -170,6 +200,10 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
 
     @Override
     public void expire(final ExpireRequest request, final StreamObserver<VoidResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             getEvents().expire(
                     request.getNamespace(),

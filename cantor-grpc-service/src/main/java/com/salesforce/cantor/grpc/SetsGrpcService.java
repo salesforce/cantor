@@ -11,6 +11,7 @@ import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Sets;
 import com.salesforce.cantor.common.CommonPreconditions;
 import com.salesforce.cantor.grpc.sets.*;
+import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
@@ -18,8 +19,7 @@ import java.util.Collection;
 import java.util.Map;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
-import static com.salesforce.cantor.grpc.GrpcUtils.sendError;
-import static com.salesforce.cantor.grpc.GrpcUtils.sendResponse;
+import static com.salesforce.cantor.grpc.GrpcUtils.*;
 
 public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
 
@@ -31,39 +31,55 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
     }
 
     @Override
-    public void namespaces(final NamespacesRequest request, final StreamObserver<NamespacesResponse> streamObserver) {
+    public void namespaces(final NamespacesRequest request, final StreamObserver<NamespacesResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final NamespacesResponse response = NamespacesResponse.newBuilder()
                     .addAllNamespaces(getSets().namespaces())
                     .build();
-            sendResponse(streamObserver, response);
+            sendResponse(responseObserver, response);
         } catch (IOException e) {
-            sendError(streamObserver, e);
+            sendError(responseObserver, e);
         }
     }
 
     @Override
-    public void create(final CreateRequest request, final StreamObserver<VoidResponse> streamObserver) {
+    public void create(final CreateRequest request, final StreamObserver<VoidResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             getSets().create(request.getNamespace());
-            sendResponse(streamObserver, VoidResponse.getDefaultInstance());
+            sendResponse(responseObserver, VoidResponse.getDefaultInstance());
         } catch (IOException e) {
-            sendError(streamObserver, e);
+            sendError(responseObserver, e);
         }
     }
 
     @Override
-    public void drop(final DropRequest request, final StreamObserver<VoidResponse> streamObserver) {
+    public void drop(final DropRequest request, final StreamObserver<VoidResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             getSets().drop(request.getNamespace());
-            sendResponse(streamObserver, VoidResponse.getDefaultInstance());
+            sendResponse(responseObserver, VoidResponse.getDefaultInstance());
         } catch (IOException e) {
-            sendError(streamObserver, e);
+            sendError(responseObserver, e);
         }
     }
 
     @Override
     public void get(final GetRequest request, final StreamObserver<GetResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final GetResponse.Builder responseBuilder = GetResponse.newBuilder();
             final Map<String, Long> results = getSets().get(
@@ -86,6 +102,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
 
     @Override
     public void union(final UnionRequest request, final StreamObserver<UnionResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final UnionResponse.Builder responseBuilder = UnionResponse.newBuilder();
             final Map<String, Long> results = getSets().union(
@@ -108,6 +128,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
 
     @Override
     public void intersect(final IntersectRequest request, final StreamObserver<IntersectResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final IntersectResponse.Builder responseBuilder = IntersectResponse.newBuilder();
             final Map<String, Long> results = getSets().intersect(
@@ -130,6 +154,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
 
     @Override
     public void pop(final PopRequest request, final StreamObserver<PopResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final PopResponse.Builder responseBuilder = PopResponse.newBuilder();
             final Map<String, Long> results = getSets().pop(
@@ -152,6 +180,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
 
     @Override
     public void add(final AddRequest request, final StreamObserver<VoidResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             getSets()
                     .add(request.getNamespace(), request.getSet(), request.getEntry(), request.getWeight());
@@ -163,6 +195,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
 
     @Override
     public void addBatch(final AddBatchRequest request, final StreamObserver<VoidResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             getSets().add(request.getNamespace(), request.getSet(), request.getEntriesMap());
             sendResponse(responseObserver, VoidResponse.getDefaultInstance());
@@ -173,6 +209,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
 
     @Override
     public void deleteBetween(final DeleteBetweenRequest request, final StreamObserver<VoidResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             getSets()
                     .delete(request.getNamespace(), request.getSet(), request.getMin(), request.getMax());
@@ -184,6 +224,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
 
     @Override
     public void deleteEntry(final DeleteEntryRequest request, final StreamObserver<DeleteEntryResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final boolean deleted = getSets()
                     .delete(request.getNamespace(), request.getSet(), request.getEntry());
@@ -195,6 +239,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
 
     @Override
     public void deleteBatch(final DeleteBatchRequest request, final StreamObserver<VoidResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             getSets().delete(request.getNamespace(), request.getSet(), request.getEntriesList());
             sendResponse(responseObserver, VoidResponse.getDefaultInstance());
@@ -205,6 +253,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
 
     @Override
     public void keys(final KeysRequest request, final StreamObserver<KeysResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final KeysResponse.Builder responseBuilder = KeysResponse.newBuilder();
             final Collection<String> keys = getSets().entries(
@@ -227,6 +279,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
 
     @Override
     public void sets(final SetsRequest request, final StreamObserver<SetsResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final SetsResponse.Builder responseBuilder = SetsResponse.newBuilder();
             final Collection<String> sets = getSets().sets(request.getNamespace());
@@ -241,6 +297,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
 
     @Override
     public void size(final SizeRequest request, final StreamObserver<SizeResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final int size = getSets().size(request.getNamespace(), request.getSet());
             sendResponse(responseObserver, SizeResponse.newBuilder().setSize(size).build());
@@ -251,6 +311,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
 
     @Override
     public void weight(final WeightRequest request, final StreamObserver<WeightResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             final Long weight = getSets().weight(request.getNamespace(), request.getSet(), request.getEntry());
             final WeightResponse.Builder responseBuilder = WeightResponse.newBuilder();
@@ -268,6 +332,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
 
     @Override
     public void inc(final IncRequest request, final StreamObserver<VoidResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
         try {
             getSets().inc(request.getNamespace(), request.getSet(), request.getEntry(), request.getCount());
             sendResponse(responseObserver, VoidResponse.getDefaultInstance());
