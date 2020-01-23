@@ -24,6 +24,10 @@ public class EventsOnGrpc extends AbstractBaseGrpcClient<EventsServiceBlockingSt
         super(EventsServiceGrpc::newBlockingStub, target);
     }
 
+    public EventsOnGrpc(final String target, final long timeoutMillis) {
+        super(EventsServiceGrpc::newBlockingStub, target, timeoutMillis);
+    }
+
     @Override
     public Collection<String> namespaces() throws IOException {
         return call(() -> {

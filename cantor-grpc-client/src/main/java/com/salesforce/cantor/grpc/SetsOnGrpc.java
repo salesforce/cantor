@@ -23,6 +23,10 @@ public class SetsOnGrpc extends AbstractBaseGrpcClient<SetsServiceBlockingStub> 
         super(SetsServiceGrpc::newBlockingStub, target);
     }
 
+    public SetsOnGrpc(final String target, final long timeoutMillis) {
+        super(SetsServiceGrpc::newBlockingStub, target, timeoutMillis);
+    }
+
     @Override
     public Collection<String> namespaces() throws IOException {
         return call(() -> {

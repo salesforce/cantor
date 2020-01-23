@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkString;
@@ -26,14 +27,23 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkString;
 abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final StubType stub;
+    private final long timeoutMillis;
 
-    AbstractBaseGrpcClient(final Function<Channel, StubType> stubConstructor, final String target) {
+    AbstractBaseGrpcClient(final Function<Channel, StubType> stubConstructor,
+                           final String target) {
+        this(stubConstructor, target, 30_000);  // default timeout of 30 seconds
+    }
+
+    AbstractBaseGrpcClient(final Function<Channel, StubType> stubConstructor,
+                           final String target,
+                           final long timeoutMillis) {
         checkString(target, "null/empty target");
         this.stub = makeStubs(stubConstructor, target);
+        this.timeoutMillis = timeoutMillis;
     }
 
     StubType getStub() {
-        return this.stub;
+        return this.stub.withDeadlineAfter(this.timeoutMillis, TimeUnit.MILLISECONDS);
     }
 
     <R> R call(final Callable<R> callable) throws IOException {
@@ -51,7 +61,8 @@ abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
         }
     }
 
-    private StubType makeStubs(final Function<Channel, StubType> stubConstructor, final String target) {
+    private StubType makeStubs(final Function<Channel, StubType> stubConstructor,
+                               final String target) {
         logger.info("creating stub of {} for target '{}'", stubConstructor.getClass(), target);
         final ManagedChannel channel = ManagedChannelBuilder.forTarget(target)
                 .usePlaintext(true)
@@ -62,6 +73,7 @@ abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
                                 new ThreadFactoryBuilder().setNameFormat("cantor-client-channel-%d").build())
                 )
                 .build();
-        return stubConstructor.apply(channel);
+        return stubConstructor
+                .apply(channel);
     }
 }

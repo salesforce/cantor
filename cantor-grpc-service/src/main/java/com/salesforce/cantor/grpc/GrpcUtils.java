@@ -23,6 +23,11 @@ class GrpcUtils {
                 .withDescription(throwable.getMessage())));
     }
 
+    static void sendCancelledError(final StreamObserver<?> observer, final Throwable cancellationCause) {
+        logger.warn("request is cancelled by client: ", cancellationCause);
+        observer.onError(Status.CANCELLED.withDescription("request is cancelled by client").asRuntimeException());
+    }
+
     static <T extends Message> void sendResponse(final StreamObserver<T> observer, final T t) {
         observer.onNext(t);
         observer.onCompleted();

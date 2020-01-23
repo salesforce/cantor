@@ -23,8 +23,12 @@ import static com.salesforce.cantor.common.ObjectsPreconditions.*;
 
 public class ObjectsOnGrpc extends AbstractBaseGrpcClient<ObjectsServiceBlockingStub> implements Objects {
 
-    public ObjectsOnGrpc(final String hostPort) {
-        super(ObjectsServiceGrpc::newBlockingStub, hostPort);
+    public ObjectsOnGrpc(final String target) {
+        super(ObjectsServiceGrpc::newBlockingStub, target);
+    }
+
+    public ObjectsOnGrpc(final String target, final long timeoutMillis) {
+        super(ObjectsServiceGrpc::newBlockingStub, target, timeoutMillis);
     }
 
     @Override
