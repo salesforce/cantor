@@ -27,6 +27,7 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkString;
 abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final StubType stub;
+    private final long timeoutMillis;
 
     AbstractBaseGrpcClient(final Function<Channel, StubType> stubConstructor,
                            final String target) {
@@ -37,11 +38,12 @@ abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
                            final String target,
                            final long timeoutMillis) {
         checkString(target, "null/empty target");
-        this.stub = makeStubs(stubConstructor, target, timeoutMillis);
+        this.stub = makeStubs(stubConstructor, target);
+        this.timeoutMillis = timeoutMillis;
     }
 
     StubType getStub() {
-        return this.stub;
+        return this.stub.withDeadlineAfter(this.timeoutMillis, TimeUnit.MILLISECONDS);
     }
 
     <R> R call(final Callable<R> callable) throws IOException {
@@ -60,8 +62,7 @@ abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
     }
 
     private StubType makeStubs(final Function<Channel, StubType> stubConstructor,
-                               final String target,
-                               final long timeoutMillis) {
+                               final String target) {
         logger.info("creating stub of {} for target '{}'", stubConstructor.getClass(), target);
         final ManagedChannel channel = ManagedChannelBuilder.forTarget(target)
                 .usePlaintext(true)
@@ -73,7 +74,6 @@ abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
                 )
                 .build();
         return stubConstructor
-                .apply(channel)
-                .withDeadlineAfter(timeoutMillis, TimeUnit.MILLISECONDS);
+                .apply(channel);
     }
 }
