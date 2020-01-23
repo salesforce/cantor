@@ -57,7 +57,9 @@ public class AsyncEvents extends AbstractBaseAsyncCantor implements Events {
                            final long endTimestampMillis,
                            final Map<String, String> metadataQuery,
                            final Map<String, String> dimensionsQuery,
-                           final boolean includePayloads) throws IOException {
+                           final boolean includePayloads,
+                           final boolean ascending,
+                           final int limit) throws IOException {
         checkGet(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
         return submitCall(() -> this.delegate
                 .get(namespace,
@@ -65,8 +67,9 @@ public class AsyncEvents extends AbstractBaseAsyncCantor implements Events {
                         endTimestampMillis,
                         metadataQuery,
                         dimensionsQuery,
-                        includePayloads
-                )
+                        includePayloads,
+                        ascending,
+                        limit)
         );
     }
 

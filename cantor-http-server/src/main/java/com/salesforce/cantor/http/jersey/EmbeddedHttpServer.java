@@ -60,7 +60,7 @@ public class EmbeddedHttpServer {
                     .setUsername("cantor")
                     .setPassword("");
 
-            final CantorOnH2 cantorOnH2 = new CantorOnH2(H2DataSourceProvider.getDatasource(h2Properties));
+            final Cantor cantorOnH2 = new CantorOnH2(H2DataSourceProvider.getDatasource(h2Properties));
             // use loggable wrapper so all calls to cantor will be logged
             return new LoggableCantor(cantorOnH2);
         } catch (final IOException e) {

@@ -51,8 +51,10 @@ public class MetricCollectingEvents extends BaseMetricCollectingCantor implement
                            final long endTimestampMillis,
                            final Map<String, String> metadataQuery,
                            final Map<String, String> dimensionsQuery,
-                           final boolean includePayloads) throws IOException {
-        return metrics(() -> this.delegate.get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads),
+                           final boolean includePayloads,
+                           final boolean ascending,
+                           final int limit) throws IOException {
+        return metrics(() -> this.delegate.get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, ascending, limit),
                 "get", namespace, super::size);
     }
 

@@ -81,6 +81,29 @@ public interface Events {
         public byte[] getPayload() {
             return this.payload;
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == this) {
+                return true;
+            }
+            if (!(obj instanceof Event)) {
+                return false;
+            }
+            final Event other = (Event) obj;
+            return this.getTimestampMillis() == other.getTimestampMillis()
+                    && this.getMetadata().equals(other.getMetadata())
+                    && this.getDimensions().equals(other.getDimensions())
+                    && Arrays.equals(this.getPayload(), other.getPayload());
+        }
+
+        @Override
+        public String toString() {
+            return "timestampMillis=" + getTimestampMillis() +
+                    ",dimensions=" + getDimensions() +
+                    ",metadata=" + getMetadata() +
+                    ",payload=" + Arrays.toString(getPayload());
+        }
     }
 
     /**
@@ -198,7 +221,7 @@ public interface Events {
                             long startTimestampMillis,
                             long endTimestampMillis,
                             boolean includePayloads) throws IOException {
-        return get(namespace, startTimestampMillis, endTimestampMillis, null, null, includePayloads);
+        return get(namespace, startTimestampMillis, endTimestampMillis, null, null, includePayloads, true, 0);
     }
 
     /**
@@ -229,7 +252,7 @@ public interface Events {
                             long endTimestampMillis,
                             Map<String, String> metadataQuery,
                             Map<String, String> dimensionsQuery) throws IOException {
-        return get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, false);
+        return get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, false, true, 0);
     }
 
     /**
@@ -256,12 +279,165 @@ public interface Events {
      * and metadata/dimensions matching the query
      * @throws IOException exception thrown from the underlying storage implementation
      */
+    default List<Event> get(String namespace,
+                    long startTimestampMillis,
+                    long endTimestampMillis,
+                    Map<String, String> metadataQuery,
+                    Map<String, String> dimensionsQuery,
+                    boolean includePayloads) throws IOException {
+        return get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, true, 0);
+    }
+
+    /**
+     * Get all events in the given namespace, with timestamp between the start and end, and metadata and dimensions
+     * matching the given queries.
+     *
+     * A metadata query can match against an exact value for a key, or use wild-card
+     * character (i.e., '*'). For example: "host" => "localhost" matches with all events where the value of metadata
+     * with key "host" is exactly "localhost"; and the query "host" => "~prod-*-example" matches all events where the
+     * value is "like 'prod-*-example'". Note that wild-card queries have to start with "~", exact queries can
+     * optionally start with "=".
+     *
+     * A dimensions query can match against exact values or less-than, less-than-or-equal, more-than, more-than-or-equal
+     * values for a set of dimensions. For example: "cpu" => ">=0.3" matches all events where the dimension with key
+     * "cpu" has a value higher than or equal to 0.3.
+     *
+     * @param namespace the namespace identifier
+     * @param startTimestampMillis start UTC timestamp in milli-seconds
+     * @param endTimestampMillis end UTC timestamp in milli-seconds
+     * @param metadataQuery map of string to string representing a query to run against events metadata
+     * @param dimensionsQuery map of string to string representing a query to run against events dimensions
+     * @param includePayloads flag to include payloads in the response or not; if false, event.getPayload() returns null
+     * @param ascending order results ascending if true; descending if false
+     * @param limit maximum number of events to return
+     * @return list of all events in the namespace with timestamp between start/end
+     * and metadata/dimensions matching the query
+     * @throws IOException exception thrown from the underlying storage implementation
+     */
     List<Event> get(String namespace,
                     long startTimestampMillis,
                     long endTimestampMillis,
                     Map<String, String> metadataQuery,
                     Map<String, String> dimensionsQuery,
-                    boolean includePayloads) throws IOException;
+                    boolean includePayloads,
+                    boolean ascending,
+                    int limit) throws IOException;
+
+    /**
+     * Get the first (earliest) event in the given namespace, with timestamp between the start and end.
+     *
+     * @param namespace the namespace identifier
+     * @param startTimestampMillis start UTC timestamp in milli-seconds
+     * @param endTimestampMillis end UTC timestamp in milli-seconds
+     * @return the earliest event in the namespace with timestamp between start/end and metadata/dimensions matching the query
+     * @throws IOException exception thrown from the underlying storage implementation
+     */
+    default Event first(String namespace,
+                        long startTimestampMillis,
+                        long endTimestampMillis) throws IOException {
+        return first(namespace, startTimestampMillis, endTimestampMillis, null, null);
+    }
+
+    /**
+     * Get the first (earliest) event in the given namespace, with timestamp between the start and end, and metadata and dimensions
+     * matching the given queries.
+     *
+     * @param namespace the namespace identifier
+     * @param startTimestampMillis start UTC timestamp in milli-seconds
+     * @param endTimestampMillis end UTC timestamp in milli-seconds
+     * @param metadataQuery map of string to string representing a query to run against events metadata
+     * @param dimensionsQuery map of string to string representing a query to run against events dimensions
+     * @return the earliest event in the namespace with timestamp between start/end and metadata/dimensions matching the query
+     * @throws IOException exception thrown from the underlying storage implementation
+     */
+    default Event first(String namespace,
+                        long startTimestampMillis,
+                        long endTimestampMillis,
+                        Map<String, String> metadataQuery,
+                        Map<String, String> dimensionsQuery) throws IOException {
+        return first(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, false);
+    }
+
+    /**
+     * Get the first (earliest) event in the given namespace, with timestamp between the start and end, and metadata and dimensions
+     * matching the given queries.
+     *
+     * @param namespace the namespace identifier
+     * @param startTimestampMillis start UTC timestamp in milli-seconds
+     * @param endTimestampMillis end UTC timestamp in milli-seconds
+     * @param metadataQuery map of string to string representing a query to run against events metadata
+     * @param dimensionsQuery map of string to string representing a query to run against events dimensions
+     * @param includePayloads flag to include payloads in the response or not; if false, event.getPayload() returns null
+     * @return the earliest event in the namespace with timestamp between start/end and metadata/dimensions matching the query
+     * @throws IOException exception thrown from the underlying storage implementation
+     */
+    default Event first(String namespace,
+                        long startTimestampMillis,
+                        long endTimestampMillis,
+                        Map<String, String> metadataQuery,
+                        Map<String, String> dimensionsQuery,
+                        boolean includePayloads) throws IOException {
+        final List<Event> events = get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, true, 1);
+        return !events.isEmpty() ? events.get(0) : null;
+    }
+
+    /**
+     * Get the last (latest) event in the given namespace, with timestamp between the start and end.
+     *
+     * @param namespace the namespace identifier
+     * @param startTimestampMillis start UTC timestamp in milli-seconds
+     * @param endTimestampMillis end UTC timestamp in milli-seconds
+     * @return the earliest event in the namespace with timestamp between start/end and metadata/dimensions matching the query
+     * @throws IOException exception thrown from the underlying storage implementation
+     */
+    default Event last(String namespace,
+                              long startTimestampMillis,
+                              long endTimestampMillis) throws IOException {
+        return last(namespace, startTimestampMillis, endTimestampMillis, null, null, false);
+    }
+
+    /**
+     * Get the last (latest) event in the given namespace, with timestamp between the start and end, and metadata and dimensions
+     * matching the given queries.
+     *
+     * @param namespace the namespace identifier
+     * @param startTimestampMillis start UTC timestamp in milli-seconds
+     * @param endTimestampMillis end UTC timestamp in milli-seconds
+     * @param metadataQuery map of string to string representing a query to run against events metadata
+     * @param dimensionsQuery map of string to string representing a query to run against events dimensions
+     * @return the earliest event in the namespace with timestamp between start/end and metadata/dimensions matching the query
+     * @throws IOException exception thrown from the underlying storage implementation
+     */
+    default Event last(String namespace,
+                              long startTimestampMillis,
+                              long endTimestampMillis,
+                              Map<String, String> metadataQuery,
+                              Map<String, String> dimensionsQuery) throws IOException {
+        return last(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, false);
+    }
+
+    /**
+     * Get the last (latest) event in the given namespace, with timestamp between the start and end, and metadata and dimensions
+     * matching the given queries.
+     *
+     * @param namespace the namespace identifier
+     * @param startTimestampMillis start UTC timestamp in milli-seconds
+     * @param endTimestampMillis end UTC timestamp in milli-seconds
+     * @param metadataQuery map of string to string representing a query to run against events metadata
+     * @param dimensionsQuery map of string to string representing a query to run against events dimensions
+     * @param includePayloads flag to include payloads in the response or not; if false, event.getPayload() returns null
+     * @return the earliest event in the namespace with timestamp between start/end and metadata/dimensions matching the query
+     * @throws IOException exception thrown from the underlying storage implementation
+     */
+    default Event last(String namespace,
+                       long startTimestampMillis,
+                       long endTimestampMillis,
+                       Map<String, String> metadataQuery,
+                       Map<String, String> dimensionsQuery,
+                       boolean includePayloads) throws IOException {
+        final List<Event> events = get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, false, 1);
+        return !events.isEmpty() ? events.get(0) : null;
+    }
 
     /**
      * Delete all events in the given namespace, matching start/end timestamps and metadata/dimension query objects

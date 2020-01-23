@@ -87,8 +87,9 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
                     request.getEndTimestampMillis(),
                     request.getMetadataQueryMap(),
                     request.getDimensionsQueryMap(),
-                    request.getIncludePayloads()
-            );
+                    request.getIncludePayloads(),
+                    request.getAscending(),
+                    request.getLimit());
             if (!results.isEmpty()) {
                 final List<EventProto> eventProtos = new ArrayList<>(results.size());
                 for (final Events.Event event : results) {
