@@ -52,10 +52,12 @@ public class ShardedEvents implements Events {
                            final long endTimestampMillis,
                            final Map<String, String> metadataQuery,
                            final Map<String, String> dimensionsQuery,
-                           final boolean includePayloads) throws IOException {
+                           final boolean includePayloads,
+                           final boolean ascending,
+                           final int limit) throws IOException {
         checkGet(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
         return getEvents(namespace)
-                .get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads);
+                .get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, ascending, limit);
     }
 
     @Override

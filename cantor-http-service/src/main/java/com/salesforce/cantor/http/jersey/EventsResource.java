@@ -106,7 +106,7 @@ public class EventsResource {
         @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
     public Response getEvents(@Parameter(description = "Namespace identifier") @PathParam("namespace") final String namespace,
-                              @BeanParam final EventsDataSourceBeanWithPayload bean) throws IOException {
+                              @BeanParam final GetEventsDataSourceBean bean) throws IOException {
         logger.info("received request for events in namespace {}", namespace);
         logger.debug("request parameters: {}", bean);
         final List<Event> results = this.cantor.events().get(
@@ -115,9 +115,10 @@ public class EventsResource {
                 bean.getEnd(),
                 bean.getMetadataQuery(),
                 bean.getDimensionQuery(),
-                bean.isIncludePayloads()
+                bean.isIncludePayloads(),
+                bean.isAscending(),
+                bean.getLimit()
         );
-
         return Response.ok(parser.toJson(results)).build();
     }
 
@@ -143,8 +144,8 @@ public class EventsResource {
                 bean.getStart(),
                 bean.getEnd(),
                 bean.getMetadataQuery(),
-                bean.getDimensionQuery());
-
+                bean.getDimensionQuery()
+        );
         return Response.ok(parser.toJson(metadataValueSet)).build();
     }
 
@@ -385,17 +386,41 @@ public class EventsResource {
         }
     }
 
-    protected static class EventsDataSourceBeanWithPayload extends EventsDataSourceBean {
+    protected static class GetEventsDataSourceBean extends EventsDataSourceBean {
         @Parameter(description = "Defaulted to false, will include the payload of the event", example = "false")
         @QueryParam("include_payloads")
         private boolean includePayloads;
 
+        @Parameter(description = "Defaulted to true, will sort events ascending or descending", example = "true")
+        @QueryParam("ascending")
+        private boolean ascending;
+
+        @Parameter(description = "Defaulted to 0, maximum number of events to return", example = "0")
+        @QueryParam("limit")
+        private int limit;
+
         public boolean isIncludePayloads() {
-            return includePayloads;
+            return this.includePayloads;
         }
 
         public void setIncludePayloads(final boolean includePayloads) {
             this.includePayloads = includePayloads;
+        }
+
+        public boolean isAscending() {
+            return this.ascending;
+        }
+
+        public void setAscending(final boolean ascending) {
+            this.ascending = ascending;
+        }
+
+        public int getLimit() {
+            return this.limit;
+        }
+
+        public void setLimit(final int limit) {
+            this.limit = limit;
         }
     }
 

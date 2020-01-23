@@ -65,9 +65,11 @@ public class LoggableEvents extends AbstractBaseLoggableCantor implements Events
                            final long endTimestampMillis,
                            final Map<String, String> metadataQuery,
                            final Map<String, String> dimensionsQuery,
-                           final boolean includePayloads) throws IOException {
+                           final boolean includePayloads,
+                           final boolean ascending,
+                           final int limit) throws IOException {
         checkGet(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        return logCall(() -> this.delegate.get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads),
+        return logCall(() -> this.delegate.get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, ascending, limit),
                 "get", namespace,
                 startTimestampMillis, endTimestampMillis,
                 nullToEmpty(metadataQuery).keySet(), nullToEmpty(dimensionsQuery).keySet(),

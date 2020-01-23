@@ -12,8 +12,6 @@ import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Events;
 import com.salesforce.cantor.grpc.events.*;
 import io.grpc.stub.StreamObserver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
@@ -73,8 +71,9 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
                     request.getEndTimestampMillis(),
                     request.getMetadataQueryMap(),
                     request.getDimensionsQueryMap(),
-                    request.getIncludePayloads()
-            );
+                    request.getIncludePayloads(),
+                    request.getAscending(),
+                    request.getLimit());
             if (!results.isEmpty()) {
                 final List<EventProto> eventProtos = new ArrayList<>(results.size());
                 for (final Events.Event event : results) {

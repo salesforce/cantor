@@ -50,7 +50,7 @@ public class EventsArchiver extends AbstractBaseArchiver {
             long chunkEnd = Math.min(chunkStart + chunkMillis, endTimestampMillis);
             while (chunkStart < endTimestampMillis) {
                 final String name = String.format("events-%s-%s-%s", namespace, chunkStart, chunkEnd);
-                final List<Events.Event> chunkEvents = events.get(namespace, chunkStart, chunkEnd, metadataQuery, dimensionsQuery, true);
+                final List<Events.Event> chunkEvents = events.get(namespace, chunkStart, chunkEnd, metadataQuery, dimensionsQuery, true, true, 0);
                 // todo: can we do this differently? This doubles the memory we hold on to :(
                 final EventsChunk.Builder chunkBuilder = EventsChunk.newBuilder();
                 for (final Events.Event event : chunkEvents) {

@@ -85,7 +85,9 @@ public class EventsOnGrpc extends AbstractBaseGrpcClient<EventsServiceBlockingSt
                            final long endTimestampMillis,
                            final Map<String, String> metadataQuery,
                            final Map<String, String> dimensionsQuery,
-                           final boolean includePayloads) throws IOException {
+                           final boolean includePayloads,
+                           final boolean ascending,
+                           final int limit) throws IOException {
         checkGet(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
         return call(() -> {
             final GetRequest request = GetRequest.newBuilder()
@@ -95,6 +97,8 @@ public class EventsOnGrpc extends AbstractBaseGrpcClient<EventsServiceBlockingSt
                     .putAllMetadataQuery(nullToEmpty(metadataQuery))
                     .putAllDimensionsQuery(nullToEmpty(dimensionsQuery))
                     .setIncludePayloads(includePayloads)
+                    .setAscending(ascending)
+                    .setLimit(limit)
                     .build();
             final List<Event> results = new ArrayList<>();
             final GetResponse response = getStub().get(request);
@@ -110,15 +114,6 @@ public class EventsOnGrpc extends AbstractBaseGrpcClient<EventsServiceBlockingSt
                         )
                 );
             }
-            // sort all results
-            results.sort((event1, event2) -> {
-                if (event1.getTimestampMillis() < event2.getTimestampMillis()) {
-                    return -1;
-                } else if (event1.getTimestampMillis() > event2.getTimestampMillis()) {
-                    return 1;
-                }
-                return 0;
-            });
             return results;
         });
     }

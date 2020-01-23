@@ -46,6 +46,8 @@ message GetRequest {
     map<string, string> metadata_query = 4;
     map<string, string> dimensions_query = 5;
     bool include_payloads = 6;
+    bool ascending = 7;
+    int32 limit = 8;
 }
 
 message GetResponse {

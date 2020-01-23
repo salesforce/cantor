@@ -62,14 +62,18 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
                            final long endTimestampMillis,
                            final Map<String, String> metadataQuery,
                            final Map<String, String> dimensionsQuery,
-                           final boolean includePayloads) throws IOException {
+                           final boolean includePayloads,
+                           final boolean ascending,
+                           final int limit) throws IOException {
         checkGet(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
         return doGet(namespace,
                 startTimestampMillis,
                 endTimestampMillis,
                 nullToEmpty(metadataQuery),
                 nullToEmpty(dimensionsQuery),
-                includePayloads
+                includePayloads,
+                ascending,
+                limit
         );
     }
 
@@ -431,7 +435,9 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
                               final long endTimestampMillis,
                               final Map<String, String> metadataQuery,
                               final Map<String, String> dimensionsQuery,
-                              final boolean includePayloads) throws IOException {
+                              final boolean includePayloads,
+                              final boolean ascending,
+                              final int limit) throws IOException {
 
         final List<String> chunkTables = getChunkTableNames(
                 namespace,
@@ -452,7 +458,9 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
                             endTimestampMillis,
                             metadataQuery,
                             dimensionsQuery,
-                            includePayloads)
+                            includePayloads,
+                            ascending,
+                            limit)
                     )
             );
         }
@@ -464,8 +472,10 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
         }
 
         // events are fetched from multiple tables, sort before returning
-        sortEventsByTimestamp(results);
-
+        sortEventsByTimestamp(results, ascending);
+        if (limit > 0) {
+            return results.subList(0, Math.min(limit, results.size()));
+        }
         return results;
     }
 
@@ -475,9 +485,11 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
                                           final long endTimestampMillis,
                                           final Map<String, String> metadataQuery,
                                           final Map<String, String> dimensionsQuery,
-                                          final boolean includePayloads) throws IOException {
+                                          final boolean includePayloads,
+                                          final boolean ascending,
+                                          final int limit) throws IOException {
         Thread.currentThread().setName(String.format("get-chunk-%s.%s", namespace, chunkTableName));
-        final String sqlFormat = "SELECT %s %s %s %s %s FROM %s WHERE %s BETWEEN ? AND ?";
+        final String sqlFormat = "SELECT %s %s %s %s %s FROM %s WHERE %s BETWEEN ? AND ? ";
         final Map<String, String> keyHashToName = getColumnNameToKeyNameMap(namespace, chunkTableName);
         final StringBuilder sqlBuilder = new StringBuilder(String.format(sqlFormat,
                 quote(getEventTimestampColumnName()),
@@ -488,6 +500,7 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
                 getTableFullName(namespace, chunkTableName),
                 quote(getEventTimestampColumnName())
         ));
+
         final List<Object> parameters = new ArrayList<>();
         parameters.add(startTimestampMillis);
         parameters.add(endTimestampMillis);
@@ -496,7 +509,15 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
         sqlBuilder.append(getMetadataQuerySql(metadataQuery, parameters));
         sqlBuilder.append(getDimensionQuerySql(dimensionsQuery, parameters));
 
+        sqlBuilder.append(" ORDER BY ").append(getEventTimestampColumnName()).append(ascending ? " ASC " : " DESC ");
+        if (limit > 0) {
+            sqlBuilder.append(" LIMIT ? ");
+            parameters.add(limit);
+        }
+
         final String sql = sqlBuilder.toString();
+
+        logger.info("sql: {} parameters: {}", sql, parameters);
 
         final List<Event> results = new ArrayList<>();
         try (final Connection connection = getConnection()) {
@@ -806,12 +827,12 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
         return sql.toString();
     }
 
-    private void sortEventsByTimestamp(final List<Event> events) {
+    private void sortEventsByTimestamp(final List<Event> events, final boolean ascending) {
         events.sort((event1, event2) -> {
             if (event1.getTimestampMillis() < event2.getTimestampMillis()) {
-                return -1;
+                return ascending ? -1 : 1;
             } else if (event1.getTimestampMillis() > event2.getTimestampMillis()) {
-                return 1;
+                return ascending ? 1 : -1;
             }
             return 0;
         });
