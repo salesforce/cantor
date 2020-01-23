@@ -516,9 +516,6 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
         }
 
         final String sql = sqlBuilder.toString();
-
-        logger.info("sql: {} parameters: {}", sql, parameters);
-
         final List<Event> results = new ArrayList<>();
         try (final Connection connection = getConnection()) {
             try (final PreparedStatement preparedStatement = connection.prepareStatement(sql)) {

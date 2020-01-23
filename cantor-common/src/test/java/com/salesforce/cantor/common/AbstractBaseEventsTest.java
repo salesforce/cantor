@@ -173,12 +173,18 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         final int metadataCount = ThreadLocalRandom.current().nextInt(10, 30);
         final int dimensionCount = ThreadLocalRandom.current().nextInt(10, 30);
         long timestamp = System.currentTimeMillis();
+        Events.Event firstEvent = null;
+        Events.Event lastEvent = null;
         for (int i = 0; i < 3_000; ++i) {
             final Map<String, String> metadata = getRandomMetadata(metadataCount);
             final Map<String, Double> dimensions = getRandomDimensions(dimensionCount);
             final byte[] payload = getRandomPayload(1024);
             timestamp += 1;
-            storedEvents.add(new Events.Event(timestamp, metadata, dimensions, payload));
+            lastEvent = new Events.Event(timestamp, metadata, dimensions, payload);
+            if (firstEvent == null) {
+                firstEvent = lastEvent;
+            }
+            storedEvents.add(lastEvent);
         }
         logger.info("calling events.store(batch)");
         final long startTimestamp = System.currentTimeMillis();
@@ -188,6 +194,8 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         final List<Events.Event> results = getEvents().get(this.namespace, 0, timestamp + 1, true);
         logger.info("took {}ms to get 3k events", System.currentTimeMillis() - afterStoreTimestamp);
         assertEquals(results.size(), storedEvents.size());
+        assertEquals(firstEvent, events.first(namespace, firstEvent.getTimestampMillis(), lastEvent.getTimestampMillis(), null, null, true));
+        assertEquals(lastEvent, events.last(namespace, firstEvent.getTimestampMillis(), lastEvent.getTimestampMillis(), null, null, true));
         for (int i = 0; i < storedEvents.size(); ++i) {
             assertEquals(results.get(i).getTimestampMillis(), storedEvents.get(i).getTimestampMillis());
             assertEquals(results.get(i).getPayload(), storedEvents.get(i).getPayload());

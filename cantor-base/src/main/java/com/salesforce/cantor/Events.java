@@ -81,6 +81,29 @@ public interface Events {
         public byte[] getPayload() {
             return this.payload;
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == this) {
+                return true;
+            }
+            if (!(obj instanceof Event)) {
+                return false;
+            }
+            final Event other = (Event) obj;
+            return this.getTimestampMillis() == other.getTimestampMillis()
+                    && this.getMetadata().equals(other.getMetadata())
+                    && this.getDimensions().equals(other.getDimensions())
+                    && Arrays.equals(this.getPayload(), other.getPayload());
+        }
+
+        @Override
+        public String toString() {
+            return "timestampMillis=" + getTimestampMillis() +
+                    ",dimensions=" + getDimensions() +
+                    ",metadata=" + getMetadata() +
+                    ",payload=" + Arrays.toString(getPayload());
+        }
     }
 
     /**
@@ -309,10 +332,10 @@ public interface Events {
      * @return the earliest event in the namespace with timestamp between start/end and metadata/dimensions matching the query
      * @throws IOException exception thrown from the underlying storage implementation
      */
-    default List<Event> first(String namespace,
-                              long startTimestampMillis,
-                              long endTimestampMillis) throws IOException {
-        return get(namespace, startTimestampMillis, endTimestampMillis, null, null, false, true, 1);
+    default Event first(String namespace,
+                        long startTimestampMillis,
+                        long endTimestampMillis) throws IOException {
+        return first(namespace, startTimestampMillis, endTimestampMillis, null, null);
     }
 
     /**
@@ -327,12 +350,12 @@ public interface Events {
      * @return the earliest event in the namespace with timestamp between start/end and metadata/dimensions matching the query
      * @throws IOException exception thrown from the underlying storage implementation
      */
-    default List<Event> first(String namespace,
-                              long startTimestampMillis,
-                              long endTimestampMillis,
-                              Map<String, String> metadataQuery,
-                              Map<String, String> dimensionsQuery) throws IOException {
-        return get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, false, true, 1);
+    default Event first(String namespace,
+                        long startTimestampMillis,
+                        long endTimestampMillis,
+                        Map<String, String> metadataQuery,
+                        Map<String, String> dimensionsQuery) throws IOException {
+        return first(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, false);
     }
 
     /**
@@ -348,13 +371,14 @@ public interface Events {
      * @return the earliest event in the namespace with timestamp between start/end and metadata/dimensions matching the query
      * @throws IOException exception thrown from the underlying storage implementation
      */
-    default List<Event> first(String namespace,
-                              long startTimestampMillis,
-                              long endTimestampMillis,
-                              Map<String, String> metadataQuery,
-                              Map<String, String> dimensionsQuery,
-                              boolean includePayloads) throws IOException {
-        return get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, true, 1);
+    default Event first(String namespace,
+                        long startTimestampMillis,
+                        long endTimestampMillis,
+                        Map<String, String> metadataQuery,
+                        Map<String, String> dimensionsQuery,
+                        boolean includePayloads) throws IOException {
+        final List<Event> events = get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, true, 1);
+        return !events.isEmpty() ? events.get(0) : null;
     }
 
     /**
@@ -366,10 +390,10 @@ public interface Events {
      * @return the earliest event in the namespace with timestamp between start/end and metadata/dimensions matching the query
      * @throws IOException exception thrown from the underlying storage implementation
      */
-    default List<Event> last(String namespace,
+    default Event last(String namespace,
                               long startTimestampMillis,
                               long endTimestampMillis) throws IOException {
-        return get(namespace, startTimestampMillis, endTimestampMillis, null, null, false, false, 1);
+        return last(namespace, startTimestampMillis, endTimestampMillis, null, null, false);
     }
 
     /**
@@ -384,12 +408,12 @@ public interface Events {
      * @return the earliest event in the namespace with timestamp between start/end and metadata/dimensions matching the query
      * @throws IOException exception thrown from the underlying storage implementation
      */
-    default List<Event> last(String namespace,
+    default Event last(String namespace,
                               long startTimestampMillis,
                               long endTimestampMillis,
                               Map<String, String> metadataQuery,
                               Map<String, String> dimensionsQuery) throws IOException {
-        return get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, false, false, 1);
+        return last(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, false);
     }
 
     /**
@@ -405,13 +429,14 @@ public interface Events {
      * @return the earliest event in the namespace with timestamp between start/end and metadata/dimensions matching the query
      * @throws IOException exception thrown from the underlying storage implementation
      */
-    default List<Event> last(String namespace,
-                              long startTimestampMillis,
-                              long endTimestampMillis,
-                              Map<String, String> metadataQuery,
-                              Map<String, String> dimensionsQuery,
-                              boolean includePayloads) throws IOException {
-        return get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, false, 1);
+    default Event last(String namespace,
+                       long startTimestampMillis,
+                       long endTimestampMillis,
+                       Map<String, String> metadataQuery,
+                       Map<String, String> dimensionsQuery,
+                       boolean includePayloads) throws IOException {
+        final List<Event> events = get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, false, 1);
+        return !events.isEmpty() ? events.get(0) : null;
     }
 
     /**
