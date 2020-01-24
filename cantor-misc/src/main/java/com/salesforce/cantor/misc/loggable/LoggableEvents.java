@@ -73,7 +73,9 @@ public class LoggableEvents extends AbstractBaseLoggableCantor implements Events
                 "get", namespace,
                 startTimestampMillis, endTimestampMillis,
                 nullToEmpty(metadataQuery).keySet(), nullToEmpty(dimensionsQuery).keySet(),
-                includePayloads
+                includePayloads,
+                ascending,
+                limit
         );
     }
 
