@@ -10,10 +10,7 @@ package com.salesforce.cantor.misc.sharded;
 import com.salesforce.cantor.Objects;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.salesforce.cantor.common.CommonPreconditions.*;
 import static com.salesforce.cantor.common.ObjectsPreconditions.*;
@@ -92,7 +89,7 @@ public class ShardedObjects implements Objects {
     }
 
     private Collection<String> doNamespaces() throws IOException {
-        final List<String> results = new ArrayList<>();
+        final Set<String> results = new HashSet<>();
         for (final Objects delegate : this.delegates) {
             results.addAll(delegate.namespaces());
         }

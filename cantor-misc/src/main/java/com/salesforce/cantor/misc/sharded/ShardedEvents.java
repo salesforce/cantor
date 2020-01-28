@@ -126,7 +126,7 @@ public class ShardedEvents implements Events {
     }
 
     private Collection<String> doNamespaces() throws IOException {
-        final List<String> results = new ArrayList<>();
+        final Set<String> results = new HashSet<>();
         for (final Events delegate : this.delegates) {
             results.addAll(delegate.namespaces());
         }
