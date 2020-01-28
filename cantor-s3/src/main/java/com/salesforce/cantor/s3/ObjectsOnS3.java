@@ -366,7 +366,7 @@ public class ObjectsOnS3 implements StreamingObjects {
     }
 
     private Collection<String> doGetNamespaces() {
-        return getKeys(bucketNameAllNamespaces, 0, -1);
+        return getKeys(this.bucketNameAllNamespaces, 0, -1);
     }
 
     private String toBucketName(final String namespace) {
