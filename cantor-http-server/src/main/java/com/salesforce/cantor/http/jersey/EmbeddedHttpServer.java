@@ -4,6 +4,13 @@ import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.h2.CantorOnH2;
 import com.salesforce.cantor.h2.H2DataSourceProperties;
 import com.salesforce.cantor.h2.H2DataSourceProvider;
+import com.salesforce.cantor.http.functions.ExecutorsService;
+import com.salesforce.cantor.http.functions.FunctionsService;
+//import com.salesforce.cantor.http.resources.FunctionsResource;
+import com.salesforce.cantor.http.resources.EventsResource;
+import com.salesforce.cantor.http.resources.MapsResource;
+import com.salesforce.cantor.http.resources.ObjectsResource;
+import com.salesforce.cantor.http.resources.SetsResource;
 import com.salesforce.cantor.misc.loggable.LoggableCantor;
 
 import org.eclipse.jetty.server.Server;
@@ -33,6 +40,7 @@ public class EmbeddedHttpServer {
                 bind(new ObjectsResource(cantor));
                 bind(new SetsResource(cantor));
                 bind(new MapsResource(cantor));
+//                bind(new FunctionsResource(cantor));
             }
         });
 

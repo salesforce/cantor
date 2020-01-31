@@ -5,7 +5,7 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.http.jersey;
+package com.salesforce.cantor.http.resources;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
