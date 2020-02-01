@@ -21,8 +21,8 @@ public class FunctionsService {
     @Autowired
     public FunctionsService(final Cantor cantor) {
         this.cantor = cantor;
-        this.executors.add(new FreemarkerExecutor(this.cantor));
-        this.executors.add(new ScriptExecutor(this.cantor));
+        this.executors.add(new FreemarkerExecutor());
+        this.executors.add(new ScriptExecutor());
 
         try {
             this.cantor.objects().create(functorNamespace);
@@ -46,16 +46,13 @@ public class FunctionsService {
         return this.cantor.objects().keys(functorNamespace, 0, -1);
     }
 
-    public Entity execute(final String functionName,
-                          final Map<String, String> params) throws IOException {
-
+    public void execute(final String functionName, final Executor.Context context) throws IOException {
         final String functionBody = getFunction(functionName);
         if (functionBody == null) {
-            throw new IllegalArgumentException("function not found");
+            throw new IllegalArgumentException("function not found: " + functionName);
         }
-
-        final Executor executor = getExecutor(functionName);
-        return executor.execute(functionName, functionBody, params);
+        // execute the function and pass context to it
+        getExecutor(functionName).execute(functionName, functionBody, context);
     }
 
     // return the executor instance for the given executor name
@@ -78,5 +75,4 @@ public class FunctionsService {
     private String getExtension(final String name) {
         return name.substring(name.lastIndexOf(".") + 1);
     }
-
 }

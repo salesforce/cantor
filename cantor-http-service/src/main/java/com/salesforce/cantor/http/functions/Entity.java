@@ -6,7 +6,7 @@ import java.util.Map;
 public class Entity {
     private int status;
     private Map<String, String> headersMap = new HashMap<>();
-    private byte[] body = new byte[0];
+    private byte[] body = null;
 
     public int getStatus() {
         return this.status;
@@ -25,7 +25,14 @@ public class Entity {
     }
 
     public byte[] getBody() {
-        return body;
+        return this.body;
+    }
+
+    public String getBodyAsString() {
+        if (getBody() == null) {
+            return "";
+        }
+        return new String(getBody());
     }
 
     public void setBody(final byte[] body) {

@@ -23,6 +23,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
@@ -31,10 +33,7 @@ import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Component
 @Path("/functions")
@@ -43,12 +42,18 @@ public class FunctionsResource {
     private static final Logger logger = LoggerFactory.getLogger(FunctionsResource.class);
     private static final String serverErrorMessage = "Internal server error occurred";
 
+    private static final String CONTEXT_KEY_PARAMS = "params";
+    private static final String CONTEXT_KEY_CANTOR = "cantor";
+    private static final String CONTEXT_KEY_ENTITY = "entity";
+
     private static final Gson parser = new Gson();
 
+    private final Cantor cantor;
     private final FunctionsService functionsService;
 
     @Autowired
     public FunctionsResource(final Cantor cantor) {
+        this.cantor = cantor;
         this.functionsService = new FunctionsService(cantor);
     }
 
@@ -86,41 +91,104 @@ public class FunctionsResource {
     }
 
     @GET
-    @Path("/execute/{function}")
+    @Path("/execute/{functorQuery:.+}")
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Execute a function")
+    @Operation(summary = "Execute get method on functor query")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200",
-                    description = "Execute the function with the given name",
+                    description = "Process and execute the functor query string",
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
             @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
-    public Response getExecuteFunction(@PathParam("function") final String functionName,
-                                       @Context final UriInfo uriInfo) throws IOException {
-        final Entity result;
+    public Response getExecuteFunction(@PathParam("functorQuery") final String ignored,
+                                       @Context final HttpServletRequest request,
+                                       @Context final HttpServletResponse response,
+                                       @Context final UriInfo uriInfo) {
+        return executeFunctorQuery(request, response, uriInfo);
+    }
+
+    @PUT
+    @Path("/execute/{functorQuery:.+}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Execute put method on functor query")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Process and execute the functor query string",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
+            @ApiResponse(responseCode = "500", description = serverErrorMessage)
+    })
+    public Response putExecuteFunction(@PathParam("functorQuery") final String ignored,
+                                       @Context final HttpServletRequest request,
+                                       @Context final HttpServletResponse response,
+                                       @Context final UriInfo uriInfo) {
+        return executeFunctorQuery(request, response, uriInfo);
+    }
+
+    @POST
+    @Path("/execute/{functorQuery:.+}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Execute post method on functor query")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Process and execute the functor query string",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
+            @ApiResponse(responseCode = "500", description = serverErrorMessage)
+    })
+    public Response postExecuteFunction(@PathParam("functorQuery") final String ignored,
+                                        @Context final HttpServletRequest request,
+                                        @Context final HttpServletResponse response,
+                                        @Context final UriInfo uriInfo) {
+        return executeFunctorQuery(request, response, uriInfo);
+    }
+
+    @DELETE
+    @Path("/execute/{functorQuery:.+}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Execute delete method on functor query")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Process and execute the functor query string",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
+            @ApiResponse(responseCode = "500", description = serverErrorMessage)
+    })
+    public Response deleteExecuteFunction(@PathParam("functorQuery") final String ignored,
+                                       @Context final HttpServletRequest request,
+                                       @Context final HttpServletResponse response,
+                                       @Context final UriInfo uriInfo) {
+        return executeFunctorQuery(request, response, uriInfo);
+    }
+
+    private Response executeFunctorQuery(final HttpServletRequest request,
+                                         final HttpServletResponse response,
+                                         final UriInfo uriInfo) {
         try {
-            final Map<String, String> parameters = new HashMap<>();
-            for (final Map.Entry<String, List<String>> entry : uriInfo.getQueryParameters().entrySet()) {
-                parameters.put(entry.getKey(), entry.getValue().get(0));
+            final String[] filtersQueryStrings = uriInfo.getPath().replaceAll(".*/execute/", "").split("/");
+            logger.info(Arrays.toString(filtersQueryStrings));
+            final Entity entity = new Entity();
+            for (final String qs : filtersQueryStrings) {
+                final String functionName = qs.split(";")[0];
+                final Map<String, String> params = qs.contains(";")
+                        ? parseParams(qs.substring(qs.indexOf(";") + 1))
+                        : Collections.emptyMap();
+                logger.info("executing function '{}' with parameters: '{}'", functionName, params);
+                final Executor.Context context = new Executor.Context(request, response, this.cantor, entity, params);
+                this.functionsService.execute(functionName, context);
             }
-            logger.info("executing function '{}' with parameters: '{}'", functionName, parameters);
-            result = this.functionsService.execute(functionName, parameters);
+            // add all headers from the result
+            final Response.ResponseBuilder builder = Response.status(entity.getStatus() == 0 ? 200 : entity.getStatus());
+            for (final Map.Entry<String, String> entry : entity.getHeadersMap().entrySet()) {
+                builder.header(entry.getKey(), entry.getValue());
+            }
+            if (entity.getBody() != null) {
+                builder.entity(entity.getBody());
+            }
+            return builder.build();
         } catch (Exception e) {
             return Response.serverError()
                     .header("Content-Type", "text/plain")
                     .entity(toString(e))
                     .build();
         }
-
-        // add all headers from the result
-        final Response.ResponseBuilder builder = Response.status(result.getStatus() == 0 ? 200 : result.getStatus());
-        for (final Map.Entry<String, String> entry : result.getHeadersMap().entrySet()) {
-            builder.header(entry.getKey(), entry.getValue());
-        }
-        if (result.getBody() != null && result.getBody().length > 0) {
-            builder.entity(result.getBody());
-        }
-        return builder.build();
     }
 
     @PUT
@@ -149,9 +217,21 @@ public class FunctionsResource {
         @ApiResponse(responseCode = "200", description = "Function removed"),
         @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
-    public Response drop(@Parameter(description = "Namespace identifier") @PathParam("function") final String function) throws IOException {
+    public Response drop(@Parameter(description = "Namespace identifier") @PathParam("function") final String function) {
         logger.info("received request to delete function {}", function);
         return Response.ok().build();
+    }
+
+    private Map<String, String> parseParams(final String filterQueryString) {
+        final Map<String, String> params = new HashMap<>();
+        for (final String kv : filterQueryString.split(";")) {
+            final String[] keyValue = kv.split("=");
+            if (keyValue.length == 1) {
+                continue;
+            }
+            params.put(keyValue[0], keyValue[1]);
+        }
+        return params;
     }
 
     private String toString(final Throwable throwable) {
