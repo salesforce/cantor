@@ -42,10 +42,6 @@ public class FunctionsResource {
     private static final Logger logger = LoggerFactory.getLogger(FunctionsResource.class);
     private static final String serverErrorMessage = "Internal server error occurred";
 
-    private static final String CONTEXT_KEY_PARAMS = "params";
-    private static final String CONTEXT_KEY_CANTOR = "cantor";
-    private static final String CONTEXT_KEY_ENTITY = "entity";
-
     private static final Gson parser = new Gson();
 
     private final Cantor cantor;
@@ -57,22 +53,49 @@ public class FunctionsResource {
         this.functionsService = new FunctionsService(cantor);
     }
 
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Get list of all functions")
+    @PUT
+    @Path("/{namespace}")
+    @Operation(summary = "Create a new function namespace")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200",
-                    description = "Provides the list of all functions",
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
+            @ApiResponse(responseCode = "200", description = "Function namespace was created or already exists"),
             @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
-    public Response getFunctions() throws IOException {
-        logger.info("received request for all objects namespaces");
-        return Response.ok(parser.toJson(this.functionsService.getFunctionsList())).build();
+    public Response createNamespace(@Parameter(description = "Namespace identifier") @PathParam("namespace") final String namespace) throws IOException {
+        logger.info("received request to drop namespace {}", namespace);
+        this.functionsService.createNamespace(namespace);
+        return Response.ok().build();
+    }
+
+    @DELETE
+    @Path("/{namespace}")
+    @Operation(summary = "Drop a function namespace")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Function namespace was dropped or didn't exist"),
+            @ApiResponse(responseCode = "500", description = serverErrorMessage)
+    })
+    public Response dropNamespace(@Parameter(description = "Namespace identifier") @PathParam("namespace") final String namespace) throws IOException {
+        logger.info("received request to drop namespace {}", namespace);
+        this.functionsService.dropNamespace(namespace);
+        return Response.ok().build();
     }
 
     @GET
-    @Path("/{function}")
+    @Path("/{namespace}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Get list of all functions in the given namespace")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Provides the list of all functions in the namespace",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
+            @ApiResponse(responseCode = "500", description = serverErrorMessage)
+    })
+    public Response getFunctions(@PathParam("namespace") final String namespace) throws IOException {
+        logger.info("received request for all objects namespaces");
+        return Response.ok(parser.toJson(this.functionsService.getFunctionsList(namespace))).build();
+    }
+
+    @GET
+    @Path("/{namespace}/{function}")
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Get a function")
     @ApiResponses(value = {
@@ -81,9 +104,9 @@ public class FunctionsResource {
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
             @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
-    public Response getFunction(@PathParam("function") final String functionName) throws IOException {
-        logger.info("received request for all objects namespaces");
-        final String functionBody = this.functionsService.getFunction(functionName);
+    public Response getFunction(@PathParam("namespace") final String namespace,
+                                @PathParam("function") final String functionName) throws IOException {
+        final String functionBody = this.functionsService.getFunction(namespace, functionName);
         // add all headers from the result
         return functionBody != null
                 ? Response.ok(functionBody).header("Content-Type", MediaType.TEXT_PLAIN).build()
@@ -91,16 +114,16 @@ public class FunctionsResource {
     }
 
     @GET
-    @Path("/execute/{functorQuery:.+}")
+    @Path("/execute/{function:.+}")
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Execute get method on functor query")
+    @Operation(summary = "Execute get method on function query")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200",
-                    description = "Process and execute the functor query string",
+                    description = "Process and execute the function query string",
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
             @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
-    public Response getExecuteFunction(@PathParam("functorQuery") final String ignored,
+    public Response getExecuteFunction(@PathParam("function") final String ignored,
                                        @Context final HttpServletRequest request,
                                        @Context final HttpServletResponse response,
                                        @Context final UriInfo uriInfo) {
@@ -108,16 +131,16 @@ public class FunctionsResource {
     }
 
     @PUT
-    @Path("/execute/{functorQuery:.+}")
+    @Path("/execute/{function:.+}")
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Execute put method on functor query")
+    @Operation(summary = "Execute put method on function query")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200",
-                    description = "Process and execute the functor query string",
+                    description = "Process and execute the function query string",
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
             @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
-    public Response putExecuteFunction(@PathParam("functorQuery") final String ignored,
+    public Response putExecuteFunction(@PathParam("function") final String ignored,
                                        @Context final HttpServletRequest request,
                                        @Context final HttpServletResponse response,
                                        @Context final UriInfo uriInfo) {
@@ -125,16 +148,16 @@ public class FunctionsResource {
     }
 
     @POST
-    @Path("/execute/{functorQuery:.+}")
+    @Path("/execute/{function:.+}")
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Execute post method on functor query")
+    @Operation(summary = "Execute post method on function query")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200",
-                    description = "Process and execute the functor query string",
+                    description = "Process and execute the function query string",
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
             @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
-    public Response postExecuteFunction(@PathParam("functorQuery") final String ignored,
+    public Response postExecuteFunction(@PathParam("function") final String ignored,
                                         @Context final HttpServletRequest request,
                                         @Context final HttpServletResponse response,
                                         @Context final UriInfo uriInfo) {
@@ -142,16 +165,16 @@ public class FunctionsResource {
     }
 
     @DELETE
-    @Path("/execute/{functorQuery:.+}")
+    @Path("/execute/{function:.+}")
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Execute delete method on functor query")
+    @Operation(summary = "Execute delete method on function query")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200",
-                    description = "Process and execute the functor query string",
+                    description = "Process and execute the function query string",
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
             @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
-    public Response deleteExecuteFunction(@PathParam("functorQuery") final String ignored,
+    public Response deleteExecuteFunction(@PathParam("function") final String ignored,
                                        @Context final HttpServletRequest request,
                                        @Context final HttpServletResponse response,
                                        @Context final UriInfo uriInfo) {
@@ -162,17 +185,19 @@ public class FunctionsResource {
                                          final HttpServletResponse response,
                                          final UriInfo uriInfo) {
         try {
-            final String[] filtersQueryStrings = uriInfo.getPath().replaceAll(".*/execute/", "").split("/");
+            final String[] filtersQueryStrings = uriInfo.getPath().replaceAll(".*/execute/", "").split("\\|");
             logger.info(Arrays.toString(filtersQueryStrings));
             final Entity entity = new Entity();
             for (final String qs : filtersQueryStrings) {
-                final String functionName = qs.split(";")[0];
+                final String namespaceSlashFunction = qs.split(";")[0];
+                final String namespace = namespaceSlashFunction.split("/")[0];
+                final String functionName = namespaceSlashFunction.split("/")[1];
                 final Map<String, String> params = qs.contains(";")
                         ? parseParams(qs.substring(qs.indexOf(";") + 1))
                         : Collections.emptyMap();
                 logger.info("executing function '{}' with parameters: '{}'", functionName, params);
                 final Executor.Context context = new Executor.Context(request, response, this.cantor, entity, params);
-                this.functionsService.execute(functionName, context);
+                this.functionsService.execute(namespace, functionName, context);
             }
             // add all headers from the result
             final Response.ResponseBuilder builder = Response.status(entity.getStatus() == 0 ? 200 : entity.getStatus());
@@ -192,16 +217,17 @@ public class FunctionsResource {
     }
 
     @PUT
-    @Path("/{function}")
+    @Path("/{namespace}/{function}")
     @Operation(summary = "Store a function")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Function stored"),
+        @ApiResponse(responseCode = "201", description = "Function stored"),
         @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
-    public Response create(@Parameter(description = "Function identifier") @PathParam("function") final String functionName,
-                           final String body) throws IOException {
+    public Response create(@Parameter(description = "Namespace") @PathParam("namespace") final String namespace,
+                           @Parameter(description = "Function identifier") @PathParam("function") final String functionName,
+                           final String body) {
         try {
-            this.functionsService.storeFunction(functionName, body);
+            this.functionsService.storeFunction(namespace, functionName, body);
             return Response.status(Response.Status.CREATED).build();
         } catch (IOException e) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -211,15 +237,22 @@ public class FunctionsResource {
     }
 
     @DELETE
-    @Path("/{function}")
+    @Path("/{namespace}/{function}")
     @Operation(summary = "Remove a function")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Function removed"),
         @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
-    public Response drop(@Parameter(description = "Namespace identifier") @PathParam("function") final String function) {
-        logger.info("received request to delete function {}", function);
-        return Response.ok().build();
+    public Response drop(@Parameter(description = "Namespace") @PathParam("namespace") final String namespace,
+                         @Parameter(description = "Namespace identifier") @PathParam("function") final String function) {
+        try {
+            this.functionsService.deleteFunction(namespace, function);
+            return Response.ok().build();
+        } catch (IOException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(toString(e))
+                    .build();
+        }
     }
 
     private Map<String, String> parseParams(final String filterQueryString) {

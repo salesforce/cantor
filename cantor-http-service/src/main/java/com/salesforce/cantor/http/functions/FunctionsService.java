@@ -13,7 +13,6 @@ import java.util.*;
 @Service
 public class FunctionsService {
     private static final Logger logger = LoggerFactory.getLogger(FunctionsService.class);
-    private static final String functorNamespace ="functor-functions";
 
     private final Cantor cantor;
     private final List<Executor> executors = new ArrayList<>();
@@ -23,31 +22,41 @@ public class FunctionsService {
         this.cantor = cantor;
         this.executors.add(new FreemarkerExecutor());
         this.executors.add(new ScriptExecutor());
-
-        try {
-            this.cantor.objects().create(functorNamespace);
-        } catch (IOException e) {
-            logger.warn("failed to create functor namespace");
-        }
     }
 
-    public void storeFunction(final String functionName, final String functionBody)
+    public void createNamespace(final String namespace) throws IOException {
+        logger.info("creating new function namespace: '{}'", namespace);
+        this.cantor.objects().create(getFunctionNamespace(namespace));
+    }
+
+    public void dropNamespace(final String namespace) throws IOException {
+        logger.info("dropping function namespace: '{}'", namespace);
+        this.cantor.objects().drop(getFunctionNamespace(namespace));
+    }
+
+    public void storeFunction(final String namespace, final String functionName, final String functionBody)
             throws IOException {
         logger.info("storing new function with name '{}'", functionName);
-        this.cantor.objects().store(functorNamespace, functionName, functionBody.getBytes(Charset.defaultCharset()));
+        this.cantor.objects().store(getFunctionNamespace(namespace), functionName, functionBody.getBytes(Charset.defaultCharset()));
     }
 
-    public String getFunction(final String functionName) throws IOException {
-        final byte[] functionBodyBytes = this.cantor.objects().get(functorNamespace, functionName);
+    public void deleteFunction(final String namespace, final String functionName)
+            throws IOException {
+        logger.info("deleting function with name '{}'", functionName);
+        this.cantor.objects().delete(getFunctionNamespace(namespace), functionName);
+    }
+
+    public String getFunction(final String namespace, final String functionName) throws IOException {
+        final byte[] functionBodyBytes = this.cantor.objects().get(getFunctionNamespace(namespace), functionName);
         return functionBodyBytes != null ? new String(functionBodyBytes, Charset.defaultCharset()) : null;
     }
 
-    public Collection<String> getFunctionsList() throws IOException {
-        return this.cantor.objects().keys(functorNamespace, 0, -1);
+    public Collection<String> getFunctionsList(final String namespace) throws IOException {
+        return this.cantor.objects().keys(getFunctionNamespace(namespace), 0, -1);
     }
 
-    public void execute(final String functionName, final Executor.Context context) throws IOException {
-        final String functionBody = getFunction(functionName);
+    public void execute(final String namespace, final String functionName, final Executor.Context context) throws IOException {
+        final String functionBody = getFunction(namespace, functionName);
         if (functionBody == null) {
             throw new IllegalArgumentException("function not found: " + functionName);
         }
@@ -74,5 +83,9 @@ public class FunctionsService {
 
     private String getExtension(final String name) {
         return name.substring(name.lastIndexOf(".") + 1);
+    }
+
+    private String getFunctionNamespace(final String namespace) {
+        return String.format("functions-%s", namespace);
     }
 }
