@@ -8,8 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.Collection;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class FunctionsService {
@@ -17,12 +16,13 @@ public class FunctionsService {
     private static final String functorNamespace ="functor-functions";
 
     private final Cantor cantor;
-    private final ExecutorsService executorsService;
+    private final List<Executor> executors = new ArrayList<>();
 
     @Autowired
-    public FunctionsService(final Cantor cantor, final ExecutorsService executorsService) {
+    public FunctionsService(final Cantor cantor) {
         this.cantor = cantor;
-        this.executorsService = executorsService;
+        this.executors.add(new FreemarkerExecutor(this.cantor));
+        this.executors.add(new ScriptExecutor(this.cantor));
 
         try {
             this.cantor.objects().create(functorNamespace);
@@ -54,7 +54,29 @@ public class FunctionsService {
             throw new IllegalArgumentException("function not found");
         }
 
-        final Executor executor = this.executorsService.getExecutor(functionName);
+        final Executor executor = getExecutor(functionName);
         return executor.execute(functionName, functionBody, params);
     }
+
+    // return the executor instance for the given executor name
+    private Executor getExecutor(final String functionName) {
+        final String extension = getExtension(functionName);
+        for (final Executor executor : this.executors) {
+            if (executor.getExtensions().contains(extension)) {
+                return executor;
+            }
+        }
+        final List<String> extensions = new ArrayList<>();
+        for (final Executor executor : this.executors) {
+            extensions.addAll(executor.getExtensions());
+        }
+        throw new IllegalArgumentException(
+                "executor for extension '" + extension + "' not found; supported extensions are: " + extensions.toString()
+        );
+    }
+
+    private String getExtension(final String name) {
+        return name.substring(name.lastIndexOf(".") + 1);
+    }
+
 }

@@ -49,9 +49,7 @@ public class FunctionsResource {
 
     @Autowired
     public FunctionsResource(final Cantor cantor) {
-        this.functionsService = new FunctionsService(cantor, new ExecutorsService(
-                Arrays.asList(new FreemarkerExecutor(cantor), new ScriptExecutor(cantor))
-        ));
+        this.functionsService = new FunctionsService(cantor);
     }
 
     @GET
@@ -108,15 +106,20 @@ public class FunctionsResource {
             logger.info("executing function '{}' with parameters: '{}'", functionName, parameters);
             result = this.functionsService.execute(functionName, parameters);
         } catch (Exception e) {
-            throw new InternalServerErrorException("function '" + functionName + "' failed", e);
+            return Response.serverError()
+                    .header("Content-Type", "text/plain")
+                    .entity(toString(e))
+                    .build();
         }
 
         // add all headers from the result
-        final Response.ResponseBuilder builder = Response.status(result.getStatus());
+        final Response.ResponseBuilder builder = Response.status(result.getStatus() == 0 ? 200 : result.getStatus());
         for (final Map.Entry<String, String> entry : result.getHeadersMap().entrySet()) {
             builder.header(entry.getKey(), entry.getValue());
         }
-        builder.entity(result.getBody());
+        if (result.getBody() != null && result.getBody().length > 0) {
+            builder.entity(result.getBody());
+        }
         return builder.build();
     }
 

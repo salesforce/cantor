@@ -24,15 +24,15 @@ public class Entity {
         this.headersMap.put(name, value);
     }
 
-    public void setHeadersMap(final Map<String, String> headersMap) {
-        this.headersMap = headersMap;
-    }
-
     public byte[] getBody() {
         return body;
     }
 
-    public void setBody(byte[] body) {
+    public void setBody(final byte[] body) {
         this.body = body;
+    }
+
+    public void setBody(final String body) {
+        this.body = body.getBytes();
     }
 }
