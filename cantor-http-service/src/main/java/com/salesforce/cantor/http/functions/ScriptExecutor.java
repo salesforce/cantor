@@ -30,23 +30,23 @@ public class ScriptExecutor implements Executor {
     @Override
     public void execute(final String functionName,
                         final String functionBody,
-                        final Context context) {
+                        final Context context, Map<String, String> params) {
         final ScriptContext scriptContext = new SimpleScriptContext();
         // add all parameters
         scriptContext.setAttribute("context", context, ScriptContext.ENGINE_SCOPE);
+        scriptContext.setAttribute("params", params, ScriptContext.ENGINE_SCOPE);
 
         final StringWriter writer = new StringWriter();
         scriptContext.setWriter(writer);
         try {
             // run the script!
             final ScriptEngine engine = getEngine(getExtension(functionName));
-            logger.info("script engine '{}' used for function '{}'",
-                    engine.getFactory().getEngineName(), functionName);
+            logger.info("script engine '{}' used for function '{}'", engine.getFactory().getEngineName(), functionName);
             engine.eval(functionBody, scriptContext);
-            if (context.getParams().containsKey(".method")) {
-                final String methodName = context.getParams().get(".method");
+            if (params.get(".method") != null) {
+                final String methodName = params.get(".method");
                 final Invocable invocableEngine = (Invocable) engine;
-                invocableEngine.invokeFunction(methodName, context);
+                invocableEngine.invokeFunction(methodName);
             }
         } catch (ScriptException | NoSuchMethodException e) {
             throw new RuntimeException(e);

@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.StringWriter;
-import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -24,7 +23,7 @@ public class FreemarkerExecutor implements Executor {
     }
 
     @Override
-    public void execute(final String functionName, final String functionBody, final Context context) {
+    public void execute(final String functionName, final String functionBody, final Context context, Map<String, String> params) {
         process(functionName, functionBody, context);
     }
 
@@ -34,19 +33,17 @@ public class FreemarkerExecutor implements Executor {
         this.configuration.setClassForTemplateLoading(getClass(), "/");
     }
 
-    private Entity process(final String name, final String source, final Context context) {
+    private void process(final String name, final String source, final Context context) {
         try {
             final String results = doProcess(name, source, context);
-            final Entity entity = context.getEntity();
             // if script has not set body, set it to the results
-            if (entity.getBody() == null) {
-                entity.setBody(results.getBytes(Charset.defaultCharset()));
+            if (context.getResponseBody() == null) {
+                context.setResponseBody(results);
             }
             // if script has not set the status code, set it to 200
-            if (entity.getStatus() == 0) {
-                entity.setStatus(200);
+            if (context.getResponseStatus() == 0) {
+                context.setResponseStatus(200);
             }
-            return entity;
         } catch (TemplateException | IOException e) {
             throw new RuntimeException(e);
         }

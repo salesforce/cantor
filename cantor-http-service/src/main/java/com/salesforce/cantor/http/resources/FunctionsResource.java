@@ -181,41 +181,6 @@ public class FunctionsResource {
         return executeFunctorQuery(request, response, uriInfo);
     }
 
-    private Response executeFunctorQuery(final HttpServletRequest request,
-                                         final HttpServletResponse response,
-                                         final UriInfo uriInfo) {
-        try {
-            final String[] filtersQueryStrings = uriInfo.getPath().replaceAll(".*/execute/", "").split("\\|");
-            logger.info(Arrays.toString(filtersQueryStrings));
-            final Entity entity = new Entity();
-            for (final String qs : filtersQueryStrings) {
-                final String namespaceSlashFunction = qs.split(";")[0];
-                final String namespace = namespaceSlashFunction.split("/")[0];
-                final String functionName = namespaceSlashFunction.split("/")[1];
-                final Map<String, String> params = qs.contains(";")
-                        ? parseParams(qs.substring(qs.indexOf(";") + 1))
-                        : Collections.emptyMap();
-                logger.info("executing function '{}' with parameters: '{}'", functionName, params);
-                final Executor.Context context = new Executor.Context(request, response, this.cantor, entity, params);
-                this.functionsService.execute(namespace, functionName, context);
-            }
-            // add all headers from the result
-            final Response.ResponseBuilder builder = Response.status(entity.getStatus() == 0 ? 200 : entity.getStatus());
-            for (final Map.Entry<String, String> entry : entity.getHeadersMap().entrySet()) {
-                builder.header(entry.getKey(), entry.getValue());
-            }
-            if (entity.getBody() != null) {
-                builder.entity(entity.getBody());
-            }
-            return builder.build();
-        } catch (Exception e) {
-            return Response.serverError()
-                    .header("Content-Type", "text/plain")
-                    .entity(toString(e))
-                    .build();
-        }
-    }
-
     @PUT
     @Path("/{namespace}/{function}")
     @Operation(summary = "Store a function")
@@ -250,6 +215,40 @@ public class FunctionsResource {
             return Response.ok().build();
         } catch (IOException e) {
             return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(toString(e))
+                    .build();
+        }
+    }
+
+    private Response executeFunctorQuery(final HttpServletRequest request,
+                                         final HttpServletResponse response,
+                                         final UriInfo uriInfo) {
+        try {
+            final String[] filtersQueryStrings = uriInfo.getPath().replaceAll(".*/execute/", "").split("\\|");
+            logger.info(Arrays.toString(filtersQueryStrings));
+            final Executor.Context context = new Executor.Context(request, response, this.cantor);
+            for (final String qs : filtersQueryStrings) {
+                final String namespaceSlashFunction = qs.split(";")[0];
+                final String namespace = namespaceSlashFunction.split("/")[0];
+                final String functionName = namespaceSlashFunction.split("/")[1];
+                final Map<String, String> params = qs.contains(";")
+                        ? parseParams(qs.substring(qs.indexOf(";") + 1))
+                        : Collections.emptyMap();
+                logger.info("executing function '{}' with parameters: '{}'", functionName, params);
+                this.functionsService.execute(namespace, functionName, context, params);
+            }
+            // add all headers from the result
+            final Response.ResponseBuilder builder = Response.status(context.getResponseStatus() == 0 ? 200 : context.getResponseStatus());
+            for (final Map.Entry<String, String> entry : context.getResponseHeaders().entrySet()) {
+                builder.header(entry.getKey(), entry.getValue());
+            }
+            if (context.getResponseBody() != null) {
+                builder.entity(context.getResponseBody());
+            }
+            return builder.build();
+        } catch (Exception e) {
+            return Response.serverError()
+                    .header("Content-Type", "text/plain")
                     .entity(toString(e))
                     .build();
         }

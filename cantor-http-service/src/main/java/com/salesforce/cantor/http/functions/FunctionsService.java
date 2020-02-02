@@ -55,13 +55,16 @@ public class FunctionsService {
         return this.cantor.objects().keys(getFunctionNamespace(namespace), 0, -1);
     }
 
-    public void execute(final String namespace, final String functionName, final Executor.Context context) throws IOException {
+    public void execute(final String namespace,
+                        final String functionName,
+                        final Executor.Context context,
+                        final Map<String, String> params) throws IOException {
         final String functionBody = getFunction(namespace, functionName);
         if (functionBody == null) {
             throw new IllegalArgumentException("function not found: " + functionName);
         }
         // execute the function and pass context to it
-        getExecutor(functionName).execute(functionName, functionBody, context);
+        getExecutor(functionName).execute(functionName, functionBody, context, params);
     }
 
     // return the executor instance for the given executor name
