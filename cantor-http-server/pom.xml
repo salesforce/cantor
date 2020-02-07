@@ -64,6 +64,7 @@
             <artifactId>jersey-media-json-jackson</artifactId>
             <version>${jersey.version}</version>
         </dependency>
+
         <!--SWAGGER-->
         <dependency>
             <groupId>io.swagger.core.v3</groupId>

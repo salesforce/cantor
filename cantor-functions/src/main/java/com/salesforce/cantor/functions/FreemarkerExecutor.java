@@ -37,8 +37,8 @@ public class FreemarkerExecutor implements Executor {
         try {
             final String results = doProcess(name, source, context, params);
             // if script has not set body, set it to the results
-            if (context.get("http-body") == null) {
-                context.set("http-body", results);
+            if (context.get("http.body") == null) {
+                context.set("http.body", results);
             }
         } catch (TemplateException | IOException e) {
             throw new RuntimeException(e);

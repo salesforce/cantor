@@ -29,6 +29,7 @@ public class Functions {
         this.executors.add(new FreemarkerExecutor());
         this.executors.add(new ScriptExecutor());
         this.executors.add(new ChainExecutor());
+        this.executors.add(new JavaExecutor());
     }
 
     public void create(final String namespace) throws IOException {

@@ -231,11 +231,11 @@ public class FunctionsResource {
                                      final HttpServletResponse response) {
         try {
             final Functions.Context context = new Functions.Context(this.cantor, this.functions);
-            context.set("http-request", request);
-            context.set("http-response", response);
+            context.set("http.request", request);
+            context.set("http.response", response);
             this.functions.execute(namespace, function, context, getParams(request));
 
-            final Object statusObject = context.get("http-status");
+            final Object statusObject = context.get("http.status");
             final int status;
             if (statusObject instanceof String) {
                 status = Integer.parseInt((String) statusObject);
@@ -249,11 +249,11 @@ public class FunctionsResource {
                 status = Response.Status.BAD_REQUEST.getStatusCode();
             }
             final Response.ResponseBuilder builder = Response.status(status);
-            if (context.get("http-body") != null) {
-                builder.entity(context.get("http-body"));
+            if (context.get("http.body") != null) {
+                builder.entity(context.get("http.body"));
             }
-            if (context.get("http-headers") != null) {
-                for (final Map.Entry<String, Object> header : ((Map<String, Object>) context.get("http-headers")).entrySet()) {
+            if (context.get("http.headers") != null) {
+                for (final Map.Entry<String, Object> header : ((Map<String, Object>) context.get("http.headers")).entrySet()) {
                     builder.header(header.getKey(), header.getValue());
                 }
             }

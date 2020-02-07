@@ -14,7 +14,7 @@ public class ChainExecutor implements Executor {
 
     @Override
     public List<String> getExtensions() {
-        return Collections.singletonList("chain");
+        return Arrays.asList("f", "chain");
     }
 
     @Override
@@ -24,20 +24,21 @@ public class ChainExecutor implements Executor {
         logger.info("executing function chain: {}", functionChain);
 
         for (final String qs : functionChain.split("\\|")) {
-            final String namespaceSlashFunction = qs.split(";")[0];
+            final String namespaceSlashFunction = qs.split("\\?")[0];
             final String namespace = namespaceSlashFunction.split("/")[0];
             final String functionName = namespaceSlashFunction.split("/")[1];
-            final Map<String, String> functionParams = qs.contains(";")
-                    ? parseParams(qs.substring(qs.indexOf(";") + 1))
+            final Map<String, String> functionParams = qs.contains("&")
+                    ? parseParams(qs.substring(qs.indexOf("?") + 1))
                     : Collections.emptyMap();
             logger.info("executing function '{}' with parameters: '{}'", functionName, functionParams);
             context.getFunctions().execute(namespace, functionName, context, functionParams);
+            logger.info("context: {}", context.keys());
         }
     }
 
     private Map<String, String> parseParams(final String filterQueryString) {
         final Map<String, String> params = new HashMap<>();
-        for (final String kv : filterQueryString.split(";")) {
+        for (final String kv : filterQueryString.split("&")) {
             final String[] keyValue = kv.split("=");
             if (keyValue.length == 1) {
                 continue;
