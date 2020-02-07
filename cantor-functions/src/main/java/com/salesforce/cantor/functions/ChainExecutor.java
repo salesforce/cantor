@@ -1,0 +1,49 @@
+package com.salesforce.cantor.functions;
+
+import com.salesforce.cantor.functions.Functions.Context;
+import com.salesforce.cantor.functions.Functions.Executor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+
+public class ChainExecutor implements Executor {
+    private static final Logger logger = LoggerFactory.getLogger(ChainExecutor.class);
+
+    @Override
+    public List<String> getExtensions() {
+        return Collections.singletonList("chain");
+    }
+
+    @Override
+    public void execute(final String function, final byte[] body, final Context context, final Map<String, String> params)
+            throws IOException {
+        final String functionChain = new String(body, StandardCharsets.UTF_8);
+        logger.info("executing function chain: {}", functionChain);
+
+        for (final String qs : functionChain.split("\\|")) {
+            final String namespaceSlashFunction = qs.split(";")[0];
+            final String namespace = namespaceSlashFunction.split("/")[0];
+            final String functionName = namespaceSlashFunction.split("/")[1];
+            final Map<String, String> functionParams = qs.contains(";")
+                    ? parseParams(qs.substring(qs.indexOf(";") + 1))
+                    : Collections.emptyMap();
+            logger.info("executing function '{}' with parameters: '{}'", functionName, functionParams);
+            context.getFunctions().execute(namespace, functionName, context, functionParams);
+        }
+    }
+
+    private Map<String, String> parseParams(final String filterQueryString) {
+        final Map<String, String> params = new HashMap<>();
+        for (final String kv : filterQueryString.split(";")) {
+            final String[] keyValue = kv.split("=");
+            if (keyValue.length == 1) {
+                continue;
+            }
+            params.put(keyValue[0], keyValue[1]);
+        }
+        return params;
+    }
+}

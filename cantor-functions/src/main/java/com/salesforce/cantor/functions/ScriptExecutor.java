@@ -1,17 +1,18 @@
-package com.salesforce.cantor.http.functions;
+package com.salesforce.cantor.functions;
 
+import com.salesforce.cantor.functions.Functions.Context;
+import com.salesforce.cantor.functions.Functions.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
 import javax.script.*;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Component
 public class ScriptExecutor implements Executor {
     private static final Logger logger = LoggerFactory.getLogger(ScriptExecutor.class);
 
@@ -28,9 +29,10 @@ public class ScriptExecutor implements Executor {
     }
 
     @Override
-    public void execute(final String functionName,
-                        final String functionBody,
+    public void execute(final String function,
+                        final byte[] body,
                         final Context context, Map<String, String> params) {
+        final String scriptBody = new String(body, StandardCharsets.UTF_8);
         final ScriptContext scriptContext = new SimpleScriptContext();
         // add all parameters
         scriptContext.setAttribute("context", context, ScriptContext.ENGINE_SCOPE);
@@ -40,9 +42,9 @@ public class ScriptExecutor implements Executor {
         scriptContext.setWriter(writer);
         try {
             // run the script!
-            final ScriptEngine engine = getEngine(getExtension(functionName));
-            logger.info("script engine '{}' used for function '{}'", engine.getFactory().getEngineName(), functionName);
-            engine.eval(functionBody, scriptContext);
+            final ScriptEngine engine = getEngine(getExtension(function));
+            logger.info("script engine '{}' used for function '{}'", engine.getFactory().getEngineName(), function);
+            engine.eval(scriptBody, scriptContext);
             if (params.get(".method") != null) {
                 final String methodName = params.get(".method");
                 final Invocable invocableEngine = (Invocable) engine;

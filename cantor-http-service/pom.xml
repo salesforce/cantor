@@ -34,6 +34,12 @@
             <artifactId>cantor-base</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!--CANTOR BASE-->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-functions</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!--JERSEY-->
         <dependency>
             <groupId>org.springframework.boot</groupId>

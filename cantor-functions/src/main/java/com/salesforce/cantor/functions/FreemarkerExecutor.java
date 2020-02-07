@@ -1,19 +1,19 @@
-package com.salesforce.cantor.http.functions;
+package com.salesforce.cantor.functions;
 
+import com.salesforce.cantor.functions.Functions.Context;
+import com.salesforce.cantor.functions.Functions.Executor;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Component
 public class FreemarkerExecutor implements Executor {
     private final Configuration configuration;
 
@@ -23,26 +23,22 @@ public class FreemarkerExecutor implements Executor {
     }
 
     @Override
-    public void execute(final String functionName, final String functionBody, final Context context, Map<String, String> params) {
-        process(functionName, functionBody, context);
+    public void execute(final String function, final byte[] body, final Context context, final Map<String, String> params) {
+        final String templateBody = new String(body, StandardCharsets.UTF_8);
+        process(function, templateBody, context, params);
     }
 
-    @Autowired
     public FreemarkerExecutor() {
         this.configuration = new Configuration(Configuration.VERSION_2_3_21);
         this.configuration.setClassForTemplateLoading(getClass(), "/");
     }
 
-    private void process(final String name, final String source, final Context context) {
+    private void process(final String name, final String source, final Context context, final Map<String, String> params) {
         try {
-            final String results = doProcess(name, source, context);
+            final String results = doProcess(name, source, context, params);
             // if script has not set body, set it to the results
-            if (context.getResponseBody() == null) {
-                context.setResponseBody(results);
-            }
-            // if script has not set the status code, set it to 200
-            if (context.getResponseStatus() == 0) {
-                context.setResponseStatus(200);
+            if (context.get("body") == null) {
+                context.set("body", results);
             }
         } catch (TemplateException | IOException e) {
             throw new RuntimeException(e);
@@ -51,15 +47,17 @@ public class FreemarkerExecutor implements Executor {
 
     private String doProcess(final String name,
                              final String source,
-                             final Context context)
+                             final Context context,
+                             final Map<String, String> params)
             throws IOException, TemplateException {
 
         final Template template = new Template(name, source, this.configuration);
         final StringWriter stringWriter = new StringWriter();
 
         // pass in context
-        final Map<String, Object> params = new HashMap<>();
-        params.put("context", context);
+        final Map<String, Object> model = new HashMap<>();
+        model.put("context", context);
+        model.put("params", params);
         // process the template
         template.process(params, stringWriter);
         return stringWriter.toString();
