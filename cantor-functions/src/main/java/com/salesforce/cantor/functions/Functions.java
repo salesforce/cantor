@@ -128,16 +128,12 @@ public class Functions {
             this.entities.put(key, value);
         }
 
-        public void set(final String key, final String value) {
-            this.entities.put(key, value.getBytes(StandardCharsets.UTF_8));
-        }
-
         public Object get(final String key) {
             return this.entities.get(key);
         }
 
-        public Map<String, Object> getEntities() {
-            return this.entities;
+        public Set<String> keys() {
+            return this.entities.keySet();
         }
     }
 }

@@ -26,10 +26,10 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 public class LoggableCantor implements Cantor {
     private static final Logger logger = LoggerFactory.getLogger(LoggableCantor.class);
 
-    private final LoggableObjects objects;
-    private final LoggableSets sets;
-    private final LoggableMaps maps;
-    private final LoggableEvents events;
+    private final Objects objects;
+    private final Sets sets;
+    private final Maps maps;
+    private final Events events;
 
     public LoggableCantor(final Cantor delegate) {
         checkArgument(delegate != null, "null delegate");

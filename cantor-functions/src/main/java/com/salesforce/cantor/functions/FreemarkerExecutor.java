@@ -37,8 +37,8 @@ public class FreemarkerExecutor implements Executor {
         try {
             final String results = doProcess(name, source, context, params);
             // if script has not set body, set it to the results
-            if (context.get("body") == null) {
-                context.set("body", results);
+            if (context.get("http-body") == null) {
+                context.set("http-body", results);
             }
         } catch (TemplateException | IOException e) {
             throw new RuntimeException(e);
@@ -59,7 +59,7 @@ public class FreemarkerExecutor implements Executor {
         model.put("context", context);
         model.put("params", params);
         // process the template
-        template.process(params, stringWriter);
+        template.process(model, stringWriter);
         return stringWriter.toString();
     }
 }

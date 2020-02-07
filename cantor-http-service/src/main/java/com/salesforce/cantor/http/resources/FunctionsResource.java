@@ -32,6 +32,7 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
@@ -234,7 +235,19 @@ public class FunctionsResource {
             context.set("http-response", response);
             this.functions.execute(namespace, function, context, getParams(request));
 
-            final int status = context.get("http-status") != null ? (int) context.get("http-status") : 200;
+            final Object statusObject = context.get("http-status");
+            final int status;
+            if (statusObject instanceof String) {
+                status = Integer.parseInt((String) statusObject);
+            } else if (statusObject instanceof BigDecimal) {
+                status = ((BigDecimal) statusObject).intValue();
+            } else if (statusObject instanceof Long) {
+                status = ((Long) statusObject).intValue();
+            } else if (statusObject instanceof Integer) {
+                status = (int) statusObject;
+            } else {
+                status = Response.Status.BAD_REQUEST.getStatusCode();
+            }
             final Response.ResponseBuilder builder = Response.status(status);
             if (context.get("http-body") != null) {
                 builder.entity(context.get("http-body"));
