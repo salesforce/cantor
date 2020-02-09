@@ -1,7 +1,5 @@
 package com.salesforce.cantor.functions;
 
-import com.salesforce.cantor.functions.Functions.Context;
-import com.salesforce.cantor.functions.Functions.Executor;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
@@ -23,7 +21,11 @@ public class FreemarkerExecutor implements Executor {
     }
 
     @Override
-    public void execute(final String function, final byte[] body, final Context context, final Map<String, String> params) {
+    public void execute(final String namespaceIgnored,
+                        final String function,
+                        final byte[] body,
+                        final Context context,
+                        final Map<String, String> params) {
         final String templateBody = new String(body, StandardCharsets.UTF_8);
         process(function, templateBody, context, params);
     }

@@ -7,22 +7,12 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class Functions {
     private static final Logger logger = LoggerFactory.getLogger(Functions.class);
 
     private final Cantor cantor;
     private final List<Executor> executors = new ArrayList<>();
-
-    public interface Executor {
-
-        // return list of file extensions to be handled by this executor
-        List<String> getExtensions();
-
-        // execute a function with the given parameters and return an entity as the response
-        void execute(String function, byte[] body, Context context, Map<String, String> params) throws IOException;
-    }
 
     public Functions(final Cantor cantor) {
         this.cantor = cantor;
@@ -79,7 +69,7 @@ public class Functions {
             throw new IllegalArgumentException("function not found: " + function);
         }
         // execute the function and pass context to it
-        getExecutor(function).execute(function, body, context, params);
+        getExecutor(function).execute(namespace, function, body, context, params);
     }
 
     // return the executor instance for the given executor name
@@ -105,36 +95,5 @@ public class Functions {
 
     private String getFunctionNamespace(final String namespace) {
         return String.format("functions-%s", namespace);
-    }
-
-    public static class Context {
-        private final Map<String, Object> entities = new ConcurrentHashMap<>();
-        private final Cantor cantor;
-        private final Functions functions;
-
-        public Context(final Cantor cantor, final Functions functions) {
-            this.cantor = cantor;
-            this.functions = functions;
-        }
-
-        public Cantor getCantor() {
-            return this.cantor;
-        }
-
-        public Functions getFunctions() {
-            return this.functions;
-        }
-
-        public void set(final String key, final Object value) {
-            this.entities.put(key, value);
-        }
-
-        public Object get(final String key) {
-            return this.entities.get(key);
-        }
-
-        public Set<String> keys() {
-            return this.entities.keySet();
-        }
     }
 }

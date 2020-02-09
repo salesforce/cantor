@@ -1,7 +1,5 @@
 package com.salesforce.cantor.functions;
 
-import com.salesforce.cantor.functions.Functions.Context;
-import com.salesforce.cantor.functions.Functions.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,20 +16,26 @@ public class ChainExecutor implements Executor {
     }
 
     @Override
-    public void execute(final String function, final byte[] body, final Context context, final Map<String, String> params)
+    public void execute(final String namespace,
+                        final String function,
+                        final byte[] body,
+                        final Context context,
+                        final Map<String, String> params)
             throws IOException {
         final String functionChain = new String(body, StandardCharsets.UTF_8);
         logger.info("executing function chain: {}", functionChain);
 
+        // pipe is used to separate out function calls
         for (final String qs : functionChain.split("\\|")) {
+            // before ? is namespace/function
             final String namespaceSlashFunction = qs.split("\\?")[0];
-            final String namespace = namespaceSlashFunction.split("/")[0];
+            final String functionNamespace = namespaceSlashFunction.split("/")[0];
             final String functionName = namespaceSlashFunction.split("/")[1];
             final Map<String, String> functionParams = qs.contains("&")
                     ? parseParams(qs.substring(qs.indexOf("?") + 1))
                     : Collections.emptyMap();
             logger.info("executing function '{}' with parameters: '{}'", functionName, functionParams);
-            context.getFunctions().execute(namespace, functionName, context, functionParams);
+            context.getFunctions().execute(functionNamespace, functionName, context, functionParams);
             logger.info("context: {}", context.keys());
         }
     }

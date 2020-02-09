@@ -1,7 +1,5 @@
 package com.salesforce.cantor.functions;
 
-import com.salesforce.cantor.functions.Functions.Context;
-import com.salesforce.cantor.functions.Functions.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,7 +7,6 @@ import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -32,45 +29,55 @@ public class JavaExecutor implements Executor {
     }
 
     @Override
-    public void execute(final String function, final byte[] body, final Context context, final Map<String, String> params)
+    public void execute(final String namespace,
+                        final String function,
+                        final byte[] body,
+                        final Context context,
+                        final Map<String, String> params)
             throws IOException {
-        final String functionBody = new String(body, UTF_8);
-        logger.info("executing java function: {}", function);
-
-        final Path path = saveSource(function, functionBody);
+        final String javaSource = new String(body, UTF_8);
+        final Path path = saveSource(namespace, function, javaSource);
         try {
-            final Object instance = runClass(function, compileSource(function, path));
+            final String className = params.get(".class");
             final String methodName = params.get(".method");
+            logger.info("executing java function: {} class: {} method: {}", function, className, methodName);
+            compileSource(function, path);
+            logger.info("class path is: {}", path);
+            final Object instance = getClassInstance(className, path);
             final Method method = instance.getClass().getMethod(methodName, Context.class, Map.class);
             method.invoke(instance, context, params);
-        } catch (ClassNotFoundException | IllegalAccessException | InstantiationException | NoSuchMethodException | InvocationTargetException e) {
+        } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private Path compileSource(final String name, final Path javaFile) {
+    private void compileSource(final String name, final Path javaFile) {
         final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         final int results = compiler.run(System.in, System.out, outputStream, javaFile.toFile().getAbsolutePath());
         if (results != 0) {
             throw new RuntimeException(new String(outputStream.toByteArray()));
         }
-        return javaFile.getParent().resolve(name);
     }
 
-    private Object runClass(final String name, final Path javaClass)
-            throws MalformedURLException, ClassNotFoundException, IllegalAccessException, InstantiationException {
-        URL classUrl = javaClass.getParent().toFile().toURI().toURL();
-        URLClassLoader classLoader = URLClassLoader.newInstance(new URL[]{classUrl});
-        Class<?> clazz = Class.forName(name.substring(0, name.indexOf(".java")), true, classLoader);
-        return clazz.newInstance();
+    private Object getClassInstance(final String className, final Path javaClass)
+            throws ReflectiveOperationException, MalformedURLException {
+        final URL classUrl = javaClass.getParent().toFile().toURI().toURL();
+        final URLClassLoader classLoader = URLClassLoader.newInstance(new URL[]{classUrl});
+        return Class.forName(className, true, classLoader).getDeclaredConstructor().newInstance();
     }
 
-
-    private Path saveSource(final String name, final String source) throws IOException {
-        String tmpProperty = System.getProperty("java.io.tmpdir");
-        Path sourcePath = Paths.get(tmpProperty, name);
+    private Path saveSource(final String namespace, final String name, final String source) throws IOException {
+        // TODO functions with the same name but in different namespaces can replace eachother here
+        final String tmpProperty = System.getProperty("java.io.tmpdir");
+        Files.createDirectory(Paths.get(tmpProperty, namespace));
+        final Path sourcePath = Paths.get(tmpProperty, namespace, name);
         Files.write(sourcePath, source.getBytes(UTF_8));
         return sourcePath;
+    }
+
+    private Path getBaseDirectory(final String namespace) throws IOException {
+        final String tmpDir = System.getProperty("java.io.tmpdir");
+        return Files.createDirectory(Paths.get(tmpDir, namespace));
     }
 }

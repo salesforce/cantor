@@ -33,7 +33,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Component
@@ -180,8 +179,8 @@ public class FunctionsResource {
     })
     public Response deleteExecuteFunction(@PathParam("namespace") final String namespace,
                                           @PathParam("function") final String function,
-                                       @Context final HttpServletRequest request,
-                                       @Context final HttpServletResponse response) {
+                                          @Context final HttpServletRequest request,
+                                          @Context final HttpServletResponse response) {
         logger.info("executing '{}/{}' with delete method", namespace, function);
         return executeFunction(namespace, function, request, response);
     }
@@ -230,11 +229,14 @@ public class FunctionsResource {
                                      final HttpServletRequest request,
                                      final HttpServletResponse response) {
         try {
-            final Functions.Context context = new Functions.Context(this.cantor, this.functions);
+            final com.salesforce.cantor.functions.Context context =
+                    new com.salesforce.cantor.functions.Context(this.cantor, this.functions);
+            // special parameters, http.request and http.response are passed to functions
             context.set("http.request", request);
             context.set("http.response", response);
             this.functions.execute(namespace, function, context, getParams(request));
 
+            // retrieve special parameter http.status from context
             final Object statusObject = context.get("http.status");
             final int status;
             if (statusObject instanceof String) {
@@ -246,12 +248,14 @@ public class FunctionsResource {
             } else if (statusObject instanceof Integer) {
                 status = (int) statusObject;
             } else {
-                status = Response.Status.BAD_REQUEST.getStatusCode();
+                status = Response.Status.OK.getStatusCode();
             }
             final Response.ResponseBuilder builder = Response.status(status);
+            // retrieve special parameter http.body from context
             if (context.get("http.body") != null) {
                 builder.entity(context.get("http.body"));
             }
+            // retrieve special parameter http.headers from context
             if (context.get("http.headers") != null) {
                 for (final Map.Entry<String, Object> header : ((Map<String, Object>) context.get("http.headers")).entrySet()) {
                     builder.header(header.getKey(), header.getValue());

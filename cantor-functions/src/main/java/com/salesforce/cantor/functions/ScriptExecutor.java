@@ -1,7 +1,5 @@
 package com.salesforce.cantor.functions;
 
-import com.salesforce.cantor.functions.Functions.Context;
-import com.salesforce.cantor.functions.Functions.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +27,7 @@ public class ScriptExecutor implements Executor {
     }
 
     @Override
-    public void execute(final String function,
+    public void execute(String namespace, final String function,
                         final byte[] body,
                         final Context context, Map<String, String> params) {
         final String scriptBody = new String(body, StandardCharsets.UTF_8);
