@@ -16,12 +16,10 @@ public class ChainExecutor implements Executor {
     }
 
     @Override
-    public void execute(final String namespace,
-                        final String function,
+    public void execute(final String function,
                         final byte[] body,
                         final Context context,
-                        final Map<String, String> params)
-            throws IOException {
+                        final Map<String, String> params) throws IOException {
         final String functionChain = new String(body, StandardCharsets.UTF_8);
         logger.info("executing function chain: {}", functionChain);
 

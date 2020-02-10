@@ -27,7 +27,7 @@ public class ScriptExecutor implements Executor {
     }
 
     @Override
-    public void execute(String namespace, final String function,
+    public void execute(final String function,
                         final byte[] body,
                         final Context context, Map<String, String> params) {
         final String scriptBody = new String(body, StandardCharsets.UTF_8);

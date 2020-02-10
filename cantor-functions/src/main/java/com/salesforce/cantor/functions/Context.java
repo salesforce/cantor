@@ -7,9 +7,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Context {
-    private final Map<String, Object> entities = new ConcurrentHashMap<>();
     private final Cantor cantor;
     private final Functions functions;
+    private final Map<String, Object> entities = new ConcurrentHashMap<>();
 
     public Context(final Cantor cantor, final Functions functions) {
         this.cantor = cantor;

@@ -270,6 +270,7 @@ public class FunctionsResource {
         }
     }
 
+    // convert http request query string parameters to a map of string to string
     private Map<String, String> getParams(final HttpServletRequest request) {
         final Map<String, String> params = new HashMap<>();
         for (final Map.Entry<String, String[]> entry : request.getParameterMap().entrySet()) {
@@ -278,6 +279,7 @@ public class FunctionsResource {
         return params;
     }
 
+    // convert throwable object stack trace to string
     private String toString(final Throwable throwable) {
         final StringWriter writer = new StringWriter();
         final PrintWriter printer = new PrintWriter(writer);

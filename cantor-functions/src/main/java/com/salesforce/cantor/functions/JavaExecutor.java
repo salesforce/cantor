@@ -17,6 +17,7 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -29,14 +30,14 @@ public class JavaExecutor implements Executor {
     }
 
     @Override
-    public void execute(final String namespace,
-                        final String function,
+    public void execute(final String function,
                         final byte[] body,
                         final Context context,
                         final Map<String, String> params)
             throws IOException {
+        final String tempDirectory = UUID.randomUUID().toString();
         final String javaSource = new String(body, UTF_8);
-        final Path path = saveSource(namespace, function, javaSource);
+        final Path path = saveSource(tempDirectory, function, javaSource);
         try {
             final String className = params.get(".class");
             final String methodName = params.get(".method");
@@ -48,6 +49,8 @@ public class JavaExecutor implements Executor {
             method.invoke(instance, context, params);
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
+        } finally {
+            deleteSource(tempDirectory);
         }
     }
 
@@ -68,12 +71,16 @@ public class JavaExecutor implements Executor {
     }
 
     private Path saveSource(final String namespace, final String name, final String source) throws IOException {
-        // TODO functions with the same name but in different namespaces can replace eachother here
         final String tmpProperty = System.getProperty("java.io.tmpdir");
         Files.createDirectory(Paths.get(tmpProperty, namespace));
         final Path sourcePath = Paths.get(tmpProperty, namespace, name);
         Files.write(sourcePath, source.getBytes(UTF_8));
         return sourcePath;
+    }
+
+    private void deleteSource(final String tempDirectory) throws IOException {
+        final String tmpProperty = System.getProperty("java.io.tmpdir");
+        Files.delete(Paths.get(tmpProperty, tempDirectory));
     }
 
     private Path getBaseDirectory(final String namespace) throws IOException {

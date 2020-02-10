@@ -21,8 +21,7 @@ public class FreemarkerExecutor implements Executor {
     }
 
     @Override
-    public void execute(final String namespaceIgnored,
-                        final String function,
+    public void execute(final String function,
                         final byte[] body,
                         final Context context,
                         final Map<String, String> params) {

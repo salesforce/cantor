@@ -5,10 +5,22 @@ import java.util.List;
 import java.util.Map;
 
 public interface Executor {
-    // return list of file extensions to be handled by this executor
+
+    /**
+     * Returns list of extensions this executor can execute. For example, a Python executor may return .py and .python.
+     *
+     * @return list of acceptable extensions
+     */
     List<String> getExtensions();
 
     // execute a function with the given parameters and return an entity as the response
-    void execute(String namespace, String function, byte[] body, Context context, Map<String, String> params)
-            throws IOException;
+
+    /***
+     * Given the body of a function which its name ends with an extension that this executor accepts, run the function.
+     *  @param function the function name
+     * @param body the body of the function
+     * @param context context variable
+     * @param params parameters passed for this execution
+     */
+    void execute(String function, byte[] body, Context context, Map<String, String> params) throws IOException;
 }

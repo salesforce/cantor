@@ -7,19 +7,19 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Functions {
     private static final Logger logger = LoggerFactory.getLogger(Functions.class);
 
     private final Cantor cantor;
     private final List<Executor> executors = new ArrayList<>();
+    private final ExecutorService executorService = Executors.newCachedThreadPool();
 
     public Functions(final Cantor cantor) {
         this.cantor = cantor;
-        this.executors.add(new FreemarkerExecutor());
-        this.executors.add(new ScriptExecutor());
-        this.executors.add(new ChainExecutor());
-        this.executors.add(new JavaExecutor());
+        initExecutors();
     }
 
     public void create(final String namespace) throws IOException {
@@ -69,7 +69,16 @@ public class Functions {
             throw new IllegalArgumentException("function not found: " + function);
         }
         // execute the function and pass context to it
-        getExecutor(function).execute(namespace, function, body, context, params);
+        getExecutor(function).execute(function, body, context, params);
+    }
+
+    private void initExecutors() {
+        final ServiceLoader<Executor> loader = ServiceLoader.load(Executor.class);
+        for (final Executor executor : loader) {
+            logger.info("loading function executor: {} for extensions: {}",
+                    executor.getClass().getSimpleName(), executor.getExtensions());
+            this.executors.add(executor);
+        }
     }
 
     // return the executor instance for the given executor name
