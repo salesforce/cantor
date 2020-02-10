@@ -29,6 +29,12 @@
             <artifactId>cantor-base</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!--CANTOR COMMON-->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!--COMMONS IO-->
         <dependency>
             <groupId>commons-io</groupId>

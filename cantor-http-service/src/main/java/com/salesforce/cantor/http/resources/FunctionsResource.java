@@ -128,7 +128,7 @@ public class FunctionsResource {
                                        @Context final HttpServletRequest request,
                                        @Context final HttpServletResponse response) {
         logger.info("executing '{}/{}' with get method", namespace, function);
-        return executeFunction(namespace, function, request, response);
+        return doExecute(namespace, function, request, response);
     }
 
     @PUT
@@ -146,7 +146,7 @@ public class FunctionsResource {
                                        @Context final HttpServletRequest request,
                                        @Context final HttpServletResponse response) {
         logger.info("executing '{}/{}' with put method", namespace, function);
-        return executeFunction(namespace, function, request, response);
+        return doExecute(namespace, function, request, response);
     }
 
     @POST
@@ -164,7 +164,7 @@ public class FunctionsResource {
                                         @Context final HttpServletRequest request,
                                         @Context final HttpServletResponse response) {
         logger.info("executing '{}/{}' with post method", namespace, function);
-        return executeFunction(namespace, function, request, response);
+        return doExecute(namespace, function, request, response);
     }
 
     @DELETE
@@ -182,7 +182,7 @@ public class FunctionsResource {
                                           @Context final HttpServletRequest request,
                                           @Context final HttpServletResponse response) {
         logger.info("executing '{}/{}' with delete method", namespace, function);
-        return executeFunction(namespace, function, request, response);
+        return doExecute(namespace, function, request, response);
     }
 
     @PUT
@@ -224,10 +224,10 @@ public class FunctionsResource {
         }
     }
 
-    private Response executeFunction(final String namespace,
-                                     final String function,
-                                     final HttpServletRequest request,
-                                     final HttpServletResponse response) {
+    private Response doExecute(final String namespace,
+                               final String function,
+                               final HttpServletRequest request,
+                               final HttpServletResponse response) {
         try {
             final com.salesforce.cantor.functions.Context context =
                     new com.salesforce.cantor.functions.Context(this.cantor, this.functions);
