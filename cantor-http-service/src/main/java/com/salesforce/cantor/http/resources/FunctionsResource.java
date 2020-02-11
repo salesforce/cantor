@@ -116,7 +116,7 @@ public class FunctionsResource {
     @GET
     @Path("/execute/{namespace}/{function}")
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Execute get method on function query")
+    @Operation(summary = "Execute 'get' method on a function")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200",
                     description = "Process and execute the function query string",
@@ -251,9 +251,9 @@ public class FunctionsResource {
                 status = Response.Status.OK.getStatusCode();
             }
             final Response.ResponseBuilder builder = Response.status(status);
-            // retrieve special parameter http.body from context
-            if (context.get("http.body") != null) {
-                builder.entity(context.get("http.body"));
+            // retrieve special parameter .out from context
+            if (context.get(".out") != null) {
+                builder.entity(context.get(".out"));
             }
             // retrieve special parameter http.headers from context
             if (context.get("http.headers") != null) {

@@ -23,8 +23,10 @@ import java.util.UUID;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
- * Executor for functions implemented in Java.
+ * Executor for functions implemented in Java. The executor expects two special parameters:
+ * '.class' and '.method' to indicate the class name and the name of the method to invoke.
  */
+// TODO instead of storing the source and compiling on each execution, store the compiled class object in cantor
 public class JavaExecutor implements Executor {
     private static final Logger logger = LoggerFactory.getLogger(JavaExecutor.class);
 
@@ -60,6 +62,9 @@ public class JavaExecutor implements Executor {
             logger.info("class path is: {}", path);
             final Object instance = getClassInstance(className, path);
             final Method method = instance.getClass().getMethod(methodName, Context.class, Map.class);
+            if (method == null) {
+                throw new RuntimeException("method with signature " + className + "." + methodName + "(Context, Map) not found");
+            }
             method.invoke(instance, context, params);
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);

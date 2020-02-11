@@ -12,6 +12,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * This executor processes an FTL template with the given parameters, and stores the generated result
+ * in the special context variable '.out'.
+ *
+ * Two special parameters are injected into the FTL engine:
+ *   - 'context': the Context object for the function
+ *   - 'params': the map of parameters pass to executor
+ */
 public class FreemarkerExecutor implements Executor {
     private final Configuration configuration;
 
@@ -38,8 +46,8 @@ public class FreemarkerExecutor implements Executor {
         try {
             final String results = doProcess(name, source, context, params);
             // if script has not set body, set it to the results
-            if (context.get("http.body") == null) {
-                context.set("http.body", results);
+            if (context.get(".out") == null) {
+                context.set(".out", results);
             }
         } catch (TemplateException | IOException e) {
             throw new RuntimeException(e);

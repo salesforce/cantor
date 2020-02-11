@@ -1,7 +1,6 @@
 package com.salesforce.cantor.functions;
 
 import com.salesforce.cantor.Cantor;
-import com.salesforce.cantor.common.CommonPreconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
