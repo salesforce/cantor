@@ -7,8 +7,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static com.salesforce.cantor.common.CommonPreconditions.*;
 
@@ -17,7 +15,6 @@ public class FunctionsOnCantor implements Functions {
 
     private final Cantor cantor;
     private final List<Executor> executors = new ArrayList<>();
-    private final ExecutorService executorService = Executors.newCachedThreadPool();
 
     public FunctionsOnCantor(final Cantor cantor) {
         this.cantor = cantor;
