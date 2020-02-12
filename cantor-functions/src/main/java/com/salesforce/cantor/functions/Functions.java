@@ -1,132 +1,91 @@
 package com.salesforce.cantor.functions;
 
-import com.salesforce.cantor.Cantor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.Collection;
+import java.util.Map;
 
 import static com.salesforce.cantor.common.CommonPreconditions.*;
 
-public class Functions {
-    private static final Logger logger = LoggerFactory.getLogger(Functions.class);
+/**
+ * Functions allow users to store/retrieve and execute a function in this sandbox.
+ */
+public interface Functions {
 
-    private final Cantor cantor;
-    private final List<Executor> executors = new ArrayList<>();
-    private final ExecutorService executorService = Executors.newCachedThreadPool();
+    /**
+     * Create a new function namespace.
+     *
+     * @param namespace the namespace identifier
+     * @throws IOException exception thrown from the underlying storage implementation
+     */
+    void create(String namespace) throws IOException;
 
-    public Functions(final Cantor cantor) {
-        this.cantor = cantor;
-        initExecutors();
-    }
+    /**
+     * Drop a function namespace.
+     *
+     * @param namespace the namespace identifier
+     * @throws IOException exception thrown from the underlying storage implementation
+     */
+    void drop(String namespace) throws IOException;
 
-    public void create(final String namespace) throws IOException {
-        checkNamespace(namespace);
-        final String functionNamespace = getFunctionNamespace(namespace);
-        logger.info("creating objects namespace for functions: '{}'", functionNamespace);
-        this.cantor.objects().create(functionNamespace);
-    }
-
-    public void drop(final String namespace) throws IOException {
-        checkNamespace(namespace);
-        final String functionNamespace = getFunctionNamespace(namespace);
-        logger.info("dropping objects namespace for functions: '{}'", functionNamespace);
-        this.cantor.objects().drop(functionNamespace);
-    }
-
-    public void store(final String namespace, final String function, final String body) throws IOException {
-        checkNamespace(namespace);
-        checkString(function, "missing function name");
+    /**
+     * Store a function with the given name and body as string.
+     *
+     * @param namespace the namespace identifier
+     * @param function the function name identifier
+     * @param body body of the function
+     * @throws IOException exception thrown from the underlying storage implementation
+     */
+    default void store(final String namespace, final String function, final String body) throws IOException {
         checkString(body, "missing function body");
-
         store(namespace, function, body.getBytes(StandardCharsets.UTF_8));
     }
 
-    public void store(final String namespace, final String function, final byte[] body) throws IOException {
-        checkNamespace(namespace);
-        checkString(function, "missing function name");
-        checkArgument(body != null, "missing function body");
+    /**
+     * Store a function with the given name and body as byte array.
+     *
+     * @param namespace the namespace identifier
+     * @param function the function name identifier
+     * @param body body of the function
+     * @throws IOException exception thrown from the underlying storage implementation
+     */
+    void store(String namespace, String function, byte[] body) throws IOException;
 
-        final String functionNamespace = getFunctionNamespace(namespace);
-        logger.info("storing function: '{}' in objects namespace: '{}'", function, functionNamespace);
-        this.cantor.objects().store(functionNamespace, function, body);
-    }
+    /**
+     * Retrieve the function body from the given namespace.
+     *
+     * @param namespace the namespace identifier
+     * @param function the function name identifier
+     * @return byte array representation of the body of the function; null if not found
+     * @throws IOException exception thrown from the underlying storage implementation
+     */
+    byte[] get(String namespace, String function) throws IOException;
 
-    public byte[] get(final String namespace, final String function) throws IOException {
-        checkNamespace(namespace);
-        checkString(function, "missing function name");
+    /**
+     * Delete the function from the given namespace.
+     *
+     * @param namespace the namespace identifier
+     * @param function the function name identifier
+     * @throws IOException exception thrown from the underlying storage implementation
+     */
+    void delete(String namespace, String function) throws IOException;
 
-        final String functionNamespace = getFunctionNamespace(namespace);
-        logger.info("retrieving function: '{}' from objects namespace: '{}'", function, functionNamespace);
-        return this.cantor.objects().get(functionNamespace, function);
-    }
+    /**
+     * Get the list of all functions in the given namespace.
+     *
+     * @param namespace the namespace identifier
+     * @throws IOException exception thrown from the underlying storage implementation
+     */
+    Collection<String> list(String namespace) throws IOException;
 
-    public void delete(final String namespace, final String function) throws IOException {
-        checkNamespace(namespace);
-        checkString(function, "missing function name");
-
-        final String functionNamespace = getFunctionNamespace(namespace);
-        logger.info("deleting function: name '{}' from objects namespace: '{}'", function, functionNamespace);
-        this.cantor.objects().delete(functionNamespace, function);
-    }
-
-    public Collection<String> list(final String namespace) throws IOException {
-        checkNamespace(namespace);
-        return this.cantor.objects().keys(getFunctionNamespace(namespace), 0, -1);
-    }
-
-    public void run(final String namespace,
-                    final String function,
-                    final Context context,
-                    final Map<String, String> params) throws IOException {
-        checkNamespace(namespace);
-        checkString(function, "missing function name");
-        checkArgument(context != null, "missing context");
-        checkArgument(params != null, "missing parameters");
-
-        final byte[] body = get(namespace, function);
-        if (body == null) {
-            throw new IllegalArgumentException("function not found: " + function);
-        }
-        // execute the function and pass context to it
-        getExecutor(function).run(function, body, context, params);
-    }
-
-    private void initExecutors() {
-        final ServiceLoader<Executor> loader = ServiceLoader.load(Executor.class);
-        for (final Executor executor : loader) {
-            logger.info("loading function executor: {} for extensions: {}",
-                    executor.getClass().getSimpleName(), executor.getExtensions());
-            this.executors.add(executor);
-        }
-    }
-
-    // return the executor instance for the given executor name
-    private Executor getExecutor(final String functionName) {
-        final String extension = getExtension(functionName);
-        for (final Executor executor : this.executors) {
-            if (executor.getExtensions().contains(extension)) {
-                return executor;
-            }
-        }
-        final List<String> extensions = new ArrayList<>();
-        for (final Executor executor : this.executors) {
-            extensions.addAll(executor.getExtensions());
-        }
-        throw new IllegalArgumentException(
-                "executor for extension '" + extension + "' not found; supported extensions are: " + extensions.toString()
-        );
-    }
-
-    private String getExtension(final String name) {
-        return name.substring(name.lastIndexOf(".") + 1);
-    }
-
-    private String getFunctionNamespace(final String namespace) {
-        return String.format("functions-%s", namespace);
-    }
+    /**
+     * Execute the function, given the context and param arguments.
+     *
+     * @param namespace the namespace identifier
+     * @param function the function name identifier
+     * @param context the context variables to pass to function on execution
+     * @param params the map of parameters to pass to function on execution
+     * @throws IOException exception thrown from the underlying storage implementation
+     */
+    void run(String namespace, String function, Context context, Map<String, String> params) throws IOException;
 }

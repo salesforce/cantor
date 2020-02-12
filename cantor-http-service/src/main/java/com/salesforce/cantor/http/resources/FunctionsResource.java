@@ -9,7 +9,7 @@ package com.salesforce.cantor.http.resources;
 
 import com.google.gson.Gson;
 import com.salesforce.cantor.Cantor;
-import com.salesforce.cantor.functions.Functions;
+import com.salesforce.cantor.functions.FunctionsOnCantor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -45,10 +45,10 @@ public class FunctionsResource {
     private static final Gson parser = new Gson();
 
     private final Cantor cantor;
-    private final Functions functions;
+    private final FunctionsOnCantor functions;
 
     @Autowired
-    public FunctionsResource(final Cantor cantor, final Functions functions) {
+    public FunctionsResource(final Cantor cantor, final FunctionsOnCantor functions) {
         this.cantor = cantor;
         this.functions = functions;
     }

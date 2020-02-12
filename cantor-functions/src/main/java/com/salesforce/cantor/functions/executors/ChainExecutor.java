@@ -1,5 +1,7 @@
-package com.salesforce.cantor.functions;
+package com.salesforce.cantor.functions.executors;
 
+import com.salesforce.cantor.functions.Context;
+import com.salesforce.cantor.functions.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

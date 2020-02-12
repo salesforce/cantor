@@ -1,5 +1,7 @@
-package com.salesforce.cantor.functions;
+package com.salesforce.cantor.functions.executors;
 
+import com.salesforce.cantor.functions.Context;
+import com.salesforce.cantor.functions.Executor;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;

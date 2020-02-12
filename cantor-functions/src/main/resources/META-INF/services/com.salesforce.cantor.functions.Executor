@@ -1,4 +1,4 @@
-com.salesforce.cantor.functions.ScriptExecutor
-com.salesforce.cantor.functions.ChainExecutor
-com.salesforce.cantor.functions.FreemarkerExecutor
-com.salesforce.cantor.functions.JavaExecutor
+com.salesforce.cantor.functions.executors.ScriptExecutor
+com.salesforce.cantor.functions.executors.ChainExecutor
+com.salesforce.cantor.functions.executors.FreemarkerExecutor
+com.salesforce.cantor.functions.executors.JavaExecutor

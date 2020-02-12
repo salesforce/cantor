@@ -17,10 +17,10 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class Context {
     private final Cantor cantor;
-    private final Functions functions;
+    private final FunctionsOnCantor functions;
     private final Map<String, Object> entities = new ConcurrentHashMap<>();
 
-    public Context(final Cantor cantor, final Functions functions) {
+    public Context(final Cantor cantor, final FunctionsOnCantor functions) {
         this.cantor = cantor;
         this.functions = functions;
     }
@@ -29,7 +29,7 @@ public final class Context {
         return this.cantor;
     }
 
-    public Functions getFunctions() {
+    public FunctionsOnCantor getFunctions() {
         return this.functions;
     }
 
