@@ -79,10 +79,10 @@ public class Functions {
         return this.cantor.objects().keys(getFunctionNamespace(namespace), 0, -1);
     }
 
-    public void execute(final String namespace,
-                        final String function,
-                        final Context context,
-                        final Map<String, String> params) throws IOException {
+    public void run(final String namespace,
+                    final String function,
+                    final Context context,
+                    final Map<String, String> params) throws IOException {
         checkNamespace(namespace);
         checkString(function, "missing function name");
         checkArgument(context != null, "missing context");
@@ -93,7 +93,7 @@ public class Functions {
             throw new IllegalArgumentException("function not found: " + function);
         }
         // execute the function and pass context to it
-        getExecutor(function).execute(function, body, context, params);
+        getExecutor(function).run(function, body, context, params);
     }
 
     private void initExecutors() {

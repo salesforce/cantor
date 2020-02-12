@@ -39,9 +39,9 @@ public class ScriptExecutor implements Executor {
     }
 
     @Override
-    public void execute(final String function,
-                        final byte[] body,
-                        final Context context, Map<String, String> params) {
+    public void run(final String function,
+                    final byte[] body,
+                    final Context context, Map<String, String> params) {
         final String scriptBody = new String(body, StandardCharsets.UTF_8);
         final ScriptContext scriptContext = new SimpleScriptContext();
         // add all parameters

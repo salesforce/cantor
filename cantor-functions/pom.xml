@@ -35,12 +35,6 @@
             <artifactId>cantor-common</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <!--COMMONS IO-->
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-            <version>${commons-io.version}</version>
-        </dependency>
         <!--FREEMARKER-->
         <dependency>
             <groupId>org.freemarker</groupId>

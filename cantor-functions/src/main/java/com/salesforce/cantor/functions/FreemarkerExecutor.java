@@ -29,10 +29,10 @@ public class FreemarkerExecutor implements Executor {
     }
 
     @Override
-    public void execute(final String function,
-                        final byte[] body,
-                        final Context context,
-                        final Map<String, String> params) {
+    public void run(final String function,
+                    final byte[] body,
+                    final Context context,
+                    final Map<String, String> params) {
         final String templateBody = new String(body, StandardCharsets.UTF_8);
         process(function, templateBody, context, params);
     }

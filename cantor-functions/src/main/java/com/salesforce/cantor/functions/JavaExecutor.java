@@ -1,12 +1,12 @@
 package com.salesforce.cantor.functions;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
@@ -36,10 +36,10 @@ public class JavaExecutor implements Executor {
     }
 
     @Override
-    public void execute(final String function,
-                        final byte[] body,
-                        final Context context,
-                        final Map<String, String> params)
+    public void run(final String function,
+                    final byte[] body,
+                    final Context context,
+                    final Map<String, String> params)
             throws IOException {
 
         // two special parameters have to exist: .class and .method to indicate the class and method name
@@ -69,8 +69,7 @@ public class JavaExecutor implements Executor {
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         } finally {
-            // TODO replace this with java's create temp directory/delete on exit
-            deleteSource(tempPath);
+            deleteDirectory(tempPath.toFile());
         }
     }
 
@@ -97,9 +96,21 @@ public class JavaExecutor implements Executor {
         return sourcePath;
     }
 
-    private void deleteSource(final Path path) throws IOException {
-        logger.info("deleting path: {}", path);
-        FileUtils.deleteDirectory(path.toFile());
+    private void deleteDirectory(final File file) throws IOException {
+        if (file.isDirectory()) {
+            final File[] list = file.listFiles();
+            if (list == null) {
+                return;
+            }
+            for (final File f : list) {
+                if (f != null && f.isDirectory()) {
+                    deleteDirectory(f);
+                }
+            }
+        }
+        if (!file.delete()) {
+            throw new IOException("failed to delete: " + file.getAbsolutePath());
+        }
     }
 
     private Path getBaseDirectory(final String namespace) throws IOException {

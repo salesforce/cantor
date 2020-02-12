@@ -114,12 +114,12 @@ public class FunctionsResource {
     }
 
     @GET
-    @Path("/execute/{namespace}/{function}")
+    @Path("/run/{namespace}/{function}")
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Execute 'get' method on a function")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200",
-                    description = "Process and execute the function query string",
+                    description = "Process and execute the function",
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
             @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
@@ -132,12 +132,12 @@ public class FunctionsResource {
     }
 
     @PUT
-    @Path("/execute/{namespace}/{function}")
+    @Path("/run/{namespace}/{function}")
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Execute put method on function query")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200",
-                    description = "Process and execute the function query string",
+                    description = "Process and execute the function",
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
             @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
@@ -150,12 +150,12 @@ public class FunctionsResource {
     }
 
     @POST
-    @Path("/execute/{namespace}/{function}")
+    @Path("/run/{namespace}/{function}")
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Execute post method on function query")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200",
-                    description = "Process and execute the function query string",
+                    description = "Process and execute the function",
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
             @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
@@ -168,12 +168,12 @@ public class FunctionsResource {
     }
 
     @DELETE
-    @Path("/execute/{namespace}/{function}")
+    @Path("/run/{namespace}/{function}")
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Execute delete method on function query")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200",
-                    description = "Process and execute the function query string",
+                    description = "Process and execute the function",
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
             @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
@@ -234,7 +234,7 @@ public class FunctionsResource {
             // special parameters, http.request and http.response are passed to functions
             context.set("http.request", request);
             context.set("http.response", response);
-            this.functions.execute(namespace, function, context, getParams(request));
+            this.functions.run(namespace, function, context, getParams(request));
 
             // retrieve special parameter http.status from context
             final Object statusObject = context.get("http.status");

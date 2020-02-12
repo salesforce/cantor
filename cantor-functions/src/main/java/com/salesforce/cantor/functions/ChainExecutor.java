@@ -25,10 +25,10 @@ public class ChainExecutor implements Executor {
     }
 
     @Override
-    public void execute(final String function,
-                        final byte[] body,
-                        final Context context,
-                        final Map<String, String> params) throws IOException {
+    public void run(final String function,
+                    final byte[] body,
+                    final Context context,
+                    final Map<String, String> params) throws IOException {
         final String functionChain = new String(body, StandardCharsets.UTF_8);
         logger.info("executing function chain: {}", functionChain);
 
@@ -45,7 +45,7 @@ public class ChainExecutor implements Executor {
                     ? parseParams(qs.substring(qs.indexOf("?") + 1))
                     : Collections.emptyMap();
             logger.info("executing function '{}' with parameters: '{}'", functionName, functionParams);
-            context.getFunctions().execute(functionNamespace, functionName, context, functionParams);
+            context.getFunctions().run(functionNamespace, functionName, context, functionParams);
             logger.info("context: {}", context.keys());
         }
     }
