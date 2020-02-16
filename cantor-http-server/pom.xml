@@ -12,6 +12,11 @@
     <properties>
         <jersey.version>2.28</jersey.version>
         <swagger.version>2.0.9</swagger.version>
+        <groovy.version>2.5.9</groovy.version>
+        <freemarker.version>2.3.23</freemarker.version>
+        <jython.version>2.7.1</jython.version>
+        <luaj.version>3.0.1</luaj.version>
+        <kotlin.version>1.3.61</kotlin.version>
     </properties>
 
     <dependencies>
@@ -39,26 +44,60 @@
             <artifactId>cantor-misc</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <!--JERSEY-->
-        <!--Server-->
+        <!--FREEMARKER-->
+        <dependency>
+            <groupId>org.freemarker</groupId>
+            <artifactId>freemarker</artifactId>
+            <version>${freemarker.version}</version>
+        </dependency>
+        <!--GROOVY-->
+        <dependency>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy-jsr223</artifactId>
+            <version>${groovy.version}</version>
+        </dependency>
+        <!--JYTHON-->
+        <dependency>
+            <groupId>org.python</groupId>
+            <artifactId>jython-standalone</artifactId>
+            <version>${jython.version}</version>
+        </dependency>
+        <!--LUAJ-->
+        <dependency>
+            <groupId>org.luaj</groupId>
+            <artifactId>luaj-jse</artifactId>
+            <version>${luaj.version}</version>
+        </dependency>
+        <!--KOTLIN-->
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-scripting-jsr223-embeddable</artifactId>
+            <version>${kotlin.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-scripting-compiler-embeddable</artifactId>
+            <version>${kotlin.version}</version>
+        </dependency>
+        <!--JERSEY JETTY-->
         <dependency>
             <groupId>org.glassfish.jersey.containers</groupId>
             <artifactId>jersey-container-jetty-servlet</artifactId>
             <version>${jersey.version}</version>
         </dependency>
-        <!--Injection System-->
+        <!--JERSEY HK2-->
         <dependency>
             <groupId>org.glassfish.jersey.inject</groupId>
             <artifactId>jersey-hk2</artifactId>
             <version>${jersey.version}</version>
         </dependency>
-        <!--File Upload Support-->
+        <!--JERSEY MULTIPART-->
         <dependency>
             <groupId>org.glassfish.jersey.media</groupId>
             <artifactId>jersey-media-multipart</artifactId>
             <version>${jersey.version}</version>
         </dependency>
-        <!--Json Support-->
+        <!--JERSEY JSON-->
         <dependency>
             <groupId>org.glassfish.jersey.media</groupId>
             <artifactId>jersey-media-json-jackson</artifactId>

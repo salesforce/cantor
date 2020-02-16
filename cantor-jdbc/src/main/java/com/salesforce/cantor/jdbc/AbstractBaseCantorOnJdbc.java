@@ -83,6 +83,7 @@ abstract class AbstractBaseCantorOnJdbc {
     private void init() throws IOException {
         if (!this.isInitialized.getAndSet(true)) {
             doCreateInternalDatabase();
+            doValidations();
         }
     }
 
@@ -99,6 +100,8 @@ abstract class AbstractBaseCantorOnJdbc {
             closeConnection(connection);
         }
     }
+
+    protected abstract void doValidations() throws IOException;
 
     private String getCreateNamespaceLookupTableSql() {
         return String.format("CREATE TABLE IF NOT EXISTS %s.%s ( " +
@@ -167,26 +170,6 @@ abstract class AbstractBaseCantorOnJdbc {
         final String cleanName = namespace.replaceAll("[^A-Za-z0-9_\\-]", "").toLowerCase();
         return String.format("cantor-%s-%s",
                 cleanName.substring(0, Math.min(32, cleanName.length())), Math.abs(namespace.hashCode()));
-    }
-
-    protected String getCreateInternalDatabaseSql() {
-        return String.format("CREATE DATABASE IF NOT EXISTS %s", quote(cantorInternalDatabaseName));
-    }
-
-    protected String getCreateDatabaseSql(final String database) {
-        return String.format("CREATE DATABASE IF NOT EXISTS %s", quote(database));
-    }
-
-    protected String getDropDatabaseSql(final String database) {
-        return String.format("DROP DATABASE IF EXISTS %s", quote(database));
-    }
-
-    protected String getDropTableSql(final String namespace, final String tableName) {
-        return String.format("DROP TABLE %s", getTableFullName(namespace, tableName));
-    }
-
-    protected String getTableFullName(final String namespace, final String tableName) {
-        return String.format("%s.%s", quote(getDatabaseNameForNamespace(namespace)), quote(tableName));
     }
 
     protected DataSource getDataSource() {
@@ -301,5 +284,24 @@ abstract class AbstractBaseCantorOnJdbc {
         return "DATABASE";
     }
 
+    protected String getCreateInternalDatabaseSql() {
+        return String.format("CREATE DATABASE IF NOT EXISTS %s", quote(cantorInternalDatabaseName));
+    }
+
+    protected String getCreateDatabaseSql(final String database) {
+        return String.format("CREATE DATABASE IF NOT EXISTS %s", quote(database));
+    }
+
+    protected String getDropDatabaseSql(final String database) {
+        return String.format("DROP DATABASE IF EXISTS %s", quote(database));
+    }
+
+    protected String getDropTableSql(final String namespace, final String tableName) {
+        return String.format("DROP TABLE %s", getTableFullName(namespace, tableName));
+    }
+
+    protected String getTableFullName(final String namespace, final String tableName) {
+        return String.format("%s.%s", quote(getDatabaseNameForNamespace(namespace)), quote(tableName));
+    }
 }
 

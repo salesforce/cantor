@@ -99,6 +99,12 @@ public abstract class AbstractBaseMapsOnJdbc extends AbstractBaseCantorOnJdbc im
                                                    Map<String, String> map
     );
 
+    @Override
+    protected void doValidations() throws IOException {
+        logger.info("looking for mismatch between database and maps lookup tables");
+        // TODO
+    }
+
     private void createMapTable(final Connection connection,
                                 final String namespace,
                                 final Map<String, String> map) throws IOException {
