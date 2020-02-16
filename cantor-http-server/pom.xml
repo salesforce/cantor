@@ -38,6 +38,12 @@
             <artifactId>cantor-h2</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!--CANTOR MYSQL-->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-mysql</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!--CANTOR MISC-->
         <dependency>
             <groupId>com.salesforce.cantor</groupId>

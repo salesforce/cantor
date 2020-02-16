@@ -45,7 +45,7 @@ public class MysqlDataSourceProvider {
             connectoinPoolDataSource.setPassword(password);
         }
 
-        connectoinPoolDataSource.setConnectionTimeout(10 * 1000);  // 10 seconds connection timeout
+        connectoinPoolDataSource.setConnectionTimeout(30 * 1000);  // 30 seconds connection timeout
         connectoinPoolDataSource.addDataSourceProperty("useUnicode", true);
         connectoinPoolDataSource.addDataSourceProperty("useSSL", false);
         connectoinPoolDataSource.addDataSourceProperty("allowPublicKeyRetrieval", true);

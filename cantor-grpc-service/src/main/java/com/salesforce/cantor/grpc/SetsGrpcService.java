@@ -9,7 +9,6 @@ package com.salesforce.cantor.grpc;
 
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Sets;
-import com.salesforce.cantor.common.CommonPreconditions;
 import com.salesforce.cantor.grpc.sets.*;
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;

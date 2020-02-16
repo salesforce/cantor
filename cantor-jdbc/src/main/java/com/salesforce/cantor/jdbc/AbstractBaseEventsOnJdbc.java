@@ -508,9 +508,7 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
                 metadataQuery.keySet(),
                 dimensionsQuery.keySet()
         );
-
-        // max of 10 concurrent calls; we don't want to blow up connections
-        final ExecutorService executorService = Executors.newFixedThreadPool(10);
+        final ExecutorService executorService = Executors.newCachedThreadPool();
         final List<Event> results = new CopyOnWriteArrayList<>();
         for (final String chunkTableName : chunkTables) {
             executorService.submit(() ->
@@ -767,7 +765,8 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
                 dimensionsQuery.keySet()
         );
 
-        final Set<String> results = new HashSet<>();
+        final ExecutorService executorService = Executors.newCachedThreadPool();
+        final Set<String> results = new ConcurrentSkipListSet<>();
         for (final String chunkTableName : chunkTables) {
             final StringBuilder sqlBuilder = new StringBuilder(String.format(sqlFormat,
                     quote(getMetadataKeyColumnName(metadataKey)),
@@ -784,19 +783,26 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
 
             final String sql = sqlBuilder.toString();
 
-            try (final Connection connection = getConnection()) {
-                try (final PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-                    addParameters(preparedStatement, parameters.toArray());
-                    try (final ResultSet resultSet = preparedStatement.executeQuery()) {
-                        while (resultSet.next()) {
-                            results.add(resultSet.getString(1));
+            executorService.submit(() -> {
+                try (final Connection connection = getConnection()) {
+                    try (final PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                        addParameters(preparedStatement, parameters.toArray());
+                        try (final ResultSet resultSet = preparedStatement.executeQuery()) {
+                            while (resultSet.next()) {
+                                results.add(resultSet.getString(1));
+                            }
                         }
                     }
+                } catch (SQLException | IOException e) {
+                    logger.warn("caught exception executing query sql '{}': {}", sql, e.getMessage());
                 }
-            } catch (SQLException e) {
-                logger.warn("caught exception executing query sql '{}': {}", sql, e.getMessage());
-                throw new IOException(e);
-            }
+            });
+        }
+        executorService.shutdown();
+        try {
+            executorService.awaitTermination(30, TimeUnit.MINUTES);
+        } catch (InterruptedException e) {
+            throw new IOException("events get operation timed out", e);
         }
         return results;
     }

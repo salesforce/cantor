@@ -12,6 +12,7 @@ import com.salesforce.cantor.http.resources.ObjectsResource;
 import com.salesforce.cantor.http.resources.SetsResource;
 import com.salesforce.cantor.misc.loggable.LoggableCantor;
 
+import com.salesforce.cantor.mysql.CantorOnMysql;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -31,7 +32,7 @@ public class EmbeddedHttpServer {
         final ResourceConfig config = new SwaggerJaxrsConfig();
 
         // bind resources with required constructor parameters
-        final Cantor cantor = getCantor();
+        final Cantor cantor = getCantorOnMysql();
         config.register(new AbstractBinder() {
             @Override
             protected void configure() {
@@ -57,7 +58,17 @@ public class EmbeddedHttpServer {
         return server;
     }
 
-    private Cantor getCantor() {
+    private Cantor getCantorOnMysql() {
+        try {
+            final Cantor cantorOnMysql = new CantorOnMysql("localhost", 3306, null, null);
+            return new LoggableCantor(cantorOnMysql);
+        } catch (final IOException e) {
+            logger.error("failed to initialize cantor:", e);
+        }
+        return null;
+    }
+
+    private Cantor getCantorOnH2() {
         try {
             // set up a simple cantor using H2
             final H2DataSourceProperties h2Properties = new H2DataSourceProperties()
