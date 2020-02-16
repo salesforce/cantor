@@ -162,6 +162,42 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
         executeUpdate(connection, chunkLookupTableSql);
     }
 
+    @Override
+    protected void doValidations() throws IOException {
+        logger.info("looking for mismatch between database and lookup tables");
+        Connection connection = null;
+        try {
+            connection = getConnection();
+            // for each namespace make sure tables in database and lookup table match
+            for (final String namespace : getNamespaces()) {
+                final List<String> tablesInDatabase = getTablesInDatabase(connection, namespace);
+                final List<String> tablesInlookupTable = getChunkTableNames(
+                        namespace, 0, Long.MAX_VALUE, Collections.emptyList(), Collections.emptyList()
+                );
+                for (final String chunkTable : tablesInlookupTable) {
+                    if (!tablesInDatabase.contains(chunkTable)) {
+                        logger.warn("chunk table '{}' in namespace '{}' does not exist in database; removing it from lookup table",
+                                chunkTable, namespace
+                        );
+                        removeChunkFromLookupTable(connection, namespace, chunkTable);
+                    }
+                }
+                for (final String databaseTable : tablesInDatabase) {
+                    if (getChunksLookupTableName().equalsIgnoreCase(databaseTable) || !databaseTable.startsWith(getChunkTableNamePrefix())) {
+                        // ignore chunk lookup and tables that do not start with the chunk table name prefix
+                        continue;
+                    }
+                    if (!tablesInlookupTable.contains(databaseTable)) {
+                        logger.warn("table '{}' in namespace '{}' exists in database but not in lookup table", databaseTable, namespace);
+                        dropTable(connection, namespace, databaseTable);
+                    }
+                }
+            }
+        } finally {
+            closeConnection(connection);
+        }
+    }
+
     protected abstract String getCreateChunkLookupTableSql(String namespace);
 
     protected abstract String getCreateChunkTableSql(String chunkTableName,
@@ -191,11 +227,23 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
         addChunkToLookupTable(connection, namespace, chunkTableName, sampleEvent);
     }
 
+    private void removeChunkFromLookupTable(final Connection connection,
+                                            final String namespace,
+                                            final String chunkTableName) throws IOException {
+        logger.info("removing chunk '{}' from lookup table for namespace '{}'", chunkTableName, namespace);
+        // construct the sql to delete chunk metadata from lookup table
+        final String deleteChunkLookupSql = String.format("DELETE FROM %s WHERE %s = ?",
+                getTableFullName(namespace, getChunksLookupTableName()),
+                quote(getTableNameColumnName())
+        );
+        executeUpdate(connection, deleteChunkLookupSql, chunkTableName);
+    }
+
     private void addChunkToLookupTable(final Connection connection,
                                        final String namespace,
                                        final String chunkTableName,
                                        final Event event) throws IOException {
-        logger.info("adding chunk '{}' to lookup table", chunkTableName);
+        logger.info("adding chunk '{}' to lookup table for namespace '{}'", chunkTableName, namespace);
         executeUpdate(connection,
                 String.format("INSERT INTO %s SET %s = ?, %s = ?, %s = ? ON DUPLICATE KEY UPDATE %s = ?",
                         getTableFullName(namespace, getChunksLookupTableName()),
@@ -238,6 +286,21 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
                     chunkTableName
             );
         }
+    }
+
+    private List<String> getTablesInDatabase(final Connection connection, final String namespace) throws IOException {
+        final List<String> tables = new ArrayList<>();
+        try {
+            final DatabaseMetaData databaseMetaData = connection.getMetaData();
+            final ResultSet resultSet = databaseMetaData.getTables(getDatabaseNameForNamespace(namespace), null, "%", null);
+            while (resultSet.next()) {
+                tables.add(resultSet.getString(3)); // third column is the table name
+            }
+        } catch (SQLException e) {
+            logger.warn("failed to fetch list of tables in database");
+            throw new IOException(e);
+        }
+        return tables;
     }
 
     // returns map of metadata and dimension column names to the key names
@@ -291,11 +354,6 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
 
     private void doExpireChunkTable(final String namespace, final String chunkTable) throws IOException {
         logger.info("expiring chunk table {} from namespace {}", chunkTable, namespace);
-        // construct the sql to delete chunk metadata from lookup table
-        final String deleteChunkLookupSql = String.format("DELETE FROM %s WHERE %s = ?",
-                getTableFullName(namespace, getChunksLookupTableName()),
-                quote(getTableNameColumnName())
-        );
 
         // drop the chunk table and delete lookup entries in a transaction
         Connection connection = null;
@@ -303,14 +361,18 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
             // open a transaction
             connection = openTransaction(getConnection());
 
-            // delete the chunk table
-            executeUpdate(connection, deleteChunkLookupSql, chunkTable);
+            // delete chunk table from lookup table
+            removeChunkFromLookupTable(connection, namespace, chunkTable);
 
             // remove chunk table name from lookup table
-            executeUpdate(connection, getDropTableSql(namespace, chunkTable));
+            dropTable(connection, namespace, chunkTable);
         } finally {
             closeConnection(connection);
         }
+    }
+
+    private void dropTable(final Connection connection, final String namespace, final String chunkTable) throws IOException {
+        executeUpdate(connection, getDropTableSql(namespace, chunkTable));
     }
 
     private void doStore(final String namespace, final Collection<Event> batch) throws IOException {
@@ -942,7 +1004,8 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
                                      final Collection<String> dimensionKeys) {
         final DateFormat dateFormat = new SimpleDateFormat("yyyy_MM_dd");
         dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-        return String.format("CANTOR-EVENTS-CHUNK-%s_%s",
+        return String.format("%s%s_%s",
+                getChunkTableNamePrefix(),
                 dateFormat.format(new Date(getWindowForTimestamp(timestampMillis))),
                 getKeysHash(metadataKeys, dimensionKeys)
         );
@@ -959,6 +1022,10 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
 
     protected String getChunksLookupTableName() {
         return "CANTOR-EVENTS-CHUNKS-LOOKUP";
+    }
+
+    protected String getChunkTableNamePrefix() {
+        return "CANTOR-EVENTS-CHUNK-";
     }
 
     protected String getTableNameColumnName() {

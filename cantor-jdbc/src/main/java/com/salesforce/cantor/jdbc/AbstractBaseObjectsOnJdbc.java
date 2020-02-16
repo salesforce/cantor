@@ -109,6 +109,12 @@ public abstract class AbstractBaseObjectsOnJdbc
         createObjectsTable(connection, namespace);
     }
 
+    @Override
+    protected void doValidations() throws IOException {
+        logger.info("looking for mismatch between database and objects lookup tables");
+        // TODO
+    }
+
     private Collection<String> doKeys(final String namespace, final int start, final int count) throws IOException {
         final String sql = String.format("SELECT %s FROM %s %s",
                 quote(getKeyColumnName()),

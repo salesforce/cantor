@@ -170,6 +170,12 @@ public abstract class AbstractBaseSetsOnJdbc extends AbstractBaseCantorOnJdbc im
         executeUpdate(connection, getCreateSetsTableSql(namespace));
     }
 
+    @Override
+    protected void doValidations() throws IOException {
+        logger.info("looking for mismatch between database and sets lookup tables");
+        // TODO
+    }
+
     private int doSize(final String namespace, final String set) throws IOException {
         final String sql = String.format("SELECT COUNT(*) FROM %s WHERE %s = ? ",
                 getTableFullName(namespace, getSetsTableName()),
