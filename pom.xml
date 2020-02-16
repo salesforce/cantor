@@ -108,6 +108,7 @@
         <module>cantor-base</module>
         <module>cantor-common</module>
         <module>cantor-jdbc</module>
+        <module>cantor-functions</module>
         <module>cantor-grpc-protos</module>
         <module>cantor-grpc-client</module>
         <module>cantor-grpc-service</module>

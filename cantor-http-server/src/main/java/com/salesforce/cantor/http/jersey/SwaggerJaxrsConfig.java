@@ -25,7 +25,7 @@ class SwaggerJaxrsConfig extends ResourceConfig {
         this.register(GenericExceptionMapper.class);
 
         // cantor server resources
-        this.packages("com.salesforce.cantor.http.jersey");
+        this.packages("com.salesforce.cantor.http.resources");
 
         // swagger initialization resource
         this.register(OpenApiResource.class);
