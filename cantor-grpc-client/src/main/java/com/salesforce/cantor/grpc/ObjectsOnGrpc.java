@@ -27,10 +27,6 @@ public class ObjectsOnGrpc extends AbstractBaseGrpcClient<ObjectsServiceBlocking
         super(ObjectsServiceGrpc::newBlockingStub, target);
     }
 
-    public ObjectsOnGrpc(final String target, final long timeoutMillis) {
-        super(ObjectsServiceGrpc::newBlockingStub, target, timeoutMillis);
-    }
-
     @Override
     public Collection<String> namespaces() throws IOException {
         return call(() -> {

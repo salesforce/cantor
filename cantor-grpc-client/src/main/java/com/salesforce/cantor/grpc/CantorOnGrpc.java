@@ -15,13 +15,6 @@ public class CantorOnGrpc implements Cantor {
     private final Maps maps;
     private final Events events;
 
-    public CantorOnGrpc(final String target, final long deadlineMillis) {
-        this.objects = new ObjectsOnGrpc(target, deadlineMillis);
-        this.sets = new SetsOnGrpc(target, deadlineMillis);
-        this.maps = new MapsOnGrpc(target, deadlineMillis);
-        this.events = new EventsOnGrpc(target, deadlineMillis);
-    }
-
     public CantorOnGrpc(final String target) {
         this.objects = new ObjectsOnGrpc(target);
         this.sets = new SetsOnGrpc(target);

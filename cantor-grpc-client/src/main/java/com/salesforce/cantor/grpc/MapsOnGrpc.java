@@ -27,10 +27,6 @@ public class MapsOnGrpc extends AbstractBaseGrpcClient<MapsServiceBlockingStub> 
         super(MapsServiceGrpc::newBlockingStub, target);
     }
 
-    public MapsOnGrpc(final String target, final long timeoutMillis) {
-        super(MapsServiceGrpc::newBlockingStub, target, timeoutMillis);
-    }
-
     @Override
     public Collection<String> namespaces() throws IOException {
         return call(() -> {
