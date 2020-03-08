@@ -170,27 +170,37 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
             connection = getConnection();
             // for each namespace make sure tables in database and lookup table match
             for (final String namespace : getNamespaces()) {
+                logger.info("verifying namespace '{}'", namespace);
+                // get the list of all tables in the database
                 final List<String> tablesInDatabase = getTablesInDatabase(connection, namespace);
+                // get the list of tables in the lookup table
                 final List<String> tablesInlookupTable = getChunkTableNames(
                         namespace, 0, Long.MAX_VALUE, Collections.emptyList(), Collections.emptyList()
                 );
+                // make sure all chunk tables exist in the database
                 for (final String chunkTable : tablesInlookupTable) {
-                    if (!tablesInDatabase.contains(chunkTable)) {
-                        logger.warn("chunk table '{}' in namespace '{}' does not exist in database; removing it from lookup table",
-                                chunkTable, namespace
-                        );
-                        removeChunkFromLookupTable(connection, namespace, chunkTable);
+                    if (tablesInDatabase.contains(chunkTable)) {
+                        // chunk table exists
+                        continue;
                     }
+                    logger.warn("chunk table '{}' in namespace '{}' does not exist in database; removing it from lookup table",
+                            chunkTable, namespace
+                    );
+                    // could not find the chunk table in the database; remove it from the lookup table
+                    removeChunkFromLookupTable(connection, namespace, chunkTable);
                 }
+                // make sure all tables in the database that start with chunk table name prefix exist in the chunk table
                 for (final String databaseTable : tablesInDatabase) {
-                    if (getChunksLookupTableName().equalsIgnoreCase(databaseTable) || !databaseTable.startsWith(getChunkTableNamePrefix())) {
+                    if (getChunksLookupTableName().equalsIgnoreCase(databaseTable)
+                            || !databaseTable.startsWith(getChunkTableNamePrefix())
+                            || tablesInlookupTable.contains(databaseTable)
+                    ) {
                         // ignore chunk lookup and tables that do not start with the chunk table name prefix
                         continue;
                     }
-                    if (!tablesInlookupTable.contains(databaseTable)) {
-                        logger.warn("table '{}' in namespace '{}' exists in database but not in lookup table", databaseTable, namespace);
-                        dropTable(connection, namespace, databaseTable);
-                    }
+                    // could not find the table in the lookup table; remove it from the database
+                    logger.warn("table '{}' in namespace '{}' exists in database but not in lookup table", databaseTable, namespace);
+                    dropTable(connection, namespace, databaseTable);
                 }
             }
         } finally {
@@ -1026,6 +1036,10 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
         return Math.abs(orderedMetadataKeysCsv.hashCode()) + "_" + Math.abs(orderedDimensionKeysCsv.hashCode());
     }
 
+    protected String getEventTimestampColumnName() {
+        return "TIMESTAMP_MILLIS";
+    }
+
     protected String getChunksLookupTableName() {
         return "CANTOR-EVENTS-CHUNKS-LOOKUP";
     }
@@ -1076,9 +1090,5 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
                 + cleanKey.substring(0, Math.min(32, cleanKey.length()))
                 + "_"
                 + Math.abs(metadataKey.hashCode());
-    }
-
-    protected String getEventTimestampColumnName() {
-        return "TIMESTAMP_MILLIS";
     }
 }
