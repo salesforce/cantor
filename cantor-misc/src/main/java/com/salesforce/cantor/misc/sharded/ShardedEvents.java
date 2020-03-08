@@ -11,23 +11,13 @@ import com.salesforce.cantor.Events;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static com.salesforce.cantor.common.CommonPreconditions.*;
 import static com.salesforce.cantor.common.EventsPreconditions.*;
 
-public class ShardedEvents implements Events {
-    private final AtomicReference<Map<String, List<Events>>> namespaceLookupTable = new AtomicReference<>();
-    private final Events[] delegates;
-
+public class ShardedEvents extends AbstractBaseShardedNamespaceable<Events> implements Events {
     public ShardedEvents(final Events... delegates) {
-        checkArgument(delegates != null && delegates.length > 0, "null/empty delegates");
-        this.delegates = delegates;
-    }
-
-    @Override
-    public Collection<String> namespaces() throws IOException {
-        return doNamespaces();
+        super(delegates);
     }
 
     @Override
@@ -127,64 +117,5 @@ public class ShardedEvents implements Events {
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
         checkExpire(namespace, endTimestampMillis);
         getShard(namespace).expire(namespace, endTimestampMillis);
-    }
-
-    private Collection<String> doNamespaces() throws IOException {
-        final Set<String> results = new HashSet<>();
-        for (final Events delegate : this.delegates) {
-            results.addAll(delegate.namespaces());
-        }
-        return results;
-    }
-
-    private void loadNamespaceLookupTable() throws IOException {
-        final Map<String, List<Events>> namespaceToDelegates = new HashMap<>();
-        for (final Events delegate : this.delegates) {
-            for (final String namespace : delegate.namespaces()) {
-                namespaceToDelegates.putIfAbsent(namespace, new ArrayList<>());
-                namespaceToDelegates.get(namespace).add(delegate);
-            }
-        }
-        this.namespaceLookupTable.set(namespaceToDelegates);
-    }
-
-    private void reloadLookupIfNeeded(final String namespace) throws IOException {
-        // if namespace is not found, reload the lookup table, perhaps another client has created it
-        if (this.namespaceLookupTable.get() == null || !this.namespaceLookupTable.get().containsKey(namespace)) {
-            loadNamespaceLookupTable();
-        }
-    }
-
-    private Events getShard(final String namespace) throws IOException {
-        reloadLookupIfNeeded(namespace);
-
-        final List<Events> delegates = this.namespaceLookupTable.get().get(namespace);
-        if (delegates == null) {
-            throw new IOException("shard not found for events namespace " + namespace);
-        }
-        if (delegates.size() != 1) {
-            throw new IOException("more than one shard found for events namespace " + namespace);
-        }
-        return delegates.get(0);
-    }
-
-    private Events getShardForCreate(final String namespace) throws IOException {
-        reloadLookupIfNeeded(namespace);
-
-        // if namespace is found in the lookup table, return that
-        if (this.namespaceLookupTable.get().containsKey(namespace)) {
-            return getShard(namespace);
-        }
-        // otherwise, find the shard with smallest number of namespaces and return that
-        int minNamespaceCount = this.delegates[0].namespaces().size();
-        Events smallestShard = this.delegates[0];
-        for (int i = 1; i < this.delegates.length; ++i) {
-            final int namespaceCount = this.delegates[i].namespaces().size();
-            if (namespaceCount < minNamespaceCount) {
-                minNamespaceCount = namespaceCount;
-                smallestShard = this.delegates[i];
-            }
-        }
-        return smallestShard;
     }
 }

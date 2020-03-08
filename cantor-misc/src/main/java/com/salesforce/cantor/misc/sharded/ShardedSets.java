@@ -11,23 +11,13 @@ import com.salesforce.cantor.Sets;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static com.salesforce.cantor.common.CommonPreconditions.*;
 import static com.salesforce.cantor.common.SetsPreconditions.*;
 
-public class ShardedSets implements Sets {
-    private final AtomicReference<Map<String, List<Sets>>> namespaceLookupTable = new AtomicReference<>();
-    private final Sets[] delegates;
-
+public class ShardedSets extends AbstractBaseShardedNamespaceable<Sets> implements Sets {
     public ShardedSets(final Sets... delegates) {
-        checkArgument(delegates != null && delegates.length > 0, "null/empty delegates");
-        this.delegates = delegates;
-    }
-
-    @Override
-    public Collection<String> namespaces() throws IOException {
-        return doNamespaces();
+        super(delegates);
     }
 
     @Override
@@ -156,64 +146,5 @@ public class ShardedSets implements Sets {
     public void inc(final String namespace, final String set, final String entry, final long count) throws IOException {
         checkInc(namespace, set, entry, count);
         getShard(namespace).inc(namespace, set, entry, count);
-    }
-
-    private Collection<String> doNamespaces() throws IOException {
-        final Set<String> results = new HashSet<>();
-        for (final Sets delegate : this.delegates) {
-            results.addAll(delegate.namespaces());
-        }
-        return results;
-    }
-
-    private void loadNamespaceLookupTable() throws IOException {
-        final Map<String, List<Sets>> namespaceToDelegates = new HashMap<>();
-        for (final Sets delegate : this.delegates) {
-            for (final String namespace : delegate.namespaces()) {
-                namespaceToDelegates.putIfAbsent(namespace, new ArrayList<>());
-                namespaceToDelegates.get(namespace).add(delegate);
-            }
-        }
-        this.namespaceLookupTable.set(namespaceToDelegates);
-    }
-
-    private void reloadLookupIfNeeded(final String namespace) throws IOException {
-        // if namespace is not found, reload the lookup table, perhaps another client has created it
-        if (this.namespaceLookupTable.get() == null || !this.namespaceLookupTable.get().containsKey(namespace)) {
-            loadNamespaceLookupTable();
-        }
-    }
-
-    private Sets getShard(final String namespace) throws IOException {
-        reloadLookupIfNeeded(namespace);
-
-        final List<Sets> delegates = this.namespaceLookupTable.get().get(namespace);
-        if (delegates == null) {
-            throw new IOException("shard not found for sets namespace " + namespace);
-        }
-        if (delegates.size() != 1) {
-            throw new IOException("more than one shard found for sets namespace " + namespace);
-        }
-        return delegates.get(0);
-    }
-
-    private Sets getShardForCreate(final String namespace) throws IOException {
-        reloadLookupIfNeeded(namespace);
-
-        // if namespace is found in the lookup table, return that
-        if (this.namespaceLookupTable.get().containsKey(namespace)) {
-            return getShard(namespace);
-        }
-        // otherwise, find the shard with smallest number of namespaces and return that
-        int minNamespaceCount = this.delegates[0].namespaces().size();
-        Sets smallestShard = this.delegates[0];
-        for (int i = 1; i < this.delegates.length; ++i) {
-            final int namespaceCount = this.delegates[i].namespaces().size();
-            if (namespaceCount < minNamespaceCount) {
-                minNamespaceCount = namespaceCount;
-                smallestShard = this.delegates[i];
-            }
-        }
-        return smallestShard;
     }
 }

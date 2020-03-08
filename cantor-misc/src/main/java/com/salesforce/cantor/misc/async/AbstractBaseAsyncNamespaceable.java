@@ -7,17 +7,22 @@
 
 package com.salesforce.cantor.misc.async;
 
+import com.salesforce.cantor.Namespaceable;
+
 import java.io.IOException;
 import java.util.concurrent.*;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 
-class AbstractBaseAsyncCantor {
+abstract class AbstractBaseAsyncNamespaceable<T extends Namespaceable> implements Namespaceable {
+    private final T delegate;
     private final ExecutorService executorService;
 
-    AbstractBaseAsyncCantor(final ExecutorService executorService) {
+    AbstractBaseAsyncNamespaceable(final T delegate, final ExecutorService executorService) {
+        checkArgument(delegate != null, "null delegate");
         checkArgument(executorService != null, "null executor service");
         this.executorService = executorService;
+        this.delegate = delegate;
     }
 
     <R> R submitCall(final Callable<R> callable) throws IOException {
@@ -29,6 +34,10 @@ class AbstractBaseAsyncCantor {
         } catch (InterruptedException | ExecutionException e) {
             throw new IOException(e);
         }
+    }
+
+    protected T getDelegate() {
+        return this.delegate;
     }
 }
 

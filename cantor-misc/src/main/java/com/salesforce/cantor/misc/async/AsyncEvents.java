@@ -19,36 +19,32 @@ import java.util.concurrent.ExecutorService;
 import static com.salesforce.cantor.common.CommonPreconditions.*;
 import static com.salesforce.cantor.common.EventsPreconditions.*;
 
-public class AsyncEvents extends AbstractBaseAsyncCantor implements Events {
-    private final Events delegate;
-
+public class AsyncEvents extends AbstractBaseAsyncNamespaceable<Events> implements Events {
     public AsyncEvents(final Events delegate, final ExecutorService executorService) {
-        super(executorService);
-        checkArgument(delegate != null, "null delegate");
-        this.delegate = delegate;
+        super(delegate, executorService);
     }
 
     @Override
     public Collection<String> namespaces() throws IOException {
-        return submitCall(this.delegate::namespaces);
+        return submitCall(getDelegate()::namespaces);
     }
 
     @Override
     public void create(final String namespace) throws IOException {
         checkCreate(namespace);
-        submitCall(() -> { this.delegate.create(namespace); return null; });
+        submitCall(() -> { getDelegate().create(namespace); return null; });
     }
 
     @Override
     public void drop(final String namespace) throws IOException {
         checkDrop(namespace);
-        submitCall(() -> { this.delegate.drop(namespace); return null; });
+        submitCall(() -> { getDelegate().drop(namespace); return null; });
     }
 
     @Override
     public void store(final String namespace, final Collection<Event> batch) throws IOException {
         checkStore(namespace, batch);
-        submitCall(() -> { this.delegate.store(namespace, batch); return null; });
+        submitCall(() -> { getDelegate().store(namespace, batch); return null; });
     }
 
     @Override
@@ -61,7 +57,7 @@ public class AsyncEvents extends AbstractBaseAsyncCantor implements Events {
                            final boolean ascending,
                            final int limit) throws IOException {
         checkGet(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        return submitCall(() -> this.delegate
+        return submitCall(() -> getDelegate()
                 .get(namespace,
                         startTimestampMillis,
                         endTimestampMillis,
@@ -80,7 +76,7 @@ public class AsyncEvents extends AbstractBaseAsyncCantor implements Events {
                       final Map<String, String> metadataQuery,
                       final Map<String, String> dimensionsQuery) throws IOException {
         checkDelete(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        return submitCall(() -> this.delegate
+        return submitCall(() -> getDelegate()
                 .delete(namespace,
                         startTimestampMillis,
                         endTimestampMillis,
@@ -108,7 +104,7 @@ public class AsyncEvents extends AbstractBaseAsyncCantor implements Events {
                 aggregateIntervalMillis,
                 aggregationFunction
         );
-        return submitCall(() -> this.delegate
+        return submitCall(() -> getDelegate()
                 .aggregate(namespace,
                         dimension,
                         startTimestampMillis,
@@ -129,7 +125,7 @@ public class AsyncEvents extends AbstractBaseAsyncCantor implements Events {
                                 final Map<String, String> metadataQuery,
                                 final Map<String, String> dimensionsQuery) throws IOException {
         checkMetadata(namespace, metadataKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        return submitCall(() -> this.delegate
+        return submitCall(() -> getDelegate()
                 .metadata(namespace,
                         metadataKey,
                         startTimestampMillis,
@@ -143,7 +139,7 @@ public class AsyncEvents extends AbstractBaseAsyncCantor implements Events {
     @Override
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
         checkExpire(namespace, endTimestampMillis);
-        submitCall(() -> { this.delegate.expire(namespace, endTimestampMillis); return null; });
+        submitCall(() -> { getDelegate().expire(namespace, endTimestampMillis); return null; });
     }
 }
 

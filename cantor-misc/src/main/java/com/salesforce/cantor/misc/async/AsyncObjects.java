@@ -17,78 +17,74 @@ import java.util.concurrent.ExecutorService;
 import static com.salesforce.cantor.common.CommonPreconditions.*;
 import static com.salesforce.cantor.common.ObjectsPreconditions.*;
 
-public class AsyncObjects extends AbstractBaseAsyncCantor implements Objects {
-    private final Objects delegate;
-
+public class AsyncObjects extends AbstractBaseAsyncNamespaceable<Objects> implements Objects {
     public AsyncObjects(final Objects delegate, final ExecutorService executorService) {
-        super(executorService);
-        checkArgument(delegate != null, "null delegate");
-        this.delegate = delegate;
+        super(delegate, executorService);
     }
 
     @Override
     public Collection<String> namespaces() throws IOException {
-        return submitCall(this.delegate::namespaces);
+        return submitCall(getDelegate()::namespaces);
     }
 
     @Override
     public void create(final String namespace) throws IOException {
         checkCreate(namespace);
-        submitCall(() -> { this.delegate.create(namespace); return null; });
+        submitCall(() -> { getDelegate().create(namespace); return null; });
     }
 
     @Override
     public void drop(final String namespace) throws IOException {
         checkDrop(namespace);
-        submitCall(() -> { this.delegate.drop(namespace); return null; });
+        submitCall(() -> { getDelegate().drop(namespace); return null; });
     }
 
     @Override
     public void store(final String namespace, final String key, final byte[] bytes) throws IOException {
         checkStore(namespace, key, bytes);
-        this.delegate.store(namespace, key, bytes);
-        submitCall(() -> { this.delegate.create(namespace); return null; });
+        getDelegate().store(namespace, key, bytes);
+        submitCall(() -> { getDelegate().create(namespace); return null; });
     }
 
     @Override
     public void store(final String namespace, final Map<String, byte[]> batch) throws IOException {
         checkStore(namespace, batch);
-        submitCall(() -> { this.delegate.store(namespace, batch); return null; });
+        submitCall(() -> { getDelegate().store(namespace, batch); return null; });
     }
 
     @Override
     public byte[] get(final String namespace, final String key) throws IOException {
         checkGet(namespace, key);
-        return submitCall(() -> this.delegate.get(namespace, key));
+        return submitCall(() -> getDelegate().get(namespace, key));
     }
 
     @Override
     public Map<String, byte[]> get(final String namespace, final Collection<String> keys) throws IOException {
         checkGet(namespace, keys);
-        return submitCall(() -> this.delegate.get(namespace, keys));
+        return submitCall(() -> getDelegate().get(namespace, keys));
     }
 
     @Override
     public boolean delete(final String namespace, final String key) throws IOException {
         checkDelete(namespace, key);
-        return submitCall(() -> this.delegate.delete(namespace, key));
+        return submitCall(() -> getDelegate().delete(namespace, key));
     }
 
     @Override
     public void delete(final String namespace, final Collection<String> keys) throws IOException {
         checkDelete(namespace, keys);
-        submitCall(() -> { this.delegate.delete(namespace, keys); return null; });
+        submitCall(() -> { getDelegate().delete(namespace, keys); return null; });
     }
 
     @Override
     public Collection<String> keys(final String namespace, final int start, final int count) throws IOException {
         checkKeys(namespace, start, count);
-        return submitCall(() -> this.delegate.keys(namespace, start, count));
+        return submitCall(() -> getDelegate().keys(namespace, start, count));
     }
 
     @Override
     public int size(final String namespace) throws IOException {
         checkSize(namespace);
-        return submitCall(() -> this.delegate.size(namespace));
+        return submitCall(() -> getDelegate().size(namespace));
     }
 }
