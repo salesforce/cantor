@@ -20,7 +20,6 @@ nav:
     - "Namespaces": "namespaces.md"
     - "Objects": "objects.md"
     - "Sets": "sets.md"
-    - "Maps": "maps.md"
     - "Events": "events.md"
   - "Getting started":
     - "Embedded": "embedded.md"
@@ -34,5 +33,5 @@ repo_name: 'salesforce/cantor'
 repo_url: 'https://github.com/salesforce/cantor'
 
 # Copyright
-copyright: 'Copyright &copy; 2019 Salesforce'
+copyright: 'Copyright &copy; 2020 Salesforce'
 

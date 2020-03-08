@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Salesforce.com, Inc.
+ * Copyright (c) 2020, Salesforce.com, Inc.
  * All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
@@ -28,7 +28,6 @@ public class LoggableCantor implements Cantor {
 
     private final Objects objects;
     private final Sets sets;
-    private final Maps maps;
     private final Events events;
 
     public LoggableCantor(final Cantor delegate) {
@@ -38,7 +37,6 @@ public class LoggableCantor implements Cantor {
 
         this.objects = new LoggableObjects(delegate.objects());
         this.sets = new LoggableSets(delegate.sets());
-        this.maps = new LoggableMaps(delegate.maps());
         this.events = new LoggableEvents(delegate.events());
     }
 
@@ -50,11 +48,6 @@ public class LoggableCantor implements Cantor {
     @Override
     public Sets sets() {
         return this.sets;
-    }
-
-    @Override
-    public Maps maps() {
-        return this.maps;
     }
 
     @Override

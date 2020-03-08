@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Salesforce.com, Inc.
+ * Copyright (c) 2020, Salesforce.com, Inc.
  * All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
@@ -10,7 +10,6 @@ package com.salesforce.cantor.server.grpc;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.grpc.EventsGrpcService;
-import com.salesforce.cantor.grpc.MapsGrpcService;
 import com.salesforce.cantor.grpc.ObjectsGrpcService;
 import com.salesforce.cantor.grpc.SetsGrpcService;
 import com.salesforce.cantor.server.CantorEnvironment;
@@ -49,7 +48,6 @@ public class GrpcServer {
                 .maxMessageSize(64 * 1024 * 1024) // 64MB
                 .addService(new ObjectsGrpcService(cantor))
                 .addService(new SetsGrpcService(cantor))
-                .addService(new MapsGrpcService(cantor))
                 .addService(new EventsGrpcService(cantor))
                 .executor(
                         Executors.newFixedThreadPool(

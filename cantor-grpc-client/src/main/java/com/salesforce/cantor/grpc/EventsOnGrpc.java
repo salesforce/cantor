@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Salesforce.com, Inc.
+ * Copyright (c) 2020, Salesforce.com, Inc.
  * All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
@@ -22,10 +22,6 @@ public class EventsOnGrpc extends AbstractBaseGrpcClient<EventsServiceBlockingSt
 
     public EventsOnGrpc(final String target) {
         super(EventsServiceGrpc::newBlockingStub, target);
-    }
-
-    public EventsOnGrpc(final String target, final long timeoutMillis) {
-        super(EventsServiceGrpc::newBlockingStub, target, timeoutMillis);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Salesforce.com, Inc.
+ * Copyright (c) 2020, Salesforce.com, Inc.
  * All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
@@ -20,7 +20,6 @@ public class AsyncCantor implements Cantor {
 
     private final AsyncObjects objects;
     private final AsyncSets sets;
-    private final AsyncMaps maps;
     private final AsyncEvents events;
 
     public AsyncCantor(final Cantor delegate, final ExecutorService executorService) {
@@ -31,7 +30,6 @@ public class AsyncCantor implements Cantor {
 
         this.objects = new AsyncObjects(delegate.objects(), executorService);
         this.sets = new AsyncSets(delegate.sets(), executorService);
-        this.maps = new AsyncMaps(delegate.maps(), executorService);
         this.events = new AsyncEvents(delegate.events(), executorService);
     }
 
@@ -43,11 +41,6 @@ public class AsyncCantor implements Cantor {
     @Override
     public Sets sets() {
         return this.sets;
-    }
-
-    @Override
-    public Maps maps() {
-        return this.maps;
     }
 
     @Override

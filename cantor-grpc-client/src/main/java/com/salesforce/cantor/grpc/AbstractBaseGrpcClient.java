@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Salesforce.com, Inc.
+ * Copyright (c) 2020, Salesforce.com, Inc.
  * All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkString;
@@ -27,23 +26,15 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkString;
 abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final StubType stub;
-    private final long timeoutMillis;
 
     AbstractBaseGrpcClient(final Function<Channel, StubType> stubConstructor,
                            final String target) {
-        this(stubConstructor, target, 30_000);  // default timeout of 30 seconds
-    }
-
-    AbstractBaseGrpcClient(final Function<Channel, StubType> stubConstructor,
-                           final String target,
-                           final long timeoutMillis) {
         checkString(target, "null/empty target");
         this.stub = makeStubs(stubConstructor, target);
-        this.timeoutMillis = timeoutMillis;
     }
 
     StubType getStub() {
-        return this.stub.withDeadlineAfter(this.timeoutMillis, TimeUnit.MILLISECONDS);
+        return this.stub;
     }
 
     <R> R call(final Callable<R> callable) throws IOException {

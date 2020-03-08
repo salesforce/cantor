@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Salesforce.com, Inc.
+ * Copyright (c) 2020, Salesforce.com, Inc.
  * All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
@@ -25,10 +25,6 @@ public class ObjectsOnGrpc extends AbstractBaseGrpcClient<ObjectsServiceBlocking
 
     public ObjectsOnGrpc(final String target) {
         super(ObjectsServiceGrpc::newBlockingStub, target);
-    }
-
-    public ObjectsOnGrpc(final String target, final long timeoutMillis) {
-        super(ObjectsServiceGrpc::newBlockingStub, target, timeoutMillis);
     }
 
     @Override
