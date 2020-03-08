@@ -13,7 +13,6 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 public class ReadWriteCantor implements Cantor {
     private final ReadWriteObjects objects;
     private final ReadWriteSets sets;
-    private final ReadWriteMaps maps;
     private final ReadWriteEvents events;
 
     public ReadWriteCantor(final Cantor writable, final Cantor readable) {
@@ -22,7 +21,6 @@ public class ReadWriteCantor implements Cantor {
 
         this.objects = new ReadWriteObjects(writable.objects(), readable.objects());
         this.sets = new ReadWriteSets(writable.sets(), readable.sets());
-        this.maps = new ReadWriteMaps(writable.maps(), readable.maps());
         this.events = new ReadWriteEvents(writable.events(), readable.events());
     }
 
@@ -34,11 +32,6 @@ public class ReadWriteCantor implements Cantor {
     @Override
     public Sets sets() {
         return this.sets;
-    }
-
-    @Override
-    public Maps maps() {
-        return this.maps;
     }
 
     @Override

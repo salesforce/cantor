@@ -14,7 +14,6 @@ import com.salesforce.cantor.h2.H2DataSourceProperties;
 import com.salesforce.cantor.h2.H2DataSourceProvider;
 import com.salesforce.cantor.http.resources.FunctionsResource;
 import com.salesforce.cantor.http.resources.EventsResource;
-import com.salesforce.cantor.http.resources.MapsResource;
 import com.salesforce.cantor.http.resources.ObjectsResource;
 import com.salesforce.cantor.http.resources.SetsResource;
 import com.salesforce.cantor.misc.loggable.LoggableCantor;
@@ -46,7 +45,6 @@ public class EmbeddedHttpServer {
                 bind(new EventsResource(cantor));
                 bind(new ObjectsResource(cantor));
                 bind(new SetsResource(cantor));
-                bind(new MapsResource(cantor));
                 bind(new FunctionsResource(cantor, new FunctionsOnCantor(cantor)));
             }
         });

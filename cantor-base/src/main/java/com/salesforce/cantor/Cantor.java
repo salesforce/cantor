@@ -27,13 +27,6 @@ public interface Cantor {
     Sets sets();
 
     /**
-     * Returns an instance of Maps.
-     *
-     * @return instance of maps
-     */
-    Maps maps();
-
-    /**
      * Returns an instance of Events.
      *
      * @return instance of events

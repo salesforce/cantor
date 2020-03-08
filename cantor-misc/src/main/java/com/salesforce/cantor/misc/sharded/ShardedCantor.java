@@ -24,7 +24,6 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 public class ShardedCantor implements Cantor {
     private final ShardedObjects objects;
     private final ShardedSets sets;
-    private final ShardedMaps maps;
     private final ShardedEvents events;
 
     public ShardedCantor(final Cantor... delegates) {
@@ -32,17 +31,14 @@ public class ShardedCantor implements Cantor {
 
         final Objects[] objects = new Objects[delegates.length];
         final Sets[] sets = new Sets[delegates.length];
-        final Maps[] maps = new Maps[delegates.length];
         final Events[] events = new Events[delegates.length];
         for (int i = 0; i < delegates.length; ++i) {
             objects[i] = delegates[i].objects();
             sets[i] = delegates[i].sets();
-            maps[i] = delegates[i].maps();
             events[i] = delegates[i].events();
         }
         this.objects = new ShardedObjects(objects);
         this.sets = new ShardedSets(sets);
-        this.maps = new ShardedMaps(maps);
         this.events = new ShardedEvents(events);
     }
 
@@ -54,11 +50,6 @@ public class ShardedCantor implements Cantor {
     @Override
     public Sets sets() {
         return this.sets;
-    }
-
-    @Override
-    public Maps maps() {
-        return this.maps;
     }
 
     @Override
