@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Salesforce.com, Inc.
+ * Copyright (c) 2020, Salesforce.com, Inc.
  * All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
@@ -280,11 +280,11 @@ public interface Events {
      * @throws IOException exception thrown from the underlying storage implementation
      */
     default List<Event> get(String namespace,
-                    long startTimestampMillis,
-                    long endTimestampMillis,
-                    Map<String, String> metadataQuery,
-                    Map<String, String> dimensionsQuery,
-                    boolean includePayloads) throws IOException {
+                            long startTimestampMillis,
+                            long endTimestampMillis,
+                            Map<String, String> metadataQuery,
+                            Map<String, String> dimensionsQuery,
+                            boolean includePayloads) throws IOException {
         return get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, true, 0);
     }
 
@@ -391,8 +391,8 @@ public interface Events {
      * @throws IOException exception thrown from the underlying storage implementation
      */
     default Event last(String namespace,
-                              long startTimestampMillis,
-                              long endTimestampMillis) throws IOException {
+                       long startTimestampMillis,
+                       long endTimestampMillis) throws IOException {
         return last(namespace, startTimestampMillis, endTimestampMillis, null, null, false);
     }
 
@@ -409,10 +409,10 @@ public interface Events {
      * @throws IOException exception thrown from the underlying storage implementation
      */
     default Event last(String namespace,
-                              long startTimestampMillis,
-                              long endTimestampMillis,
-                              Map<String, String> metadataQuery,
-                              Map<String, String> dimensionsQuery) throws IOException {
+                       long startTimestampMillis,
+                       long endTimestampMillis,
+                       Map<String, String> metadataQuery,
+                       Map<String, String> dimensionsQuery) throws IOException {
         return last(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, false);
     }
 
