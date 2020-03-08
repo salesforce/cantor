@@ -15,20 +15,17 @@ import java.io.IOException;
 public class CantorOnH2 implements Cantor {
     private final Objects objects;
     private final Sets sets;
-    private final Maps maps;
     private final Events events;
 
     public CantorOnH2(final String path) throws IOException {
         this.objects = new ObjectsOnH2(path);
         this.sets = new SetsOnH2(path);
-        this.maps = new MapsOnH2(path);
         this.events = new EventsOnH2(path);
     }
 
     public CantorOnH2(final DataSource dataSource) throws IOException {
         this.objects = new ObjectsOnH2(dataSource);
         this.sets = new SetsOnH2(dataSource);
-        this.maps = new MapsOnH2(dataSource);
         this.events = new EventsOnH2(dataSource);
     }
 
@@ -40,11 +37,6 @@ public class CantorOnH2 implements Cantor {
     @Override
     public Sets sets() {
         return this.sets;
-    }
-
-    @Override
-    public Maps maps() {
-        return this.maps;
     }
 
     @Override
