@@ -45,7 +45,7 @@ public class EmbeddedHttpServer {
                 bind(new EventsResource(cantor));
                 bind(new ObjectsResource(cantor));
                 bind(new SetsResource(cantor));
-                bind(new FunctionsResource(cantor, new FunctionsOnCantor(cantor)));
+                bind(new FunctionsResource(cantor));
             }
         });
 
