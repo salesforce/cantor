@@ -105,7 +105,7 @@ public class EventsOnMysql extends AbstractBaseEventsOnJdbc implements Events {
         }
 
         sqlBuilder.append(")");
-        sqlBuilder.append(" ENGINE=InnoDB DEFAULT CHARSET=utf8 ");
+        sqlBuilder.append(" ENGINE=InnoDB DEFAULT CHARSET=binary ");
         return sqlBuilder.toString();
     }
 

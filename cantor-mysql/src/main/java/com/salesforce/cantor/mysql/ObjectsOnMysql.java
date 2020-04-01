@@ -40,7 +40,7 @@ public class ObjectsOnMysql extends AbstractBaseObjectsOnJdbc implements Objects
                 quote(getValueColumnName()) + " LONGBLOB NOT NULL, " +
                 " PRIMARY KEY (" + quote(getKeyColumnName()) + "), " +
                 " UNIQUE INDEX (" + quote(getKeyColumnName()) + ") ) " +
-                " ENGINE=InnoDB DEFAULT CHARSET=utf8 PARTITION BY KEY(" + quote(getKeyColumnName()) + ") PARTITIONS 10";
+                " ENGINE=InnoDB DEFAULT CHARSET=binary PARTITION BY KEY(" + quote(getKeyColumnName()) + ") PARTITIONS 10";
     }
 }
 
