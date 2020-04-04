@@ -23,7 +23,6 @@
         <freemarker.version>2.3.23</freemarker.version>
         <jython.version>2.7.1</jython.version>
         <luaj.version>3.0.1</luaj.version>
-        <kotlin.version>1.3.61</kotlin.version>
     </properties>
 
     <dependencies>
@@ -69,6 +68,12 @@
             <artifactId>groovy-jsr223</artifactId>
             <version>${groovy.version}</version>
         </dependency>
+        <!--GROOVY-->
+        <dependency>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy-all</artifactId>
+            <version>${groovy.version}</version>
+        </dependency>
         <!--JYTHON-->
         <dependency>
             <groupId>org.python</groupId>
@@ -80,17 +85,6 @@
             <groupId>org.luaj</groupId>
             <artifactId>luaj-jse</artifactId>
             <version>${luaj.version}</version>
-        </dependency>
-        <!--KOTLIN-->
-        <dependency>
-            <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-scripting-jsr223-embeddable</artifactId>
-            <version>${kotlin.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-scripting-compiler-embeddable</artifactId>
-            <version>${kotlin.version}</version>
         </dependency>
         <!--JERSEY JETTY-->
         <dependency>
