@@ -110,7 +110,7 @@ public interface Events {
      * Enum representing all available aggregation functions.
      */
     enum AggregationFunction {
-        AVG, MIN, MAX, SUM, COUNT, STDDEV_POP, STDDEV_SAMP, VAR_POP, VAR_SAMP
+        AVG, MIN, MAX, SUM, COUNT
     }
 
     /**
