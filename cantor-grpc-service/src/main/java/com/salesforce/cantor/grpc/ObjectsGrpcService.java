@@ -13,8 +13,6 @@ import com.salesforce.cantor.Objects;
 import com.salesforce.cantor.grpc.objects.*;
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -24,6 +22,7 @@ import static com.salesforce.cantor.grpc.GrpcUtils.*;
 
 public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBase {
 
+    private final ObjectsRequestHandlers handlers =
     private final Cantor cantor;
 
     public ObjectsGrpcService(final Cantor cantor) {
@@ -41,7 +40,7 @@ public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBas
             final NamespacesResponse response = NamespacesResponse.newBuilder()
                     .addAllNamespaces(getObjects().namespaces())
                     .build();
-            GrpcUtils.sendResponse(responseObserver, response);
+            sendResponse(responseObserver, response);
         } catch (IOException e) {
             sendError(responseObserver, e);
         }
@@ -159,5 +158,4 @@ public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBas
         return this.cantor.objects();
     }
 }
-
 

@@ -83,3 +83,13 @@ service ObjectsService {
     rpc size (SizeRequest) returns (SizeResponse) {}
 }
 
+message StreamObject {
+    string guid = 1;
+    string class_name = 2;
+    bytes payload = 3;
+}
+
+service ObjectsStream {
+    rpc register (stream StreamObject) returns (stream StreamObject);
+}
+

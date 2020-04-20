@@ -35,6 +35,15 @@
             <artifactId>cantor-grpc-protos</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-h2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>${logback.version}</version>
+        </dependency>
         <!--GRPC-->
         <dependency>
             <groupId>io.grpc</groupId>
