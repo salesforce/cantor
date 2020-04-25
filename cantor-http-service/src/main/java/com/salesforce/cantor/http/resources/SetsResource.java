@@ -341,9 +341,9 @@ public class SetsResource {
 
     @POST
     @Path("/{namespace}/{set}/{entry}/{count}")
-    @Operation(summary = "Increment a specific entry")
+    @Operation(summary = "Atomically increment the weight of an entry and return the value after increment")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Successfully incremented entry by count or the entry didn't exist"),
+        @ApiResponse(responseCode = "200", description = "Successfully incremented entry by count"),
         @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
     public Response inc(@Parameter(description = "Namespace identifier") @PathParam("namespace") final String namespace,
@@ -351,8 +351,9 @@ public class SetsResource {
                         @Parameter(description = "Name of the entry") @PathParam("entry") final String entry,
                         @Parameter(description = "Amount to increment", example = "10") @PathParam("count") final long count) throws IOException {
         logger.info("received request to increment entry {} in set/namespace {}/{} by {}", entry, set, namespace, count);
-        this.cantor.sets().inc(namespace, set, entry, count);
-        return Response.ok().build();
+        final Map<String, Long> results = new HashMap<>();
+        results.put(jsonFieldResults, this.cantor.sets().inc(namespace, set, entry, count));
+        return Response.ok(results).build();
     }
 
     protected static class SetsDataSourceBean {

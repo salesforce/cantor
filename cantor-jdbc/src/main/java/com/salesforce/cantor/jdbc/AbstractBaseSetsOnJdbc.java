@@ -154,9 +154,9 @@ public abstract class AbstractBaseSetsOnJdbc extends AbstractBaseCantorOnJdbc im
     }
 
     @Override
-    public void inc(final String namespace, final String key, final String entry, final long count) throws IOException {
+    public long inc(final String namespace, final String key, final String entry, final long count) throws IOException {
         checkInc(namespace, key, entry, count);
-        doInc(namespace, key, entry, count);
+        return doInc(namespace, key, entry, count);
     }
 
     @Override
@@ -528,6 +528,7 @@ public abstract class AbstractBaseSetsOnJdbc extends AbstractBaseCantorOnJdbc im
                     if (resultSet.next()) {
                         return resultSet.getLong(1);
                     }
+                    // return null if not found; this can be used to check whether or not an entry exists in a set
                     return null;
                 }
             }
@@ -537,15 +538,54 @@ public abstract class AbstractBaseSetsOnJdbc extends AbstractBaseCantorOnJdbc im
         }
     }
 
-    private void doInc(final String namespace, final String set, final String entry, final long count) throws IOException {
-        final String sql = String.format("UPDATE %s SET %s = %s + ? WHERE %s = ? AND %s = ? ",
+    private long doInc(final String namespace, final String set, final String entry, final long count) throws IOException {
+        // if the entry doesn't exist, initialize it with weight of 0
+        final boolean exists = doWeight(namespace, set, entry) != null;
+        if (!exists) {
+            doAdd(namespace, set, entry, 0L);
+        }
+
+        // sql to increment the weight of an entry
+        final String updateSql = String.format("UPDATE %s SET %s = %s + ? WHERE %s = ? AND %s = ? ",
                 getTableFullName(namespace, getSetsTableName()),
                 quote(getWeightColumnName()),
                 quote(getWeightColumnName()),
                 quote(getSetKeyColumnName()),
                 quote(getEntryColumnName())
         );
-        executeUpdate(sql, count, set, entry);
+        // sql to read an entry's weight
+        final String selectSql = String.format("SELECT %s FROM %s WHERE %s = ? AND %s = ? ",
+                quote(getWeightColumnName()),
+                getTableFullName(namespace, getSetsTableName()),
+                quote(getSetKeyColumnName()),
+                quote(getEntryColumnName())
+        );
+
+        // in a transaction, increment the entry's weight and then return the final weight
+        Connection connection = null;
+        try {
+            // open a transaction
+            connection = openTransaction(getConnection());
+
+            // increment weight
+            executeUpdate(connection, updateSql, count, set, entry);
+
+            try (final PreparedStatement preparedStatement = connection.prepareStatement(selectSql)) {
+                preparedStatement.setString(1, set);
+                preparedStatement.setString(2, entry);
+                try (final ResultSet resultSet = preparedStatement.executeQuery()) {
+                    if (resultSet.next()) {
+                        return resultSet.getLong(1);
+                    }
+                    throw new IOException("cannot find entry for sets.inc()");
+                }
+            } catch (final SQLException e) {
+                logger.warn("exception on sets.inc()", e);
+                throw new IOException(e);
+            }
+        } finally {
+            closeConnection(connection);
+        }
     }
 
     private void doAdd(final String namespace, final String set, final String entry, final long weight) throws IOException {

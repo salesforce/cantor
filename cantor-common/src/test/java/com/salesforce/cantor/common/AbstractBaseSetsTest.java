@@ -532,6 +532,11 @@ public abstract class AbstractBaseSetsTest extends AbstractBaseCantorTest {
 
         final String setKey = UUID.randomUUID().toString();
 
+        final String newEntry = UUID.randomUUID().toString();
+        final long randomWeight = ThreadLocalRandom.current().nextLong();
+        final long newEntryWeight = sets.inc(namespace, setKey, newEntry, randomWeight);
+        assertEquals(newEntryWeight, randomWeight);
+
         final String entryToInc = UUID.randomUUID().toString();
         final String controlEntry = UUID.randomUUID().toString();
 
@@ -541,13 +546,15 @@ public abstract class AbstractBaseSetsTest extends AbstractBaseCantorTest {
         long totalWeight = 0;
         for (int i = 0; i < ThreadLocalRandom.current().nextInt(10, 100); i++) {
             final long inc = ThreadLocalRandom.current().nextLong(0, 1000);
+            final long returnedWeight;
             if (ThreadLocalRandom.current().nextBoolean()) {
-                sets.inc(namespace, setKey, entryToInc, inc);
+                returnedWeight = sets.inc(namespace, setKey, entryToInc, inc);
                 totalWeight += inc;
             } else {
-                sets.inc(namespace, setKey, entryToInc, inc * -1);
+                returnedWeight = sets.inc(namespace, setKey, entryToInc, inc * -1);
                 totalWeight -= inc;
             }
+            assertEquals(returnedWeight, totalWeight);
         }
 
         final Long incrementedWeight = sets.weight(namespace, setKey, entryToInc);

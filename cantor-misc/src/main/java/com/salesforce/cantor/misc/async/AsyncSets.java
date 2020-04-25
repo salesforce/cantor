@@ -152,8 +152,8 @@ public class AsyncSets extends AbstractBaseAsyncCantor implements Sets {
     }
 
     @Override
-    public void inc(final String namespace, final String set, final String entry, final long count) throws IOException {
+    public long inc(final String namespace, final String set, final String entry, final long count) throws IOException {
         checkInc(namespace, set, entry, count);
-        submitCall(() -> { this.delegate.inc(namespace, set, entry, count); return null; });
+        return submitCall(() -> this.delegate.inc(namespace, set, entry, count));
     }
 }
