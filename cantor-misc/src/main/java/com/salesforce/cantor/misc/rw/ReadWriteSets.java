@@ -153,8 +153,8 @@ public class ReadWriteSets implements Sets {
     }
 
     @Override
-    public void inc(final String namespace, final String set, final String entry, final long count) throws IOException {
+    public long inc(final String namespace, final String set, final String entry, final long count) throws IOException {
         checkInc(namespace, set, entry, count);
-        this.writable.inc(namespace, set, entry, count);
+        return this.writable.inc(namespace, set, entry, count);
     }
 }

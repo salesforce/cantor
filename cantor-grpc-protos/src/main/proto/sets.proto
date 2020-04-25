@@ -178,6 +178,10 @@ message IncRequest {
     int64 count = 4;
 }
 
+message IncResponse {
+    int64 result = 1;
+}
+
 service SetsService {
     rpc namespaces (NamespacesRequest) returns (NamespacesResponse) {}
     rpc create (CreateRequest) returns (VoidResponse) {}
@@ -197,6 +201,6 @@ service SetsService {
     rpc size (SizeRequest) returns (SizeResponse) {}
     rpc weight (WeightRequest) returns (WeightResponse) {}
     rpc timestamp (TimestampRequest) returns (TimestampResponse) {}
-    rpc inc (IncRequest) returns (VoidResponse) {}
+    rpc inc (IncRequest) returns (IncResponse) {}
 }
 

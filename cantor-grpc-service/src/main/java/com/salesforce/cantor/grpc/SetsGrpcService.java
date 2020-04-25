@@ -330,14 +330,14 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
     }
 
     @Override
-    public void inc(final IncRequest request, final StreamObserver<VoidResponse> responseObserver) {
+    public void inc(final IncRequest request, final StreamObserver<IncResponse> responseObserver) {
         if (Context.current().isCancelled()) {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
         try {
-            getSets().inc(request.getNamespace(), request.getSet(), request.getEntry(), request.getCount());
-            sendResponse(responseObserver, VoidResponse.getDefaultInstance());
+            final long result = getSets().inc(request.getNamespace(), request.getSet(), request.getEntry(), request.getCount());
+            sendResponse(responseObserver, IncResponse.newBuilder().setResult(result).build());
         } catch (IOException e) {
             sendError(responseObserver, e);
         }

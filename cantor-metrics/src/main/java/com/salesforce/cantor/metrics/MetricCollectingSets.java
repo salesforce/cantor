@@ -116,7 +116,7 @@ public class MetricCollectingSets extends BaseMetricCollectingCantor implements 
     }
 
     @Override
-    public void inc(final String namespace, final String set, final String entry, final long count) throws IOException {
-        metrics(() -> this.delegate.inc(namespace, set, entry, count), "inc", namespace);
+    public long inc(final String namespace, final String set, final String entry, final long count) throws IOException {
+        return metrics(() -> this.delegate.inc(namespace, set, entry, count), "inc", namespace);
     }
 }

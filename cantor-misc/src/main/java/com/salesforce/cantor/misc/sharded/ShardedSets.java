@@ -149,9 +149,9 @@ public class ShardedSets implements Sets {
     }
 
     @Override
-    public void inc(final String namespace, final String set, final String entry, final long count) throws IOException {
+    public long inc(final String namespace, final String set, final String entry, final long count) throws IOException {
         checkInc(namespace, set, entry, count);
-        getSets(namespace).inc(namespace, set, entry, count);
+        return getSets(namespace).inc(namespace, set, entry, count);
     }
 
     private Collection<String> doNamespaces() throws IOException {

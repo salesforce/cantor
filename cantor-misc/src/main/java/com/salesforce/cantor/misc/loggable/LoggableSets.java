@@ -196,10 +196,10 @@ public class LoggableSets extends AbstractBaseLoggableCantor implements Sets {
     }
 
     @Override
-    public void inc(final String namespace, final String set, final String entry, final long count) throws IOException {
+    public long inc(final String namespace, final String set, final String entry, final long count) throws IOException {
         checkInc(namespace, set, entry, count);
-        logCall(
-                () -> { this.delegate.inc(namespace, set, entry, count); return null; },
+        return logCall(
+                () -> this.delegate.inc(namespace, set, entry, count),
                 "inc", namespace, set, entry, count
         );
     }
