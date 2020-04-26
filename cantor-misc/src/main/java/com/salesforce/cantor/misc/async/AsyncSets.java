@@ -148,8 +148,8 @@ public class AsyncSets extends AbstractBaseAsyncNamespaceable<Sets> implements S
     }
 
     @Override
-    public void inc(final String namespace, final String set, final String entry, final long count) throws IOException {
+    public long inc(final String namespace, final String set, final String entry, final long count) throws IOException {
         checkInc(namespace, set, entry, count);
-        submitCall(() -> { getDelegate().inc(namespace, set, entry, count); return null; });
+        return submitCall(() -> getDelegate().inc(namespace, set, entry, count));
     }
 }

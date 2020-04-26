@@ -143,8 +143,8 @@ public class ShardedSets extends AbstractBaseShardedNamespaceable<Sets> implemen
     }
 
     @Override
-    public void inc(final String namespace, final String set, final String entry, final long count) throws IOException {
+    public long inc(final String namespace, final String set, final String entry, final long count) throws IOException {
         checkInc(namespace, set, entry, count);
-        getShard(namespace).inc(namespace, set, entry, count);
+        return getShard(namespace).inc(namespace, set, entry, count);
     }
 }

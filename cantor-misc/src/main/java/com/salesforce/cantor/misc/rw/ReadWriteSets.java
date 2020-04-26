@@ -130,8 +130,8 @@ public class ReadWriteSets extends AbstractBaseReadWriteNamespaceable<Sets> impl
     }
 
     @Override
-    public void inc(final String namespace, final String set, final String entry, final long count) throws IOException {
+    public long inc(final String namespace, final String set, final String entry, final long count) throws IOException {
         checkInc(namespace, set, entry, count);
-        getWritable().inc(namespace, set, entry, count);
+        return getWritable().inc(namespace, set, entry, count);
     }
 }

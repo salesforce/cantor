@@ -8,7 +8,6 @@
 package com.salesforce.cantor.http.jersey;
 
 import com.salesforce.cantor.Cantor;
-import com.salesforce.cantor.functions.FunctionsOnCantor;
 import com.salesforce.cantor.h2.CantorOnH2;
 import com.salesforce.cantor.h2.H2DataSourceProperties;
 import com.salesforce.cantor.h2.H2DataSourceProvider;
@@ -45,7 +44,7 @@ public class EmbeddedHttpServer {
                 bind(new EventsResource(cantor));
                 bind(new ObjectsResource(cantor));
                 bind(new SetsResource(cantor));
-                bind(new FunctionsResource(cantor, new FunctionsOnCantor(cantor)));
+                bind(new FunctionsResource(cantor));
             }
         });
 

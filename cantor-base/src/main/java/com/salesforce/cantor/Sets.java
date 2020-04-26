@@ -391,13 +391,15 @@ public interface Sets extends Namespaceable {
     Long weight(String namespace, String set, String entry) throws IOException;
 
     /**
-     * Atomic operation to increment an entry's weight in the set by the given count.
+     * Atomic operation to increment an entry's weight in the set by the given count
+     * and then return the final value.
      *
      * @param namespace the namespace
      * @param set name of the sorted set
      * @param count maximum number of entries to return
      * @throws IOException exception thrown from the underlying storage implementation
+     * @return final weight of the entry after incrementing
      */
-    void inc(String namespace, String set, String entry, long count) throws IOException;
+    long inc(String namespace, String set, String entry, long count) throws IOException;
 }
 

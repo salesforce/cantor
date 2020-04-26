@@ -171,10 +171,10 @@ public class LoggableSets extends AbstractBaseLoggableNamespaceable<Sets> implem
     }
 
     @Override
-    public void inc(final String namespace, final String set, final String entry, final long count) throws IOException {
+    public long inc(final String namespace, final String set, final String entry, final long count) throws IOException {
         checkInc(namespace, set, entry, count);
-        logCall(
-                () -> { getDelegate().inc(namespace, set, entry, count); return null; },
+        return logCall(
+                () -> getDelegate().inc(namespace, set, entry, count),
                 "inc", namespace, set, entry, count
         );
     }

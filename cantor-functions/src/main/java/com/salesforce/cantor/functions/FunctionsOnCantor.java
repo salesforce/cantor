@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.security.Permission;
 import java.util.*;
 
 import static com.salesforce.cantor.common.CommonPreconditions.*;
@@ -27,7 +26,6 @@ public class FunctionsOnCantor implements Functions {
     public FunctionsOnCantor(final Cantor cantor) {
         this.cantor = cantor;
         initExecutors();
-        initSecurityManager();
     }
 
     @Override
@@ -108,20 +106,6 @@ public class FunctionsOnCantor implements Functions {
             logger.info("loading executor: {} for extensions: {}", executor.getClass().getSimpleName(), executor.getExtensions());
             this.executors.add(executor);
         }
-    }
-
-    private void initSecurityManager() {
-        System.setSecurityManager(new SecurityManager() {
-            @Override
-            public void checkExit(int status) {
-                throw new SecurityException("cannot exit");
-            }
-
-            @Override
-            public void checkPermission(final Permission permission) {
-                // allow everything else for now. may need to revisit this
-            }
-        });
     }
 
     private void doCreate(final String namespace) throws IOException {

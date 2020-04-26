@@ -53,8 +53,13 @@ public class ChainExecutor implements Executor {
             final Map<String, String> functionParams = qs.contains("?")
                     ? parseParams(qs.substring(qs.indexOf("?") + 1))
                     : Collections.emptyMap();
-            logger.info("executing function '{}' with parameters: '{}'", functionName, functionParams);
-            context.getFunctions().run(functionNamespace, functionName, context, functionParams);
+
+            // parameters specified in the chain description override those passed by the user
+            final Map<String, String> overrideParams = new HashMap<>(params);
+            overrideParams.putAll(functionParams);
+
+            logger.info("executing function '{}' with parameters: '{}'", functionName, overrideParams);
+            context.getFunctions().run(functionNamespace, functionName, context, overrideParams);
             logger.info("context: {}", context.keys());
         }
     }
