@@ -15,46 +15,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.salesforce.cantor.common.CommonPreconditions.*;
 import static com.salesforce.cantor.common.CommonUtils.nullToEmpty;
 import static com.salesforce.cantor.common.EventsPreconditions.*;
 
 /**
  * Wrapper class around a delegate Events instance, adding logging and time spent.
  */
-public class LoggableEvents extends AbstractBaseLoggableCantor implements Events {
-    private final Events delegate;
-
+public class LoggableEvents extends AbstractBaseLoggableNamespaceable<Events> implements Events {
     public LoggableEvents(final Events delegate) {
-        checkArgument(delegate != null, "null delegate");
-        this.delegate = delegate;
-    }
-
-    @Override
-    public Collection<String> namespaces() throws IOException {
-        return logCall(this.delegate::namespaces, "namespaces", null);
-    }
-
-    @Override
-    public void create(final String namespace) throws IOException {
-        checkCreate(namespace);
-        logCall(() -> { this.delegate.create(namespace); return null; },
-                "create", namespace
-        );
-    }
-
-    @Override
-    public void drop(final String namespace) throws IOException {
-        checkDrop(namespace);
-        logCall(() -> { this.delegate.drop(namespace); return null; },
-                "drop", namespace
-        );
+        super(delegate);
     }
 
     @Override
     public void store(final String namespace, final Collection<Event> batch) throws IOException {
         checkStore(namespace, batch);
-        logCall(() -> { this.delegate.store(namespace, batch); return null; },
+        logCall(() -> { getDelegate().store(namespace, batch); return null; },
                 "store", namespace, batch.size()
         );
     }
@@ -69,7 +44,7 @@ public class LoggableEvents extends AbstractBaseLoggableCantor implements Events
                            final boolean ascending,
                            final int limit) throws IOException {
         checkGet(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        return logCall(() -> this.delegate.get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, ascending, limit),
+        return logCall(() -> getDelegate().get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, ascending, limit),
                 "get", namespace,
                 startTimestampMillis, endTimestampMillis,
                 nullToEmpty(metadataQuery).keySet(), nullToEmpty(dimensionsQuery).keySet(),
@@ -86,7 +61,7 @@ public class LoggableEvents extends AbstractBaseLoggableCantor implements Events
                       final Map<String, String> metadataQuery,
                       final Map<String, String> dimensionsQuery) throws IOException {
         checkDelete(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        return logCall(() -> this.delegate.delete(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery),
+        return logCall(() -> getDelegate().delete(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery),
                 "delete", namespace,
                 startTimestampMillis, endTimestampMillis,
                 nullToEmpty(metadataQuery).keySet(), nullToEmpty(dimensionsQuery).keySet()
@@ -111,7 +86,7 @@ public class LoggableEvents extends AbstractBaseLoggableCantor implements Events
                 aggregateIntervalMillis,
                 aggregationFunction
         );
-        return logCall(() -> this.delegate
+        return logCall(() -> getDelegate()
                 .aggregate(namespace,
                         dimension,
                         startTimestampMillis,
@@ -136,7 +111,7 @@ public class LoggableEvents extends AbstractBaseLoggableCantor implements Events
                                 final Map<String, String> metadataQuery,
                                 final Map<String, String> dimensionsQuery) throws IOException {
         checkMetadata(namespace, metadataKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        return logCall(() -> this.delegate
+        return logCall(() -> getDelegate()
                 .metadata(namespace,
                         metadataKey,
                         startTimestampMillis,
@@ -153,7 +128,7 @@ public class LoggableEvents extends AbstractBaseLoggableCantor implements Events
     @Override
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
         checkExpire(namespace, endTimestampMillis);
-        logCall(() -> { this.delegate.expire(namespace, endTimestampMillis); return null; },
+        logCall(() -> { getDelegate().expire(namespace, endTimestampMillis); return null; },
                 "expire", namespace, endTimestampMillis
         );
     }

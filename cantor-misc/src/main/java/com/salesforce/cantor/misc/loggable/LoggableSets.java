@@ -13,46 +13,21 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
 
-import static com.salesforce.cantor.common.CommonPreconditions.*;
 import static com.salesforce.cantor.common.SetsPreconditions.*;
 
 /**
  * Wrapper class around a delegate Sets instance, adding logging and time spent.
  */
-public class LoggableSets extends AbstractBaseLoggableCantor implements Sets {
-    private final Sets delegate;
-
+public class LoggableSets extends AbstractBaseLoggableNamespaceable<Sets> implements Sets {
     public LoggableSets(final Sets delegate) {
-        checkArgument(delegate != null, "null delegate");
-        this.delegate = delegate;
-    }
-
-    @Override
-    public Collection<String> namespaces() throws IOException {
-        return logCall(this.delegate::namespaces, "namespaces", null);
-    }
-
-    @Override
-    public void create(final String namespace) throws IOException {
-        checkCreate(namespace);
-        logCall(() -> { this.delegate.create(namespace); return null; },
-                "create", namespace
-        );
-    }
-
-    @Override
-    public void drop(final String namespace) throws IOException {
-        checkDrop(namespace);
-        logCall(() -> { this.delegate.drop(namespace); return null; },
-                "drop", namespace
-        );
+        super(delegate);
     }
 
     @Override
     public void add(final String namespace, final String set, final String entry, final long weight) throws IOException {
         checkAdd(namespace, set, entry, weight);
         logCall(
-                () -> { this.delegate.add(namespace, set, entry, weight); return null; },
+                () -> { getDelegate().add(namespace, set, entry, weight); return null; },
                 "add", namespace, set, entry, weight
         );
     }
@@ -61,7 +36,7 @@ public class LoggableSets extends AbstractBaseLoggableCantor implements Sets {
     public void add(final String namespace, final String set, final Map<String, Long> entries) throws IOException {
         checkAdd(namespace, set, entries);
         logCall(
-                () -> { this.delegate.add(namespace, set, entries); return null; },
+                () -> { getDelegate().add(namespace, set, entries); return null; },
                 "add", namespace, set, entries
         );
     }
@@ -76,7 +51,7 @@ public class LoggableSets extends AbstractBaseLoggableCantor implements Sets {
                                       final boolean ascending) throws IOException {
         checkEntries(namespace, set, min, max, start, count, ascending);
         return logCall(
-                () -> this.delegate.entries(namespace, set, min, max, start, count, ascending),
+                () -> getDelegate().entries(namespace, set, min, max, start, count, ascending),
                 "entries", namespace, set, min, max, start, count, ascending
         );
     }
@@ -91,7 +66,7 @@ public class LoggableSets extends AbstractBaseLoggableCantor implements Sets {
                                  final boolean ascending) throws IOException {
         checkGet(namespace, set, min, max, start, count, ascending);
         return logCall(
-                () -> this.delegate.get(namespace, set, min, max, start, count, ascending),
+                () -> getDelegate().get(namespace, set, min, max, start, count, ascending),
                 "get", namespace, set, min, max, start, count, ascending
         );
     }
@@ -100,7 +75,7 @@ public class LoggableSets extends AbstractBaseLoggableCantor implements Sets {
     public void delete(final String namespace, final String set, final long min, final long max) throws IOException {
         checkDelete(namespace, set, min, max);
         logCall(
-                () -> { this.delegate.delete(namespace, set, min, max); return null; },
+                () -> { getDelegate().delete(namespace, set, min, max); return null; },
                 "delete", namespace, set, min, max
         );
     }
@@ -109,7 +84,7 @@ public class LoggableSets extends AbstractBaseLoggableCantor implements Sets {
     public final boolean delete(final String namespace, final String set, final String entry) throws IOException {
         checkDelete(namespace, set, entry);
         return logCall(
-                () -> this.delegate.delete(namespace, set, entry),
+                () -> getDelegate().delete(namespace, set, entry),
                 "delete", namespace, set, entry
         );
     }
@@ -118,7 +93,7 @@ public class LoggableSets extends AbstractBaseLoggableCantor implements Sets {
     public void delete(final String namespace, final String set, final Collection<String> entries) throws IOException {
         checkDelete(namespace, set, entries);
         logCall(
-                () -> { this.delegate.delete(namespace, set, entries); return null; },
+                () -> { getDelegate().delete(namespace, set, entries); return null; },
                 "delete", namespace, set, entries
         );
     }
@@ -133,7 +108,7 @@ public class LoggableSets extends AbstractBaseLoggableCantor implements Sets {
                                    final boolean ascending) throws IOException {
         checkUnion(namespace, sets, min, max, start, count, ascending);
         return logCall(
-                () -> this.delegate.union(namespace, sets, min, max, start, count, ascending),
+                () -> getDelegate().union(namespace, sets, min, max, start, count, ascending),
                 "union", namespace, sets, min, max, start, count
         );
     }
@@ -148,7 +123,7 @@ public class LoggableSets extends AbstractBaseLoggableCantor implements Sets {
                                        final boolean ascending) throws IOException {
         checkIntersect(namespace, sets, min, max, start, count, ascending);
         return logCall(
-                () -> this.delegate.intersect(namespace, sets, min, max, start, count, ascending),
+                () -> getDelegate().intersect(namespace, sets, min, max, start, count, ascending),
                 "intersect", namespace, sets, min, max, start, count, ascending
         );
     }
@@ -163,7 +138,7 @@ public class LoggableSets extends AbstractBaseLoggableCantor implements Sets {
                                  final boolean ascending) throws IOException {
         checkPop(namespace, set, min, max, start, count, ascending);
         return logCall(
-                () -> this.delegate.pop(namespace, set, min, max, start, count, ascending),
+                () -> getDelegate().pop(namespace, set, min, max, start, count, ascending),
                 "pop", namespace, set, min, max, start, count, ascending
         );
     }
@@ -172,7 +147,7 @@ public class LoggableSets extends AbstractBaseLoggableCantor implements Sets {
     public Collection<String> sets(final String namespace) throws IOException {
         checkSets(namespace);
         return logCall(
-                () -> this.delegate.sets(namespace),
+                () -> getDelegate().sets(namespace),
                 "sets", namespace
         );
     }
@@ -181,7 +156,7 @@ public class LoggableSets extends AbstractBaseLoggableCantor implements Sets {
     public final int size(final String namespace, final String set) throws IOException {
         checkSize(namespace, set);
         return logCall(
-                () -> this.delegate.size(namespace, set),
+                () -> getDelegate().size(namespace, set),
                 "size", namespace, set
         );
     }
@@ -190,7 +165,7 @@ public class LoggableSets extends AbstractBaseLoggableCantor implements Sets {
     public Long weight(final String namespace, final String set, final String entry) throws IOException {
         checkWeight(namespace, set, entry);
         return logCall(
-                () -> this.delegate.weight(namespace, set, entry),
+                () -> getDelegate().weight(namespace, set, entry),
                 "weight", namespace, set, entry
         );
     }
@@ -199,7 +174,7 @@ public class LoggableSets extends AbstractBaseLoggableCantor implements Sets {
     public long inc(final String namespace, final String set, final String entry, final long count) throws IOException {
         checkInc(namespace, set, entry, count);
         return logCall(
-                () -> this.delegate.inc(namespace, set, entry, count),
+                () -> getDelegate().inc(namespace, set, entry, count),
                 "inc", namespace, set, entry, count
         );
     }

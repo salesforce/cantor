@@ -13,47 +13,24 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
 
-import static com.salesforce.cantor.common.CommonPreconditions.*;
 import static com.salesforce.cantor.common.SetsPreconditions.*;
 
-public class ReadWriteSets implements Sets {
-    private final Sets writable;
-    private final Sets readable;
+public class ReadWriteSets extends AbstractBaseReadWriteNamespaceable<Sets> implements Sets {
 
     public ReadWriteSets(final Sets writable, final Sets readable) {
-        checkArgument(writable != null, "null writable");
-        checkArgument(readable != null, "null readable");
-        this.writable = writable;
-        this.readable = readable;
-    }
-
-    @Override
-    public Collection<String> namespaces() throws IOException {
-        return this.readable.namespaces();
-    }
-
-    @Override
-    public void create(final String namespace) throws IOException {
-        checkCreate(namespace);
-        this.writable.create(namespace);
-    }
-
-    @Override
-    public void drop(final String namespace) throws IOException {
-        checkDrop(namespace);
-        this.writable.drop(namespace);
+        super(writable, readable);
     }
 
     @Override
     public void add(final String namespace, final String set, final String entry, final long weight) throws IOException {
         checkAdd(namespace, set, entry, weight);
-        this.writable.add(namespace, set, entry, weight);
+        getWritable().add(namespace, set, entry, weight);
     }
 
     @Override
     public void add(final String namespace, final String set, final Map<String, Long> entries) throws IOException {
         checkAdd(namespace, set, entries);
-        this.writable.add(namespace, set, entries);
+        getWritable().add(namespace, set, entries);
     }
 
     @Override
@@ -65,7 +42,7 @@ public class ReadWriteSets implements Sets {
                                       final int count,
                                       final boolean ascending) throws IOException {
         checkEntries(namespace, set, min, max, start, count, ascending);
-        return this.readable.entries(namespace, set, min, max, start, count, ascending);
+        return getReadable().entries(namespace, set, min, max, start, count, ascending);
     }
 
     @Override
@@ -77,25 +54,25 @@ public class ReadWriteSets implements Sets {
                                  final int count,
                                  final boolean ascending) throws IOException {
         checkGet(namespace, set, min, max, start, count, ascending);
-        return this.readable.get(namespace, set, min, max, start, count, ascending);
+        return getReadable().get(namespace, set, min, max, start, count, ascending);
     }
 
     @Override
     public void delete(final String namespace, final String set, final long min, final long max) throws IOException {
         checkDelete(namespace, set, min, max);
-        this.writable.delete(namespace, set, min, max);
+        getWritable().delete(namespace, set, min, max);
     }
 
     @Override
     public final boolean delete(final String namespace, final String set, final String entry) throws IOException {
         checkDelete(namespace, set, entry);
-        return this.writable.delete(namespace, set, entry);
+        return getWritable().delete(namespace, set, entry);
     }
 
     @Override
     public void delete(final String namespace, final String set, final Collection<String> entries) throws IOException {
         checkDelete(namespace, set, entries);
-        this.writable.delete(namespace, set, entries);
+        getWritable().delete(namespace, set, entries);
     }
 
     @Override
@@ -107,7 +84,7 @@ public class ReadWriteSets implements Sets {
                                    final int count,
                                    final boolean ascending) throws IOException {
         checkUnion(namespace, sets, min, max, start, count, ascending);
-        return this.readable.union(namespace, sets, min, max, start, count, ascending);
+        return getReadable().union(namespace, sets, min, max, start, count, ascending);
     }
 
     @Override
@@ -119,7 +96,7 @@ public class ReadWriteSets implements Sets {
                                        final int count,
                                        final boolean ascending) throws IOException {
         checkIntersect(namespace, sets, min, max, start, count, ascending);
-        return this.readable.intersect(namespace, sets, min, max, start, count, ascending);
+        return getReadable().intersect(namespace, sets, min, max, start, count, ascending);
     }
 
     @Override
@@ -131,30 +108,30 @@ public class ReadWriteSets implements Sets {
                                  final int count,
                                  final boolean ascending) throws IOException {
         checkPop(namespace, set, min, max, start, count, ascending);
-        return this.writable.pop(namespace, set, min, max, start, count, ascending);
+        return getWritable().pop(namespace, set, min, max, start, count, ascending);
     }
 
     @Override
     public Collection<String> sets(final String namespace) throws IOException {
         checkSets(namespace);
-        return this.readable.sets(namespace);
+        return getReadable().sets(namespace);
     }
 
     @Override
     public final int size(final String namespace, final String set) throws IOException {
         checkSize(namespace, set);
-        return this.readable.size(namespace, set);
+        return getReadable().size(namespace, set);
     }
 
     @Override
     public Long weight(final String namespace, final String set, final String entry) throws IOException {
         checkWeight(namespace, set, entry);
-        return this.readable.weight(namespace, set, entry);
+        return getReadable().weight(namespace, set, entry);
     }
 
     @Override
     public long inc(final String namespace, final String set, final String entry, final long count) throws IOException {
         checkInc(namespace, set, entry, count);
-        return this.writable.inc(namespace, set, entry, count);
+        return getWritable().inc(namespace, set, entry, count);
     }
 }

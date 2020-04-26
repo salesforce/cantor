@@ -15,31 +15,7 @@ import java.util.Map;
 /**
  * Objects expose functionalities to work with key/value pairs.
  */
-public interface Objects {
-
-    /**
-     * Get list of all namespaces.
-     *
-     * @return collection of namespace identifiers
-     * @throws IOException exception thrown from the underlying storage implementation
-     */
-    Collection<String> namespaces() throws IOException;
-
-    /**
-     * Create a new namespace.
-     *
-     * @param namespace the namespace identifier
-     * @throws IOException exception thrown from the underlying storage implementation
-     */
-    void create(String namespace) throws IOException;
-
-    /**
-     * Drop a namespace.
-     *
-     * @param namespace the namespace identifier
-     * @throws IOException exception thrown from the underlying storage implementation
-     */
-    void drop(String namespace) throws IOException;
+public interface Objects extends Namespaceable {
 
     /**
      * Stores bytes for the given key.

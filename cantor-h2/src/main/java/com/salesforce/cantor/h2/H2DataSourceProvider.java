@@ -29,22 +29,23 @@ public class H2DataSourceProvider {
         return datasourceCache.get(datasourceCacheKey);
     }
 
-    private static DataSource doGetDataSource(final H2DataSourceProperties builder) {
+    private static DataSource doGetDataSource(final H2DataSourceProperties datasourceProperties) {
         // database file name on disk is "<path>/cantor.db"
-        final Path dbPath = Paths.get(String.format("%s/cantor", builder.getPath()));
+        final Path dbPath = Paths.get(String.format("%s/cantor", datasourceProperties.getPath()));
 
         final String jdbcUrl = String.format(
                 "jdbc:h2:%s:%s;" +
                         "MODE=MYSQL;" +
-                        "COMPRESS=" + String.valueOf(builder.isCompressed()).toUpperCase() + ";" +
+                        "COMPRESS=" + String.valueOf(datasourceProperties.isCompressed()).toUpperCase() + ";" +
                         "LOCK_TIMEOUT=30000;" +
                         "DB_CLOSE_ON_EXIT=FALSE;" +
                         "TRACE_LEVEL_FILE=1;" +
                         "TRACE_MAX_FILE_SIZE=4;" +
                         "AUTOCOMMIT=TRUE;" +
+                        "AUTO_SERVER=" + String.valueOf(datasourceProperties.isAutoServer()).toUpperCase() + ";" +
                         "LOCK_MODE=1;" +
                         "MAX_COMPACT_TIME=3000;",
-                (builder.isInMemory() ? "mem" : "split"),
+                (datasourceProperties.isInMemory() ? "mem" : "split"),
                 dbPath.toAbsolutePath().toString());
         logger.info("jdbc url for datasource is: {}", jdbcUrl);
 
@@ -57,9 +58,10 @@ public class H2DataSourceProvider {
 
         final HikariDataSource connectoinPoolDataSource = new HikariDataSource();
         connectoinPoolDataSource.setJdbcUrl(jdbcUrl);
-        connectoinPoolDataSource.setUsername(builder.getUsername());
-        connectoinPoolDataSource.setPassword(builder.getPassword());
-        connectoinPoolDataSource.setMaximumPoolSize(32);
+        connectoinPoolDataSource.setUsername(datasourceProperties.getUsername());
+        connectoinPoolDataSource.setPassword(datasourceProperties.getPassword());
+        connectoinPoolDataSource.setMaximumPoolSize(datasourceProperties.getMaxPoolSize());
+        connectoinPoolDataSource.setConnectionTimeout(datasourceProperties.getConnectionTimeoutMillis());
 
         return connectoinPoolDataSource;
     }

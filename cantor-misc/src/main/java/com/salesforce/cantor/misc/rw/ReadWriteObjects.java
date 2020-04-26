@@ -13,82 +13,58 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
 
-import static com.salesforce.cantor.common.CommonPreconditions.*;
 import static com.salesforce.cantor.common.ObjectsPreconditions.*;
 
-public class ReadWriteObjects implements Objects {
-    private final Objects writable;
-    private final Objects readable;
-
+public class ReadWriteObjects extends AbstractBaseReadWriteNamespaceable<Objects> implements Objects {
     public ReadWriteObjects(final Objects writable, final Objects readable) {
-        checkArgument(writable != null, "null writable");
-        checkArgument(readable != null, "null readable");
-        this.writable = writable;
-        this.readable = readable;
-    }
-
-    @Override
-    public Collection<String> namespaces() throws IOException {
-        return this.readable.namespaces();
-    }
-
-    @Override
-    public void create(final String namespace) throws IOException {
-        checkCreate(namespace);
-        this.writable.create(namespace);
-    }
-
-    @Override
-    public void drop(final String namespace) throws IOException {
-        checkDrop(namespace);
-        this.writable.drop(namespace);
+        super(writable, readable);
     }
 
     @Override
     public void store(final String namespace, final String key, final byte[] bytes) throws IOException {
         checkStore(namespace, key, bytes);
-        this.writable.store(namespace, key, bytes);
+        getWritable().store(namespace, key, bytes);
     }
 
     @Override
     public void store(final String namespace, final Map<String, byte[]> batch) throws IOException {
         checkStore(namespace, batch);
-        this.writable.store(namespace, batch);
+        getWritable().store(namespace, batch);
     }
 
     @Override
     public byte[] get(final String namespace, final String key) throws IOException {
         checkGet(namespace, key);
-        return this.readable.get(namespace, key);
+        return getReadable().get(namespace, key);
     }
 
     @Override
     public Map<String, byte[]> get(final String namespace, final Collection<String> keys) throws IOException {
         checkGet(namespace, keys);
-        return this.readable.get(namespace, keys);
+        return getReadable().get(namespace, keys);
     }
 
     @Override
     public boolean delete(final String namespace, final String key) throws IOException {
         checkDelete(namespace, key);
-        return this.writable.delete(namespace, key);
+        return getWritable().delete(namespace, key);
     }
 
     @Override
     public void delete(final String namespace, final Collection<String> keys) throws IOException {
         checkDelete(namespace, keys);
-        this.writable.delete(namespace, keys);
+        getWritable().delete(namespace, keys);
     }
 
     @Override
     public Collection<String> keys(final String namespace, final int start, final int count) throws IOException {
         checkKeys(namespace, start, count);
-        return this.readable.keys(namespace, start, count);
+        return getReadable().keys(namespace, start, count);
     }
 
     @Override
     public int size(final String namespace) throws IOException {
         checkSize(namespace);
-        return this.readable.size(namespace);
+        return getReadable().size(namespace);
     }
 }
