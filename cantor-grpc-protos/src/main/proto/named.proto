@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.salesforce.cantor.grpc.functions";
+option java_outer_classname = "Functions";
+option objc_class_prefix = "FunctionsProtos";
+
+// TODO this whole thing should be called "transport" or bring it out and call it wormhole
+package com.salesforce.cantor.grpc.functions;
+
+message Packet {
+    enum Type {
+        INTEREST = 0;  // an interest packet "asks for data"
+        DATA = 1;   // a data packet is a response to an interest packet
+        CONTROL = 2;  // control packets are used for internal management
+    }
+    Type type = 1;
+    string guid = 2;  // globally unique identifier for this packet
+    string timestamp_millis = 3;  // packet creation timestamp in millis (epoch)
+    string source_guid = 9;  // globally unique identifier for the creator (source) of the packet
+    string signature = 10;  // packet content signature, signed by the creator
+    int32 ttl_millis = 11;  // time-to-live for packet after which it is discarded
+    int64 hash_code = 12;  // packet content sha256 hash code
+    int64 nonce = 13;
+    map<string, bool> boolean_parameters = 4;
+    map<string, int64> long_parameters = 5;
+    map<string, double> double_parameters = 6;
+    map<string, string> string_parameters = 7;
+    map<string, bytes> bytes_parameters = 8;
+}
+
+service FunctionsService {
+    rpc submit (stream Packet) returns (stream Packet) {}
+}
