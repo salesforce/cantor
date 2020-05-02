@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Executor to run various scripting language, such as JavaScript (Nashorn), Python (Jython), Groovy, Kotlin, Lua, etc.
+ * Executor to run various scripting language, such as JavaScript (Nashorn), Python (Jython), Groovy, Lua, etc.
  * This executor loads all JSR223 compliant scripting engines in the class path, and invokes functions
  * according to their extension.
  *

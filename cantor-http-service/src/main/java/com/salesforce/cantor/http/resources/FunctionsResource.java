@@ -54,34 +54,8 @@ public class FunctionsResource {
         this.functions = new FunctionsOnCantor(cantor);
     }
 
-    @PUT
-    @Path("/{namespace}")
-    @Operation(summary = "Create a new function namespace")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Function namespace was created or already exists"),
-            @ApiResponse(responseCode = "500", description = serverErrorMessage)
-    })
-    public Response createNamespace(@Parameter(description = "Namespace identifier") @PathParam("namespace") final String namespace) throws IOException {
-        logger.info("received request to drop namespace {}", namespace);
-        this.functions.create(namespace);
-        return Response.ok().build();
-    }
-
-    @DELETE
-    @Path("/{namespace}")
-    @Operation(summary = "Drop a function namespace")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Function namespace was dropped or didn't exist"),
-            @ApiResponse(responseCode = "500", description = serverErrorMessage)
-    })
-    public Response dropNamespace(@Parameter(description = "Namespace identifier") @PathParam("namespace") final String namespace) throws IOException {
-        logger.info("received request to drop namespace {}", namespace);
-        this.functions.drop(namespace);
-        return Response.ok().build();
-    }
-
     @GET
-    @Path("/{namespace}")
+    @Path("/")
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Get list of all functions in the given namespace")
     @ApiResponses(value = {
@@ -90,13 +64,13 @@ public class FunctionsResource {
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
             @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
-    public Response getFunctions(@PathParam("namespace") final String namespace) throws IOException {
+    public Response getFunctions() throws IOException {
         logger.info("received request for all objects namespaces");
-        return Response.ok(parser.toJson(this.functions.list(namespace))).build();
+        return Response.ok(parser.toJson(this.functions.list())).build();
     }
 
     @GET
-    @Path("/{namespace}/{function}")
+    @Path("/{function: .+}")
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Get a function")
     @ApiResponses(value = {
@@ -105,9 +79,8 @@ public class FunctionsResource {
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
             @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
-    public Response getFunction(@PathParam("namespace") final String namespace,
-                                @PathParam("function") final String functionName) throws IOException {
-        final byte[] bytes = this.functions.get(namespace, functionName);
+    public Response getFunction(@PathParam("function") final String functionName) throws IOException {
+        final byte[] bytes = this.functions.get(functionName);
         if (bytes == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
@@ -115,7 +88,7 @@ public class FunctionsResource {
     }
 
     @GET
-    @Path("/run/{namespace}/{function}")
+    @Path("/run/{function: .+}")
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Execute 'get' method on a function")
     @ApiResponses(value = {
@@ -124,16 +97,15 @@ public class FunctionsResource {
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
             @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
-    public Response getExecuteFunction(@PathParam("namespace") final String namespace,
-                                       @PathParam("function") final String function,
+    public Response getExecuteFunction(@PathParam("function") final String function,
                                        @Context final HttpServletRequest request,
                                        @Context final HttpServletResponse response) {
-        logger.info("executing '{}/{}' with get method", namespace, function);
-        return doExecute(namespace, function, request, response);
+        logger.info("executing '{}' with get method", function);
+        return doExecute(function, request, response);
     }
 
     @PUT
-    @Path("/run/{namespace}/{function}")
+    @Path("/run/{function: .+}")
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Execute put method on function query")
     @ApiResponses(value = {
@@ -142,16 +114,15 @@ public class FunctionsResource {
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
             @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
-    public Response putExecuteFunction(@PathParam("namespace") final String namespace,
-                                       @PathParam("function") final String function,
+    public Response putExecuteFunction(@PathParam("function") final String function,
                                        @Context final HttpServletRequest request,
                                        @Context final HttpServletResponse response) {
-        logger.info("executing '{}/{}' with put method", namespace, function);
-        return doExecute(namespace, function, request, response);
+        logger.info("executing '{}' with put method", function);
+        return doExecute(function, request, response);
     }
 
     @POST
-    @Path("/run/{namespace}/{function}")
+    @Path("/run/{function: .+}")
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Execute post method on function query")
     @ApiResponses(value = {
@@ -160,16 +131,15 @@ public class FunctionsResource {
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
             @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
-    public Response postExecuteFunction(@PathParam("namespace") final String namespace,
-                                        @PathParam("function") final String function,
+    public Response postExecuteFunction(@PathParam("function") final String function,
                                         @Context final HttpServletRequest request,
                                         @Context final HttpServletResponse response) {
-        logger.info("executing '{}/{}' with post method", namespace, function);
-        return doExecute(namespace, function, request, response);
+        logger.info("executing '{}' with post method", function);
+        return doExecute(function, request, response);
     }
 
     @DELETE
-    @Path("/run/{namespace}/{function}")
+    @Path("/run/{function: .+}")
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Execute delete method on function query")
     @ApiResponses(value = {
@@ -178,26 +148,24 @@ public class FunctionsResource {
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
             @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
-    public Response deleteExecuteFunction(@PathParam("namespace") final String namespace,
-                                          @PathParam("function") final String function,
+    public Response deleteExecuteFunction(@PathParam("function") final String function,
                                           @Context final HttpServletRequest request,
                                           @Context final HttpServletResponse response) {
-        logger.info("executing '{}/{}' with delete method", namespace, function);
-        return doExecute(namespace, function, request, response);
+        logger.info("executing '{}' with delete method", function);
+        return doExecute(function, request, response);
     }
 
     @PUT
-    @Path("/{namespace}/{function}")
+    @Path("/{function: .+}")
     @Operation(summary = "Store a function")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Function stored"),
         @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
-    public Response create(@Parameter(description = "Namespace") @PathParam("namespace") final String namespace,
-                           @Parameter(description = "Function identifier") @PathParam("function") final String functionName,
+    public Response create(@Parameter(description = "Function identifier") @PathParam("function") final String functionName,
                            final String body) {
         try {
-            this.functions.store(namespace, functionName, body);
+            this.functions.store(functionName, body);
             return Response.status(Response.Status.CREATED).build();
         } catch (IOException e) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -206,27 +174,7 @@ public class FunctionsResource {
         }
     }
 
-    @DELETE
-    @Path("/{namespace}/{function}")
-    @Operation(summary = "Remove a function")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Function removed"),
-        @ApiResponse(responseCode = "500", description = serverErrorMessage)
-    })
-    public Response drop(@Parameter(description = "Namespace") @PathParam("namespace") final String namespace,
-                         @Parameter(description = "Namespace identifier") @PathParam("function") final String function) {
-        try {
-            this.functions.delete(namespace, function);
-            return Response.ok().build();
-        } catch (IOException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(toString(e))
-                    .build();
-        }
-    }
-
-    private Response doExecute(final String namespace,
-                               final String function,
+    private Response doExecute(final String function,
                                final HttpServletRequest request,
                                final HttpServletResponse response) {
         try {
@@ -235,7 +183,7 @@ public class FunctionsResource {
             // special parameters, http.request and http.response are passed to functions
             context.set("http.request", request);
             context.set("http.response", response);
-            this.functions.run(namespace, function, context, getParams(request));
+            this.functions.run(function, context, getParams(request));
 
             // retrieve special parameter http.status from context
             final Object statusObject = context.get("http.status");
@@ -253,8 +201,8 @@ public class FunctionsResource {
             }
             final Response.ResponseBuilder builder = Response.status(status);
             // retrieve special parameter .out from context
-            if (context.get(".out") != null) {
-                builder.entity(context.get(".out"));
+            if (context.get("http.entity") != null) {
+                builder.entity(context.get("http.entity"));
             }
             // retrieve special parameter http.headers from context
             if (context.get("http.headers") != null) {

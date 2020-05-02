@@ -8,6 +8,7 @@
 package com.salesforce.cantor.functions;
 
 import com.salesforce.cantor.Cantor;
+import com.salesforce.cantor.Events;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,78 +21,57 @@ import static com.salesforce.cantor.common.CommonPreconditions.*;
 public class FunctionsOnCantor implements Functions {
     private static final Logger logger = LoggerFactory.getLogger(FunctionsOnCantor.class);
 
+    private static final String functionsNamespace = "functions";
+    private static final String metadataKeyFunctionName = "function-name";
+
     private final Cantor cantor;
     private final List<Executor> executors = new ArrayList<>();
 
     public FunctionsOnCantor(final Cantor cantor) {
         this.cantor = cantor;
+        initFunctionsNamespace();
         initExecutors();
     }
 
     @Override
-    public void create(final String namespace) throws IOException {
-        checkNamespace(namespace);
-        doCreate(namespace);
-    }
-
-    @Override
-    public void drop(final String namespace) throws IOException {
-        checkNamespace(namespace);
-        doDrop(namespace);
-    }
-
-    @Override
-    public void store(final String namespace, final String function, final String body) throws IOException {
+    public void store(final String function, final String body) throws IOException {
         checkString(body, "missing function body");
-        store(namespace, function, body.getBytes(StandardCharsets.UTF_8));
+        store(function, body.getBytes(StandardCharsets.UTF_8));
     }
 
     @Override
-    public void store(final String namespace, final String function, final byte[] body) throws IOException {
-        checkNamespace(namespace);
+    public void store(final String function, final byte[] body) throws IOException {
         checkString(function, "missing function name");
         checkArgument(function.contains("."), "missing extension in function name");
         checkArgument(body != null, "missing function body");
-        doStore(namespace, function, body);
+        doStore(function, body);
     }
 
     @Override
-    public byte[] get(final String namespace, final String function) throws IOException {
-        checkNamespace(namespace);
+    public byte[] get(final String function) throws IOException {
         checkString(function, "missing function name");
-        return doGet(namespace, function);
+        return doGet(function);
     }
 
     @Override
-    public void delete(final String namespace, final String function) throws IOException {
-        checkNamespace(namespace);
-        checkString(function, "missing function name");
-        doDelete(namespace, function);
+    public Collection<String> list() throws IOException {
+        return doList();
     }
 
     @Override
-    public Collection<String> list(final String namespace) throws IOException {
-        checkNamespace(namespace);
-        return doList(namespace);
-    }
-
-    @Override
-    public void run(final String namespace,
-                    final String function,
+    public void run(final String function,
                     final Context context,
                     final Map<String, String> params) throws IOException {
-        checkNamespace(namespace);
         checkString(function, "missing function name");
         checkArgument(context != null, "missing context");
         checkArgument(params != null, "missing parameters");
-        doRun(namespace, function, context, params);
+        doRun(function, context, params);
     }
 
-    private void doRun(final String namespace,
-                       final String function,
+    private void doRun(final String function,
                        final Context context,
                        final Map<String, String> params) throws IOException {
-        final byte[] body = get(namespace, function);
+        final byte[] body = get(function);
         if (body == null) {
             throw new IllegalArgumentException("function not found: " + function);
         }
@@ -99,47 +79,27 @@ public class FunctionsOnCantor implements Functions {
         getExecutor(function).run(function, body, context, params);
     }
 
-    private void initExecutors() {
-        logger.info("loading all executors available in class path");
-        final ServiceLoader<Executor> loader = ServiceLoader.load(Executor.class);
-        for (final Executor executor : loader) {
-            logger.info("loading executor: {} for extensions: {}", executor.getClass().getSimpleName(), executor.getExtensions());
-            this.executors.add(executor);
-        }
+    // functions are stored as events in cantor, carrying the function name as metadata
+    private void doStore(final String function, final byte[] body) throws IOException {
+        logger.info("storing function: '{}'", function);
+        final Map<String, String> metadata = new HashMap<>();
+        metadata.put(metadataKeyFunctionName, function);
+        this.cantor.events().store(functionsNamespace, System.currentTimeMillis(), metadata, null, body);
     }
 
-    private void doCreate(final String namespace) throws IOException {
-        final String functionNamespace = getFunctionNamespace(namespace);
-        logger.info("creating objects namespace for functions: '{}'", functionNamespace);
-        this.cantor.objects().create(functionNamespace);
+    // retrieve the last version of a function
+    private byte[] doGet(final String function) throws IOException {
+        logger.info("retrieving function: '{}'", function);
+        final Map<String, String> metadataQuery = new HashMap<>();
+        metadataQuery.put(metadataKeyFunctionName, function);
+        final Events.Event functionEvent = this.cantor.events().last(functionsNamespace, 0, Long.MAX_VALUE, metadataQuery, null, true);
+        return functionEvent == null ? null : functionEvent.getPayload();
     }
 
-    private void doDrop(final String namespace) throws IOException {
-        final String functionNamespace = getFunctionNamespace(namespace);
-        logger.info("dropping objects namespace for functions: '{}'", functionNamespace);
-        this.cantor.objects().drop(functionNamespace);
-    }
-
-    private void doStore(final String namespace, final String function, final byte[] body) throws IOException {
-        final String functionNamespace = getFunctionNamespace(namespace);
-        logger.info("storing function: '{}' in objects namespace: '{}'", function, functionNamespace);
-        this.cantor.objects().store(functionNamespace, function, body);
-    }
-
-    private byte[] doGet(final String namespace, final String function) throws IOException {
-        final String functionNamespace = getFunctionNamespace(namespace);
-        logger.info("retrieving function: '{}' from objects namespace: '{}'", function, functionNamespace);
-        return this.cantor.objects().get(functionNamespace, function);
-    }
-
-    private void doDelete(final String namespace, final String function) throws IOException {
-        final String functionNamespace = getFunctionNamespace(namespace);
-        logger.info("deleting function: name '{}' from objects namespace: '{}'", function, functionNamespace);
-        this.cantor.objects().delete(functionNamespace, function);
-    }
-
-    private Collection<String> doList(final String namespace) throws IOException {
-        return this.cantor.objects().keys(getFunctionNamespace(namespace), 0, -1);
+    private Collection<String> doList() throws IOException {
+        return this.cantor.events().metadata(
+                functionsNamespace, metadataKeyFunctionName, 0, Long.MAX_VALUE, null, null
+        );
     }
 
     private Executor getExecutor(final String functionName) {
@@ -159,11 +119,26 @@ public class FunctionsOnCantor implements Functions {
         );
     }
 
-    private String getExtension(final String name) {
-        return name.substring(name.lastIndexOf(".") + 1);
+    private void initExecutors() {
+        logger.info("loading all executors available in class path");
+        final ServiceLoader<Executor> loader = ServiceLoader.load(Executor.class);
+        for (final Executor executor : loader) {
+            logger.info("loading executor: {} for extensions: {}", executor.getClass().getSimpleName(), executor.getExtensions());
+            this.executors.add(executor);
+        }
     }
 
-    private String getFunctionNamespace(final String namespace) {
-        return String.format("functions-%s", namespace);
+    private void initFunctionsNamespace() {
+        logger.info("initializing functions namespace");
+        try {
+            this.cantor.events().create(functionsNamespace);
+        } catch (IOException e) {
+            logger.error("failed to initialize functions namespace; rethrowing as runtime exception", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    private String getExtension(final String name) {
+        return name.substring(name.lastIndexOf(".") + 1);
     }
 }

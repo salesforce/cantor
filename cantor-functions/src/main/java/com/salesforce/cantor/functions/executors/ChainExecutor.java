@@ -59,7 +59,7 @@ public class ChainExecutor implements Executor {
             overrideParams.putAll(functionParams);
 
             logger.info("executing function '{}' with parameters: '{}'", functionName, overrideParams);
-            context.getFunctions().run(functionNamespace, functionName, context, overrideParams);
+            context.getFunctions().run(functionName, context, overrideParams);
             logger.info("context: {}", context.keys());
         }
     }
