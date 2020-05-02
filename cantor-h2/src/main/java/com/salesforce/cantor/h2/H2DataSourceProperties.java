@@ -16,6 +16,9 @@ public class H2DataSourceProperties {
     private boolean isCompressed = false;
     private String username = "root";
     private String password = "root";
+    private boolean autoServer = true;
+    private int maxPoolSize = 64;  // default max connection pool size is 64
+    private int connectionTimeoutMillis = 30_000;  // default connection timeout is 30 seconds
 
     public String getPath() {
         return this.path;
@@ -63,9 +66,34 @@ public class H2DataSourceProperties {
         return this;
     }
 
+    public boolean isAutoServer() {
+        return this.autoServer;
+    }
+
+    public void setAutoServer(boolean autoServer) {
+        this.autoServer = autoServer;
+    }
+
+    public int getMaxPoolSize() {
+        return this.maxPoolSize;
+    }
+
+    public void setMaxPoolSize(int maxPoolSize) {
+        this.maxPoolSize = maxPoolSize;
+    }
+
+    public int getConnectionTimeoutMillis() {
+        return this.connectionTimeoutMillis;
+    }
+
+    public void setConnectionTimeoutMillis(int connectionTimeoutMillis) {
+        this.connectionTimeoutMillis = connectionTimeoutMillis;
+    }
+
     @Override
     public String toString() {
         return "H2DataSourceProperties(path: " + getPath() + ";embedded: " + isInMemory() + ";compressed: " + isCompressed() + ")";
     }
+
 }
 

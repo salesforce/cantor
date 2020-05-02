@@ -16,31 +16,7 @@ import java.util.Map;
  * and their associated weight in that particular set. Implementations of this interface allow users to add/remove
  * entries to/from sets, access and modify entries and their weights.
  */
-public interface Sets {
-
-    /**
-     * Get list of all namespaces.
-     *
-     * @return collection of namespace identifiers
-     * @throws IOException exception thrown from the underlying storage implementation
-     */
-    Collection<String> namespaces() throws IOException;
-
-    /**
-     * Create a new namespace.
-     *
-     * @param namespace the namespace identifier
-     * @throws IOException exception thrown from the underlying storage implementation
-     */
-    void create(String namespace) throws IOException;
-
-    /**
-     * Drop a namespace.
-     *
-     * @param namespace the namespace identifier
-     * @throws IOException exception thrown from the underlying storage implementation
-     */
-    void drop(String namespace) throws IOException;
+public interface Sets extends Namespaceable {
 
     /**
      * Add an entry with a weight to the set in the given namespace.
@@ -415,13 +391,15 @@ public interface Sets {
     Long weight(String namespace, String set, String entry) throws IOException;
 
     /**
-     * Atomic operation to increment an entry's weight in the set by the given count.
+     * Atomic operation to increment an entry's weight in the set by the given count
+     * and then return the final value.
      *
      * @param namespace the namespace
      * @param set name of the sorted set
      * @param count maximum number of entries to return
      * @throws IOException exception thrown from the underlying storage implementation
+     * @return final weight of the entry after incrementing
      */
-    void inc(String namespace, String set, String entry, long count) throws IOException;
+    long inc(String namespace, String set, String entry, long count) throws IOException;
 }
 

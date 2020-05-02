@@ -273,17 +273,17 @@ public class SetsOnGrpc extends AbstractBaseGrpcClient<SetsServiceBlockingStub> 
     }
 
     @Override
-    public void inc(final String namespace, final String set, final String entry, final long count) throws IOException {
+    public long inc(final String namespace, final String set, final String entry, final long count) throws IOException {
         checkInc(namespace, set, entry, count);
-        call(() -> {
+        return call(() -> {
             final IncRequest request = IncRequest.newBuilder()
                     .setNamespace(namespace)
                     .setSet(set)
                     .setEntry(entry)
                     .setCount(count)
                     .build();
-            getStub().inc(request);
-            return null;
+            final IncResponse response = getStub().inc(request);
+            return response.getResult();
         });
     }
 }

@@ -17,42 +17,38 @@ import java.util.concurrent.ExecutorService;
 import static com.salesforce.cantor.common.CommonPreconditions.*;
 import static com.salesforce.cantor.common.SetsPreconditions.*;
 
-public class AsyncSets extends AbstractBaseAsyncCantor implements Sets {
-    private final Sets delegate;
-
+public class AsyncSets extends AbstractBaseAsyncNamespaceable<Sets> implements Sets {
     public AsyncSets(final Sets delegate, final ExecutorService executorService) {
-        super(executorService);
-        checkArgument(delegate != null, "null delegate");
-        this.delegate = delegate;
+        super(delegate, executorService);
     }
 
     @Override
     public Collection<String> namespaces() throws IOException {
-        return submitCall(this.delegate::namespaces);
+        return submitCall(getDelegate()::namespaces);
     }
 
     @Override
     public void create(final String namespace) throws IOException {
         checkCreate(namespace);
-        submitCall(() -> { this.delegate.create(namespace); return null; });
+        submitCall(() -> { getDelegate().create(namespace); return null; });
     }
 
     @Override
     public void drop(final String namespace) throws IOException {
         checkDrop(namespace);
-        submitCall(() -> { this.delegate.drop(namespace); return null; });
+        submitCall(() -> { getDelegate().drop(namespace); return null; });
     }
 
     @Override
     public void add(final String namespace, final String set, final String entry, final long weight) throws IOException {
         checkAdd(namespace, set, entry, weight);
-        submitCall(() -> { this.delegate.add(namespace, set, entry, weight); return null; });
+        submitCall(() -> { getDelegate().add(namespace, set, entry, weight); return null; });
     }
 
     @Override
     public void add(final String namespace, final String set, final Map<String, Long> entries) throws IOException {
         checkAdd(namespace, set, entries);
-        submitCall(() -> { this.delegate.add(namespace, set, entries); return null; });
+        submitCall(() -> { getDelegate().add(namespace, set, entries); return null; });
     }
 
     @Override
@@ -64,7 +60,7 @@ public class AsyncSets extends AbstractBaseAsyncCantor implements Sets {
                                       final int count,
                                       final boolean ascending) throws IOException {
         checkEntries(namespace, set, min, max, start, count, ascending);
-        return submitCall(() -> this.delegate.entries(namespace, set, min, max, start, count, ascending));
+        return submitCall(() -> getDelegate().entries(namespace, set, min, max, start, count, ascending));
     }
 
     @Override
@@ -76,25 +72,25 @@ public class AsyncSets extends AbstractBaseAsyncCantor implements Sets {
                                  final int count,
                                  final boolean ascending) throws IOException {
         checkGet(namespace, set, min, max, start, count, ascending);
-        return submitCall(() -> this.delegate.get(namespace, set, min, max, start, count, ascending));
+        return submitCall(() -> getDelegate().get(namespace, set, min, max, start, count, ascending));
     }
 
     @Override
     public void delete(final String namespace, final String set, final long min, final long max) throws IOException {
         checkDelete(namespace, set, min, max);
-        submitCall(() -> { this.delegate.delete(namespace, set, min, max); return null; });
+        submitCall(() -> { getDelegate().delete(namespace, set, min, max); return null; });
     }
 
     @Override
     public final boolean delete(final String namespace, final String set, final String entry) throws IOException {
         checkDelete(namespace, set, entry);
-        return submitCall(() -> this.delegate.delete(namespace, set, entry));
+        return submitCall(() -> getDelegate().delete(namespace, set, entry));
     }
 
     @Override
     public void delete(final String namespace, final String set, final Collection<String> entries) throws IOException {
         checkDelete(namespace, set, entries);
-        submitCall(() -> { this.delegate.delete(namespace, set, entries); return null; });
+        submitCall(() -> { getDelegate().delete(namespace, set, entries); return null; });
     }
 
     @Override
@@ -106,7 +102,7 @@ public class AsyncSets extends AbstractBaseAsyncCantor implements Sets {
                                    final int count,
                                    final boolean ascending) throws IOException {
         checkUnion(namespace, sets, min, max, start, count, ascending);
-        return submitCall(() -> this.delegate.union(namespace, sets, min, max, start, count, ascending));
+        return submitCall(() -> getDelegate().union(namespace, sets, min, max, start, count, ascending));
     }
 
     @Override
@@ -118,7 +114,7 @@ public class AsyncSets extends AbstractBaseAsyncCantor implements Sets {
                                        final int count,
                                        final boolean ascending) throws IOException {
         checkIntersect(namespace, sets, min, max, start, count, ascending);
-        return submitCall(() -> this.delegate.intersect(namespace, sets, min, max, start, count, ascending));
+        return submitCall(() -> getDelegate().intersect(namespace, sets, min, max, start, count, ascending));
     }
 
     @Override
@@ -130,30 +126,30 @@ public class AsyncSets extends AbstractBaseAsyncCantor implements Sets {
                                  final int count,
                                  final boolean ascending) throws IOException {
         checkPop(namespace, set, min, max, start, count, ascending);
-        return submitCall(() -> this.delegate.pop(namespace, set, min, max, start, count, ascending));
+        return submitCall(() -> getDelegate().pop(namespace, set, min, max, start, count, ascending));
     }
 
     @Override
     public Collection<String> sets(final String namespace) throws IOException {
         checkSets(namespace);
-        return submitCall(() -> this.delegate.sets(namespace));
+        return submitCall(() -> getDelegate().sets(namespace));
     }
 
     @Override
     public final int size(final String namespace, final String set) throws IOException {
         checkSize(namespace, set);
-        return submitCall(() -> this.delegate.size(namespace, set));
+        return submitCall(() -> getDelegate().size(namespace, set));
     }
 
     @Override
     public Long weight(final String namespace, final String set, final String entry) throws IOException {
         checkWeight(namespace, set, entry);
-        return submitCall(() -> this.delegate.weight(namespace, set, entry));
+        return submitCall(() -> getDelegate().weight(namespace, set, entry));
     }
 
     @Override
-    public void inc(final String namespace, final String set, final String entry, final long count) throws IOException {
+    public long inc(final String namespace, final String set, final String entry, final long count) throws IOException {
         checkInc(namespace, set, entry, count);
-        submitCall(() -> { this.delegate.inc(namespace, set, entry, count); return null; });
+        return submitCall(() -> getDelegate().inc(namespace, set, entry, count));
     }
 }

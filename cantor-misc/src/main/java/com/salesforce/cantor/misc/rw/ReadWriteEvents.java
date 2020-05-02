@@ -12,41 +12,17 @@ import com.salesforce.cantor.Events;
 import java.io.IOException;
 import java.util.*;
 
-import static com.salesforce.cantor.common.CommonPreconditions.*;
 import static com.salesforce.cantor.common.EventsPreconditions.*;
 
-public class ReadWriteEvents implements Events {
-    private final Events writable;
-    private final Events readable;
-
+public class ReadWriteEvents extends AbstractBaseReadWriteNamespaceable<Events> implements Events {
     public ReadWriteEvents(final Events writable, final Events readable) {
-        checkArgument(writable != null, "null writable");
-        checkArgument(readable != null, "null readable");
-        this.writable = writable;
-        this.readable = readable;
-    }
-
-    @Override
-    public Collection<String> namespaces() throws IOException {
-        return this.readable.namespaces();
-    }
-
-    @Override
-    public void create(final String namespace) throws IOException {
-        checkCreate(namespace);
-        this.writable.create(namespace);
-    }
-
-    @Override
-    public void drop(final String namespace) throws IOException {
-        checkDrop(namespace);
-        this.writable.drop(namespace);
+        super(writable, readable);
     }
 
     @Override
     public void store(final String namespace, final Collection<Event> batch) throws IOException {
         checkStore(namespace, batch);
-        this.writable.store(namespace, batch);
+        getWritable().store(namespace, batch);
     }
 
     @Override
@@ -59,7 +35,7 @@ public class ReadWriteEvents implements Events {
                            final boolean ascending,
                            final int limit) throws IOException {
         checkGet(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        return this.readable.get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, ascending, limit);
+        return getReadable().get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, ascending, limit);
     }
 
     @Override
@@ -69,7 +45,7 @@ public class ReadWriteEvents implements Events {
                       final Map<String, String> metadataQuery,
                       final Map<String, String> dimensionsQuery) throws IOException {
         checkDelete(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        return this.writable.delete(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
+        return getWritable().delete(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
     }
 
     @Override
@@ -90,7 +66,7 @@ public class ReadWriteEvents implements Events {
                 aggregateIntervalMillis,
                 aggregationFunction
         );
-        return this.readable.aggregate(namespace,
+        return getReadable().aggregate(namespace,
                 dimension,
                 startTimestampMillis,
                 endTimestampMillis,
@@ -109,7 +85,7 @@ public class ReadWriteEvents implements Events {
                                 final Map<String, String> metadataQuery,
                                 final Map<String, String> dimensionsQuery) throws IOException {
         checkMetadata(namespace, metadataKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        return this.readable.metadata(namespace,
+        return getReadable().metadata(namespace,
                 metadataKey,
                 startTimestampMillis,
                 endTimestampMillis,
@@ -121,6 +97,6 @@ public class ReadWriteEvents implements Events {
     @Override
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
         checkExpire(namespace, endTimestampMillis);
-        this.writable.expire(namespace, endTimestampMillis);
+        getWritable().expire(namespace, endTimestampMillis);
     }
 }

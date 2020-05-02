@@ -22,7 +22,7 @@ import java.util.*;
  *
  * Implementations of this interface provide functionalities to store and retrieve
  */
-public interface Events {
+public interface Events extends Namespaceable {
 
     /**
      * An event consists of a timestamp in milli-seconds, a map of string to string as metadata, and a map of string
@@ -110,32 +110,8 @@ public interface Events {
      * Enum representing all available aggregation functions.
      */
     enum AggregationFunction {
-        AVG, MIN, MAX, SUM, COUNT, STDDEV_POP, STDDEV_SAMP, VAR_POP, VAR_SAMP
+        AVG, MIN, MAX, SUM, COUNT
     }
-
-    /**
-     * Get list of all namespaces.
-     *
-     * @return collection of namespace identifiers
-     * @throws IOException exception thrown from the underlying storage implementation
-     */
-    Collection<String> namespaces() throws IOException;
-
-    /**
-     * Create a new namespace.
-     *
-     * @param namespace the namespace identifier
-     * @throws IOException exception thrown from the underlying storage implementation
-     */
-    void create(String namespace) throws IOException;
-
-    /**
-     * Drop a namespace.
-     *
-     * @param namespace the namespace identifier
-     * @throws IOException exception thrown from the underlying storage implementation
-     */
-    void drop(String namespace) throws IOException;
 
     /**
      * Store an event in the given namespace, with timestamp and optionally metadata and dimensions.

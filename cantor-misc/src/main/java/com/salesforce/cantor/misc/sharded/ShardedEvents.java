@@ -15,35 +15,29 @@ import java.util.*;
 import static com.salesforce.cantor.common.CommonPreconditions.*;
 import static com.salesforce.cantor.common.EventsPreconditions.*;
 
-public class ShardedEvents implements Events {
-    private final Events[] delegates;
-
+public class ShardedEvents extends AbstractBaseShardedNamespaceable<Events> implements Events {
     public ShardedEvents(final Events... delegates) {
-        checkArgument(delegates != null && delegates.length > 0, "null/empty delegates");
-        this.delegates = delegates;
-    }
-
-    @Override
-    public Collection<String> namespaces() throws IOException {
-        return doNamespaces();
+        super(delegates);
     }
 
     @Override
     public void create(final String namespace) throws IOException {
         checkCreate(namespace);
-        getEvents(namespace).create(namespace);
+        getShardForCreate(namespace).create(namespace);
+        loadNamespaceLookupTable();
     }
 
     @Override
     public void drop(final String namespace) throws IOException {
         checkDrop(namespace);
-        getEvents(namespace).drop(namespace);
+        getShard(namespace).drop(namespace);
+        loadNamespaceLookupTable(); // reload lookup table after dropping
     }
 
     @Override
     public void store(final String namespace, final Collection<Event> batch) throws IOException {
         checkStore(namespace, batch);
-        getEvents(namespace).store(namespace, batch);
+        getShard(namespace).store(namespace, batch);
     }
 
     @Override
@@ -56,7 +50,7 @@ public class ShardedEvents implements Events {
                            final boolean ascending,
                            final int limit) throws IOException {
         checkGet(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        return getEvents(namespace)
+        return getShard(namespace)
                 .get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, ascending, limit);
     }
 
@@ -67,7 +61,7 @@ public class ShardedEvents implements Events {
                       final Map<String, String> metadataQuery,
                       final Map<String, String> dimensionsQuery) throws IOException {
         checkDelete(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        return getEvents(namespace)
+        return getShard(namespace)
                 .delete(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
     }
 
@@ -89,7 +83,7 @@ public class ShardedEvents implements Events {
                 aggregateIntervalMillis,
                 aggregationFunction
         );
-        return getEvents(namespace)
+        return getShard(namespace)
                 .aggregate(namespace,
                         dimension,
                         startTimestampMillis,
@@ -109,7 +103,7 @@ public class ShardedEvents implements Events {
                                 final Map<String, String> metadataQuery,
                                 final Map<String, String> dimensionsQuery) throws IOException {
         checkMetadata(namespace, metadataKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        return getEvents(namespace)
+        return getShard(namespace)
                 .metadata(namespace,
                         metadataKey,
                         startTimestampMillis,
@@ -122,18 +116,6 @@ public class ShardedEvents implements Events {
     @Override
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
         checkExpire(namespace, endTimestampMillis);
-        getEvents(namespace).expire(namespace, endTimestampMillis);
-    }
-
-    private Collection<String> doNamespaces() throws IOException {
-        final Set<String> results = new HashSet<>();
-        for (final Events delegate : this.delegates) {
-            results.addAll(delegate.namespaces());
-        }
-        return results;
-    }
-
-    private Events getEvents(final String namespace) {
-        return Shardeds.getShard(this.delegates, namespace);
+        getShard(namespace).expire(namespace, endTimestampMillis);
     }
 }
