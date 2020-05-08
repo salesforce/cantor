@@ -8,7 +8,6 @@
 package com.salesforce.cantor.functions;
 
 import com.salesforce.cantor.Cantor;
-import com.salesforce.cantor.Events;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +21,6 @@ public class FunctionsOnCantor implements Functions {
     private static final Logger logger = LoggerFactory.getLogger(FunctionsOnCantor.class);
 
     private static final String functionsNamespace = "functions";
-    private static final String metadataKeyFunctionName = "function-name";
 
     private final Cantor cantor;
     private final List<Executor> executors = new ArrayList<>();
@@ -79,27 +77,20 @@ public class FunctionsOnCantor implements Functions {
         getExecutor(function).run(function, body, context, params);
     }
 
-    // functions are stored as events in cantor, carrying the function name as metadata
+    // functions are stored as objects in cantor
     private void doStore(final String function, final byte[] body) throws IOException {
         logger.info("storing function: '{}'", function);
-        final Map<String, String> metadata = new HashMap<>();
-        metadata.put(metadataKeyFunctionName, function);
-        this.cantor.events().store(functionsNamespace, System.currentTimeMillis(), metadata, null, body);
+        this.cantor.objects().store(functionsNamespace, function, body);
     }
 
     // retrieve the last version of a function
     private byte[] doGet(final String function) throws IOException {
         logger.info("retrieving function: '{}'", function);
-        final Map<String, String> metadataQuery = new HashMap<>();
-        metadataQuery.put(metadataKeyFunctionName, function);
-        final Events.Event functionEvent = this.cantor.events().last(functionsNamespace, 0, Long.MAX_VALUE, metadataQuery, null, true);
-        return functionEvent == null ? null : functionEvent.getPayload();
+        return this.cantor.objects().get(functionsNamespace, function);
     }
 
     private Collection<String> doList() throws IOException {
-        return this.cantor.events().metadata(
-                functionsNamespace, metadataKeyFunctionName, 0, Long.MAX_VALUE, null, null
-        );
+        return this.cantor.objects().keys(functionsNamespace, 0, -1);
     }
 
     private Executor getExecutor(final String functionName) {
@@ -131,7 +122,7 @@ public class FunctionsOnCantor implements Functions {
     private void initFunctionsNamespace() {
         logger.info("initializing functions namespace");
         try {
-            this.cantor.events().create(functionsNamespace);
+            this.cantor.objects().create(functionsNamespace);
         } catch (IOException e) {
             logger.error("failed to initialize functions namespace; rethrowing as runtime exception", e);
             throw new RuntimeException(e);

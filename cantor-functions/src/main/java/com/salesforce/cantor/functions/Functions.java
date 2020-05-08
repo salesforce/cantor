@@ -15,7 +15,7 @@ import java.util.Map;
 import static com.salesforce.cantor.common.CommonPreconditions.*;
 
 /**
- * Functions allow users to store/retrieve and execute a function in this sandbox.
+ * Functions allow users to store/retrieve and execute a function.
  */
 public interface Functions {
 
@@ -50,14 +50,14 @@ public interface Functions {
     byte[] get(String function) throws IOException;
 
     /**
-     * Get the list of all functions in the given namespace.
+     * Get the list of all function names.
      *
      * @throws IOException exception thrown from the underlying storage implementation
      */
     Collection<String> list() throws IOException;
 
     /**
-     * Execute the function, given the context and param arguments.
+     * Execute the function, given the context and parameters.
      *
      * @param function the function name identifier
      * @param context the context variables to pass to function on execution
