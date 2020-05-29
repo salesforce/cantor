@@ -10,6 +10,7 @@ package com.salesforce.cantor.archive;
 import com.google.protobuf.ByteString;
 import com.salesforce.cantor.Events;
 import com.salesforce.cantor.common.EventsPreconditions;
+import com.salesforce.cantor.misc.archivable.EventsArchiver;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveOutputStream;
@@ -24,12 +25,27 @@ import java.util.concurrent.TimeUnit;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 
-public class EventsArchiver extends AbstractBaseArchiver {
-    private static final Logger logger = LoggerFactory.getLogger(EventsArchiver.class);
+public class FileEventsArchiver extends AbstractBaseArchiver implements EventsArchiver<Path> {
+    private static final Logger logger = LoggerFactory.getLogger(FileEventsArchiver.class);
 
     public static final long MIN_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(1);
     public static final long MAX_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(60);
 
+    public void archive(final Events events,
+                        final String namespace,
+                        final long startTimestampMillis,
+                        final long endTimestampMillis,
+                        final Map<String, String> metadataQuery,
+                        final Map<String, String> dimensionsQuery,
+                        final long chunkMillis) throws IOException {
+        FileEventsArchiver.archive(
+                events, namespace,
+                startTimestampMillis, endTimestampMillis,
+                metadataQuery, dimensionsQuery,
+                chunkMillis, createTempFile(namespace));
+    }
+
+    // static method for testing
     public static void archive(final Events events,
                                final String namespace,
                                final long startTimestampMillis,
@@ -77,6 +93,7 @@ public class EventsArchiver extends AbstractBaseArchiver {
     public static void restore(final Events events, final String namespace, final Path archiveFile) throws IOException {
         checkRestoreArguments(events, namespace, archiveFile);
         // create the namespace, in case the user hasn't already
+        // TODO: potential bug here; seeing data deletion when creating a namespace that already exists
         events.create(namespace);
 
         long startNanos = System.nanoTime();
