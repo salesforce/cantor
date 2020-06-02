@@ -22,8 +22,8 @@ import java.util.Map;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 
-public class ObjectsArchiver extends AbstractBaseArchiver {
-    private static final Logger logger = LoggerFactory.getLogger(ObjectsArchiver.class);
+public class FileObjectsArchiver extends AbstractBaseArchiver {
+    private static final Logger logger = LoggerFactory.getLogger(FileObjectsArchiver.class);
 
     public static final int MAX_CHUNK_SIZE = 1_000;
 
