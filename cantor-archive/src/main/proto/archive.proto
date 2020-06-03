@@ -5,8 +5,6 @@ option java_package = "com.salesforce.cantor.archive";
 option java_outer_classname = "Archive";
 option objc_class_prefix = "ArchiveProtos";
 
-import "google/protobuf/any.proto";
-
 message ObjectsChunk {
     map<string, bytes> objects = 1;
 }
