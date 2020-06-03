@@ -71,13 +71,13 @@ public abstract class AbstractBaseFileArchiver {
     protected void checkArchiveArguments(final Object instance, final String namespace, final Path destination) throws IOException {
         checkArgument(instance != null, "null cantor instance, can't archive");
         checkString(namespace, "null/empty namespace, can't archive");
-        checkArgument(Files.notExists(destination) || Files.size(destination) == 0, "file already exists and is not empty, can't archive");
+        checkArgument(Files.notExists(destination) || Files.size(destination) == 0, "file already exists and is not empty, can't archive: " + destination);
     }
 
     protected void checkRestoreArguments(final Object instance, final String namespace, final Path archiveFile) {
         checkArgument(instance != null, "null objects, can't restore");
         checkString(namespace, "null/empty namespace, can't restore");
-        checkArgument(Files.exists(archiveFile), "can't locate archive file, can't restore");
+        checkArgument(Files.exists(archiveFile), "can't locate archive file, can't restore: " + archiveFile);
     }
 
     protected long getFloorForWindow(final long timestampMillis, final long chunkMillis) {

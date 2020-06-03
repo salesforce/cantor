@@ -14,8 +14,8 @@ import com.salesforce.cantor.h2.CantorOnH2;
 import com.salesforce.cantor.misc.archivable.ArchivableCantor;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.testng.Assert;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -40,7 +40,7 @@ public class FileArchiveTest {
     private Cantor localCantor;
     private FileArchiver archiver;
 
-    @BeforeTest
+    @BeforeMethod
     public void setup() throws IOException {
         final File baseDirectory = new File(BASE_DIRECTORY);
         baseDirectory.delete();
@@ -50,7 +50,7 @@ public class FileArchiveTest {
         generateData();
     }
 
-    @AfterTest
+    @AfterMethod
     public void teardown() {
         final File baseDirectory = new File(BASE_DIRECTORY);
         final String[] entries = baseDirectory.list();
@@ -68,13 +68,13 @@ public class FileArchiveTest {
         for (final Map.Entry<String, Long> cantorH2Namespace : CANTOR_H2_NAMESPACES.entrySet()) {
             final long endTimestamp = getFloorForWindow(cantorH2Namespace.getValue(), HOUR_MILLIS) - 1;
             final List<Events.Event> events = this.localCantor.events()
-                    .get(cantorH2Namespace.getKey(), TIMEFRAME_ORIGIN, endTimestamp);
+                    .get(cantorH2Namespace.getKey(), TIMEFRAME_ORIGIN, endTimestamp + HOUR_MILLIS);
             this.localCantor.events().expire(cantorH2Namespace.getKey(), cantorH2Namespace.getValue());
 
             if (events.size() > 0) {
                 int eventCount = 0;
                 final FileEventsArchiver fileEventsArchiver = (FileEventsArchiver) this.archiver.eventsArchiver();
-                for (long end = endTimestamp - HOUR_MILLIS; end > 0; end -= HOUR_MILLIS) {
+                for (long end = endTimestamp; end > 0; end -= HOUR_MILLIS) {
                     final Path fileArchive = fileEventsArchiver.getFileArchive(cantorH2Namespace.getKey(), end + 1);
                     if (!fileArchive.toFile().exists()) continue;
 
@@ -85,13 +85,43 @@ public class FileArchiveTest {
                         }
                     }
                 }
-                Assert.assertEquals(eventCount, events.size(), "events failed to archive");
+                Assert.assertEquals(eventCount, events.size(), "events that were expired were not archived");
             } else {
                 final String[] files = new File(BASE_DIRECTORY).list();
                 if (files == null) continue;
 
                 final List<String> filesList = Arrays.asList(files);
-                filesList.forEach(file -> Assert.assertFalse(file.contains(cantorH2Namespace.getKey()), "no events archived but found archive file for namespace"));
+                filesList.forEach(file -> Assert.assertFalse(file.contains(cantorH2Namespace.getKey()), "no events archived but found archive file for namespace: " + cantorH2Namespace.getKey()));
+            }
+        }
+    }
+
+    @Test
+    public void testEventsArchiveZero() throws IOException {
+        for (final String cantorH2Namespace : CANTOR_H2_NAMESPACES.keySet()) {
+            final List<Events.Event> events = this.localCantor.events()
+                    .get(cantorH2Namespace, 0, HOUR_MILLIS);
+            this.localCantor.events().expire(cantorH2Namespace, HOUR_MILLIS);
+
+            if (events.size() > 0) {
+                int eventCount = 0;
+                final FileEventsArchiver fileEventsArchiver = (FileEventsArchiver) this.archiver.eventsArchiver();
+                final Path fileArchive = fileEventsArchiver.getFileArchive(cantorH2Namespace, 0);
+                Assert.assertTrue(fileArchive.toFile().exists(), "events with timestamp zero aren't being archived");
+
+                try (final ArchiveInputStream archiveInputStream = fileEventsArchiver.getArchiveInputStream(fileArchive)) {
+                    while (archiveInputStream.getNextEntry() != null) {
+                        final EventsChunk chunk = EventsChunk.parseFrom(archiveInputStream);
+                        eventCount += chunk.getEventsCount();
+                    }
+                }
+                Assert.assertEquals(eventCount, events.size(), "events that were expired were not archived");
+            } else {
+                final String[] files = new File(BASE_DIRECTORY).list();
+                if (files == null) continue;
+
+                final List<String> filesList = Arrays.asList(files);
+                filesList.forEach(file -> Assert.assertFalse(file.contains(cantorH2Namespace), "no events archived but found archive file for namespace: " + cantorH2Namespace + "\n" + filesList));
             }
         }
     }
@@ -109,6 +139,16 @@ public class FileArchiveTest {
                 this.localCantor.events().store(
                     namespace, random.nextLong(TIMEFRAME_ORIGIN, TIMEFRAME_BOUND),
                         null,null, randomPayload
+                );
+            }
+
+            for (int eventCount = 0; eventCount < random.nextInt(1, 10); eventCount++) { // 1MB max
+                // throw in a few random events at zero timestamp
+                final byte[] randomPayload = new byte[random.nextInt(0, 100_000)]; // 100KB max
+                random.nextBytes(randomPayload);
+                this.localCantor.events().store(
+                        namespace, 0,
+                        null,null, null
                 );
             }
         }

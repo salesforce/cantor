@@ -141,13 +141,7 @@ public class FileEventsArchiverTest {
         Files.createDirectories(Paths.get(basePath, "output"));
         final Path emptyOutputPath = Paths.get(basePath, "output", "test-empty-archive.tar.gz");
         fileEventsArchiver.doArchive(cantor.events(), emptyNamespace, standardStart, now, null, null, emptyOutputPath);
-        assertTrue(Files.exists(emptyOutputPath), "archiving zero events should still produce file");
-
-        final Cantor vCantor = getCantor(Paths.get(basePath, "input").toString());
-        // verify
-        final String emptyVerificationNamespace = UUID.randomUUID().toString();
-        fileEventsArchiver.doRestore(vCantor.events(), emptyVerificationNamespace, emptyOutputPath);
-        assertTrue(vCantor.events().get(emptyVerificationNamespace, standardStart, now).isEmpty(), "should be no events");
+        assertTrue(Files.notExists(emptyOutputPath), "archiving zero events shouldn't produce a file");
 
         // check queries
         final String queryNamespace = UUID.randomUUID().toString();
@@ -163,6 +157,7 @@ public class FileEventsArchiverTest {
         assertTrue(Files.exists(queryOutputPath), "archiving events with queries should still produce file");
 
         // verify
+        final Cantor vCantor = getCantor(Paths.get(basePath, "input").toString());
         final String queryVerificationNamespace = UUID.randomUUID().toString();
         fileEventsArchiver.doRestore(vCantor.events(), queryVerificationNamespace, queryOutputPath);
         final List<Event> queryEvents = vCantor.events().get(queryVerificationNamespace, standardStart, now, true);

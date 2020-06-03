@@ -32,7 +32,7 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
     private static final String archivePathFormat = "/archive-events-%s-%s-%d-%d";
 
     public static final long MIN_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(1);
-    public static final long MAX_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(60);
+    public static final long MAX_CHUNK_MILLIS = TimeUnit.DAYS.toMillis(1);
 
 
     public FileEventsArchiver(final String baseDirectory, final long chunkMillis) {
@@ -56,16 +56,23 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
         long startNanos = System.nanoTime();
         long totalEventsArchived = 0;
         try {
-            for (long end = getFloorForWindow(endTimestampMillis, this.chunkMillis) - 1, start = (end + 1) - chunkMillis;
+            for (long start = getFloorForWindow(endTimestampMillis, this.chunkMillis), end = start + chunkMillis - 1;
                  end > 0;
                  end -= this.chunkMillis, start -= this.chunkMillis) {
+                // TODO: in the event we are archiving over an existing file pull the file down, prevent duplicates, and load new events
                 final long archivedEvents = doArchive(
                         events, namespace,
                         start, end,
                         metadataQuery, dimensionsQuery,
                         getFileArchive(namespace, start));
                 totalEventsArchived += archivedEvents;
-                if (archivedEvents == 0 && events.first(namespace, startTimestampMillis, start) == null) {
+                if (archivedEvents == 0 && events.first(namespace, startTimestampMillis + this.chunkMillis, start) == null) {
+                    // TODO: build a heuristic to jump to the next chunk with events to archive instead of this hack to handle events with zero for a timestamp
+                    if (events.first(namespace, 0, this.chunkMillis) != null) {
+                        start = this.chunkMillis;
+                        end = this.chunkMillis * 2;
+                        continue;
+                    }
                     // no more events left to archive
                     return;
                 }
@@ -112,12 +119,14 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
 
         long startNanos = System.nanoTime();
         long eventsArchived = 0;
+
+        final List<Events.Event> chunkEvents = events.get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, true, true, 0);
+        if (chunkEvents.size() == 0) {
+            // exit if no events
+            return eventsArchived;
+        }
+
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
-            final List<Events.Event> chunkEvents = events.get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, true, true, 0);
-            if (chunkEvents.size() == 0) {
-                // exit if no events
-                return eventsArchived;
-            }
             // todo: can we do this differently? This doubles the memory we hold on to :(
             final EventsChunk.Builder chunkBuilder = EventsChunk.newBuilder();
             for (final Events.Event event : chunkEvents) {
