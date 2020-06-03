@@ -19,10 +19,8 @@ import java.util.concurrent.TimeUnit;
 /**
  * Wrapper class around a delegate Events instance, adding logging and time spent.
  */
-public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events, EventsArchiver<?>> implements Events {
-    private static final long oneHourMillis = TimeUnit.HOURS.toMillis(1);
-
-    public ArchivableEvents(final Events delegate, final EventsArchiver<?> archiver) {
+public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events, EventsArchiver> implements Events {
+    public ArchivableEvents(final Events delegate, final EventsArchiver archiver) {
         super(delegate, archiver);
     }
 
@@ -59,17 +57,6 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
                       final long endTimestampMillis,
                       final Map<String, String> metadataQuery,
                       final Map<String, String> dimensionsQuery) throws IOException {
-        // archiving all before deletion
-        // TODO: should the logic for preventing duplication be here or in the implementation?
-        getArchiveDelegate().archive(getDelegate(),
-                        namespace,
-                        startTimestampMillis,
-                        endTimestampMillis,
-                        metadataQuery,
-                        dimensionsQuery,
-                        oneHourMillis
-                );
-
         return getDelegate().delete(namespace,
                         startTimestampMillis,
                         endTimestampMillis,
@@ -121,11 +108,7 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
         // archiving all before deletion
         getArchiveDelegate().archive(getDelegate(),
                         namespace,
-                        0,
-                        endTimestampMillis,
-                        null,
-                        null,
-                        oneHourMillis
+                        endTimestampMillis
                 );
 
         getDelegate().expire(namespace, endTimestampMillis);

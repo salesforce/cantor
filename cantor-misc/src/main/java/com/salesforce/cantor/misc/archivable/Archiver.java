@@ -3,14 +3,26 @@ package com.salesforce.cantor.misc.archivable;
 /**
  * Abstraction for accessing all underlying archives
  */
-public interface Archiver<T> {
+public interface Archiver {
 
-    // TODO: add support for Objects and Sets; should we all archivers of different types in the same wrapper?
+    /**
+     * Returns an instance of SetsArchiver.
+     *
+     * @return instance of sets archiver
+     */
+    SetsArchiver setsArchiver();
+
+    /**
+     * Returns an instance of objectsArchiver.
+     *
+     * @return instance of objects archiver
+     */
+    ObjectsArchiver objectsArchiver();
 
     /**
      * Returns an instance of EventsArchiver.
      *
      * @return instance of events archiver
      */
-    EventsArchiver<T> eventsArchiver();
+    EventsArchiver eventsArchiver();
 }

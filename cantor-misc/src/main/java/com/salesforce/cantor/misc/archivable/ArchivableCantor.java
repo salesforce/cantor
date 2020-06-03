@@ -38,7 +38,7 @@ public class ArchivableCantor implements Cantor {
     private final Sets sets;
     private final Events events;
 
-    public ArchivableCantor(final Cantor delegate, final Archiver<?> archiveDelegate) {
+    public ArchivableCantor(final Cantor delegate, final Archiver archiveDelegate) {
         checkArgument(delegate != null, "null delegate");
         checkArgument(archiveDelegate != null, "null archiveDelegate");
 
