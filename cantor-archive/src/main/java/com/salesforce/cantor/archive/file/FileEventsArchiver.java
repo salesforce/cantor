@@ -69,7 +69,7 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
         long startNanos = System.nanoTime();
         long totalEventsArchived = 0;
         try {
-            for (long start = getFloorForWindow(endTimestampMillis, this.chunkMillis), end = start + chunkMillis - 1;
+            for (long end = getCeilingForWindow(endTimestampMillis) - 1, start = (end + 1) - this.chunkMillis;
                  end > 0;
                  end -= this.chunkMillis, start -= this.chunkMillis) {
                 final long archivedEvents = doArchive(
@@ -78,11 +78,12 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
                         metadataQuery, dimensionsQuery,
                         getFileArchive(namespace, start));
                 totalEventsArchived += archivedEvents;
-                if (archivedEvents == 0 && events.first(namespace, startTimestampMillis + this.chunkMillis, start) == null) {
+                final long floorForStart = getFloorForChunk(startTimestampMillis, this.chunkMillis);
+                if (archivedEvents == 0 && events.first(namespace, floorForStart + this.chunkMillis, start) == null) {
                     // TODO: build a heuristic to jump to the next chunk with events to archive instead of this hack to handle events with zero for a timestamp
-                    if (events.first(namespace, 0, this.chunkMillis) != null) {
-                        start = this.chunkMillis;
-                        end = this.chunkMillis * 2;
+                    if (events.first(namespace, floorForStart, floorForStart + this.chunkMillis - 1) != null) {
+                        start = floorForStart + this.chunkMillis;
+                        end = floorForStart + (this.chunkMillis * 2) - 1;
                         continue;
                     }
                     // no more events left to archive
@@ -116,7 +117,7 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
                 totalEventsRestored += doRestore(events, namespace, archive);
             }
         } finally {
-            logger.info("restoring {} chucks, {} events for namespace '{}' took {}s",
+            logger.info("restoring {} chunks, {} events for namespace '{}' took {}s",
                     archives.size(), totalEventsRestored, namespace, TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startNanos));
         }
     }
@@ -143,7 +144,7 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
 
         final EventsChunk.Builder chunkBuilder = EventsChunk.newBuilder();
         if (!checkArchiveArguments(events, namespace, destination)) {
-            logger.warn("file already exists and is not empty, pulling to merge: {}", destination);
+            logger.debug("file already exists and is not empty, pulling to merge: {}", destination);
             try (final ArchiveInputStream archive = getArchiveInputStream(destination)) {
                 while (archive.getNextEntry() != null) {
                     chunkBuilder.mergeFrom(archive);
@@ -235,9 +236,9 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
     public List<Path> getFileArchiveList(final String namespace,
                                          final long startTimestampMillis,
                                          final long endTimestampMillis) throws IOException {
-        final long windowStart = getFloorForWindow(startTimestampMillis, this.chunkMillis);
+        final long windowStart = getFloorForChunk(startTimestampMillis, this.chunkMillis);
         final long windowEnd = (endTimestampMillis <= Long.MAX_VALUE - this.chunkMillis)
-                ? getFloorForWindow(endTimestampMillis, this.chunkMillis) + this.chunkMillis - 1
+                ? getFloorForChunk(endTimestampMillis, this.chunkMillis) + this.chunkMillis - 1
                 : endTimestampMillis;
         return Files.list(Paths.get(this.baseDirectory, this.subDirectory))
             .filter(path -> {

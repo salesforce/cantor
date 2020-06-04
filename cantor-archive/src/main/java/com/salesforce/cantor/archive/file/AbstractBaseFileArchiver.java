@@ -14,12 +14,15 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.TimeUnit;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 import static com.salesforce.cantor.common.CommonPreconditions.checkString;
 
 public abstract class AbstractBaseFileArchiver {
     protected static final String FLAG_RESTORED = ".cantor-archive-restored";
+    // one day windows are hardcoded for event expiration, so events need to be archived for the entire window
+    protected static long windowSizeMillis = TimeUnit.DAYS.toMillis(1);
 
     protected final String baseDirectory;
     protected final int chunkCount;
@@ -83,7 +86,18 @@ public abstract class AbstractBaseFileArchiver {
         checkArgument(Files.exists(archiveFile), "can't locate archive file, can't restore: " + archiveFile);
     }
 
-    protected long getFloorForWindow(final long timestampMillis, final long chunkMillis) {
+    protected long getFloorForChunk(final long timestampMillis, final long chunkMillis) {
         return (timestampMillis / chunkMillis) * chunkMillis;
+    }
+
+    protected long getFloorForWindow(final long timestampMillis) {
+        return (timestampMillis / windowSizeMillis) * windowSizeMillis;
+    }
+
+    protected long getCeilingForWindow(final long timestampMillis) {
+        if (timestampMillis >= Long.MAX_VALUE - windowSizeMillis) {
+            return Long.MAX_VALUE;
+        }
+        return getFloorForWindow(timestampMillis) + windowSizeMillis;
     }
 }
