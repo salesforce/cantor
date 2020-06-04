@@ -19,6 +19,8 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 import static com.salesforce.cantor.common.CommonPreconditions.checkString;
 
 public abstract class AbstractBaseFileArchiver {
+    protected static final String FLAG_RESTORED = ".cantor-archive-restored";
+
     protected final String baseDirectory;
     protected final int chunkCount;
     protected final long chunkMillis;
@@ -68,10 +70,11 @@ public abstract class AbstractBaseFileArchiver {
         return new TarArchiveInputStream(new GzipCompressorInputStream(new BufferedInputStream(Files.newInputStream(archiveFile))));
     }
 
-    protected void checkArchiveArguments(final Object instance, final String namespace, final Path destination) throws IOException {
+    protected boolean checkArchiveArguments(final Object instance, final String namespace, final Path destination) throws IOException {
         checkArgument(instance != null, "null cantor instance, can't archive");
         checkString(namespace, "null/empty namespace, can't archive");
-        checkArgument(Files.notExists(destination) || Files.size(destination) == 0, "file already exists and is not empty, can't archive: " + destination);
+        checkArgument(destination != null, "null destination, can't archive");
+        return Files.notExists(destination) || Files.size(destination) == 0;
     }
 
     protected void checkRestoreArguments(final Object instance, final String namespace, final Path archiveFile) {

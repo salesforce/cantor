@@ -42,7 +42,7 @@ public class FileEventsArchiverTest {
         for (final Event actualEvent : actual) {
             assertTrue(actualEvent.getMetadata().containsKey("guid"), "event missing guid");
             final Event expectedEvent = stored.get(actualEvent.getMetadata().get("guid"));
-            assertEventsEqual(actualEvent, expectedEvent);
+            assertEventsEqual(actualEvent, expectedEvent, "false");
         }
 
         // archive events in 1 minute chunks
@@ -169,8 +169,13 @@ public class FileEventsArchiverTest {
     }
 
     private void assertEventsEqual(final Event actual, final Event expected) {
+        assertEventsEqual(actual, expected, "true");
+    }
+
+    private void assertEventsEqual(final Event actual, final Event expected, final String restored) {
         assertEquals(actual.getTimestampMillis(), expected.getTimestampMillis(), "timestamps don't match");
         assertEqualsDeep(actual.getDimensions(), expected.getDimensions(), "dimensions don't match");
+        expected.getMetadata().put(AbstractBaseFileArchiver.FLAG_RESTORED, restored);
         assertEqualsDeep(actual.getMetadata(), expected.getMetadata(), "metadata don't match");
         if (expected.getPayload() == null) {
             assertTrue(actual.getPayload() ==  null || actual.getPayload().length == 0,
@@ -191,6 +196,7 @@ public class FileEventsArchiverTest {
                 event = new Event(ts(start, end), meta(), dim());
             }
             event.getMetadata().put("guid", UUID.randomUUID().toString());
+            event.getMetadata().put(AbstractBaseFileArchiver.FLAG_RESTORED, "false");
             assertNull(stored.put(event.getMetadata().get("guid"), event), "already stored this guid");
             events.store(namespace, event);
         }

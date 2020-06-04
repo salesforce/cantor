@@ -31,8 +31,8 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
     private static final Logger logger = LoggerFactory.getLogger(FileEventsArchiver.class);
     private static final String archivePathFormat = "/archive-events-%s-%s-%d-%d";
 
-    public static final long MIN_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(1);
-    public static final long MAX_CHUNK_MILLIS = TimeUnit.DAYS.toMillis(1);
+    private static final long MIN_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(1);
+    private static final long MAX_CHUNK_MILLIS = TimeUnit.DAYS.toMillis(1);
 
 
     public FileEventsArchiver(final String baseDirectory, final long chunkMillis) {
@@ -40,10 +40,8 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
     }
 
     @Override
-    public void archive(final Events events,
-                        final String namespace,
-                        final long endTimestampMillis) throws IOException {
-        archive(events, namespace, 0, endTimestampMillis, null, null);
+    public boolean hasArchives(final Events delegate, final String namespace, final long startTimestampMillis, final long endTimestampMillis) {
+        return false;
     }
 
     @Override
@@ -59,7 +57,6 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
             for (long start = getFloorForWindow(endTimestampMillis, this.chunkMillis), end = start + chunkMillis - 1;
                  end > 0;
                  end -= this.chunkMillis, start -= this.chunkMillis) {
-                // TODO: in the event we are archiving over an existing file pull the file down, prevent duplicates, and load new events
                 final long archivedEvents = doArchive(
                         events, namespace,
                         start, end,
@@ -112,7 +109,6 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
                           final Map<String, String> metadataQuery,
                           final Map<String, String> dimensionsQuery,
                           final Path destination) throws IOException {
-        checkArchiveArguments(events, namespace, destination);
         checkArgument(this.chunkMillis >= MIN_CHUNK_MILLIS, "archive chunk millis must be greater than " + MIN_CHUNK_MILLIS);
         checkArgument(this.chunkMillis <= MAX_CHUNK_MILLIS, "archive chunk millis must be less than " + MAX_CHUNK_MILLIS);
         EventsPreconditions.checkGet(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
@@ -126,10 +122,23 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
             return eventsArchived;
         }
 
+        final EventsChunk.Builder chunkBuilder = EventsChunk.newBuilder();
+        if (!checkArchiveArguments(events, namespace, destination)) {
+            logger.warn("file already exists and is not empty, pulling to merge: {}", destination);
+            try (final ArchiveInputStream archive = getArchiveInputStream(destination)) {
+                chunkBuilder.mergeFrom(archive);
+            }
+        }
+
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
             // todo: can we do this differently? This doubles the memory we hold on to :(
-            final EventsChunk.Builder chunkBuilder = EventsChunk.newBuilder();
             for (final Events.Event event : chunkEvents) {
+                final String restoredEvent = event.getMetadata().getOrDefault(FLAG_RESTORED, "false");
+                if (Boolean.parseBoolean(restoredEvent)) {
+                    // skip elements that have already been restored to prevent duplication
+                    continue;
+                }
+
                 final EventsChunk.Event.Builder eventBuilder = EventsChunk.Event.newBuilder()
                         .setTimestampMillis(event.getTimestampMillis())
                         .putAllDimensions(event.getDimensions())
@@ -164,9 +173,16 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
                 final EventsChunk chunk = EventsChunk.parseFrom(archive);
                 for (final EventsChunk.Event event : chunk.getEventsList()) {
                     if (ByteString.EMPTY.equals(event.getPayload())) {
-                        events.store(namespace, event.getTimestampMillis(), event.getMetadataMap(), event.getDimensionsMap());
+                        events.store(namespace,
+                                event.getTimestampMillis(),
+                                event.toBuilder().putMetadata(FLAG_RESTORED, "true").getMetadataMap(),
+                                event.getDimensionsMap());
                     } else {
-                        events.store(namespace, event.getTimestampMillis(), event.getMetadataMap(), event.getDimensionsMap(), event.getPayload().toByteArray());
+                        events.store(namespace,
+                                event.getTimestampMillis(),
+                                event.toBuilder().putMetadata(FLAG_RESTORED, "true").getMetadataMap(),
+                                event.getDimensionsMap(),
+                                event.getPayload().toByteArray());
                     }
                 }
                 logger.info("read {} entries from chunk {} ({} bytes) into {}", chunk.getEventsCount(), entry.getName(), entry.getSize(), namespace);
