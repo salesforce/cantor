@@ -42,7 +42,7 @@ public abstract class AbstractBaseFileArchiver {
         this.chunkMillis = chunkMillis;
     }
 
-    public Path getDirectory(final String fileNameFormat, final Object... args) {
+    public Path getFile(final String fileNameFormat, final Object... args) {
         return Paths.get(this.baseDirectory, this.subDirectory, String.format(fileNameFormat, args));
     }
 

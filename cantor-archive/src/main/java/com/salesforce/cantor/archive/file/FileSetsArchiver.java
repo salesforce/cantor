@@ -89,7 +89,7 @@ public class FileSetsArchiver extends AbstractBaseFileArchiver implements SetsAr
     }
 
     public Path getFileArchive(final String namespace) {
-        return getDirectory(archivePathFormat,
+        return getFile(archivePathFormat,
                 CantorProperties.getKingdom(),
                 namespace,
                 this.chunkCount);

@@ -20,16 +20,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
+import static com.salesforce.cantor.common.CommonPreconditions.checkNamespace;
 
 public class FileEventsArchiver extends AbstractBaseFileArchiver implements EventsArchiver {
     private static final Logger logger = LoggerFactory.getLogger(FileEventsArchiver.class);
     private static final String archivePathFormat = "/archive-events-%s-%s-%d-%d";
+    private static final Pattern archiveRegexPattern = Pattern.compile("archive-events-.*-.*-(?<start>\\d{13})-(?<end>\\d{13})");
 
     private static final long MIN_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(1);
     private static final long MAX_CHUNK_MILLIS = TimeUnit.DAYS.toMillis(1);
@@ -40,8 +47,13 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
     }
 
     @Override
-    public boolean hasArchives(final Events delegate, final String namespace, final long startTimestampMillis, final long endTimestampMillis) {
-        return false;
+    public boolean hasArchives(final String namespace,
+                               final long startTimestampMillis,
+                               final long endTimestampMillis) throws IOException {
+        checkNamespace(namespace);
+        checkArgument(startTimestampMillis >= 0, "invalid start timestamp");
+        checkArgument(endTimestampMillis >= startTimestampMillis, "end timestamp cannot be before start timestamp");
+        return getFileArchiveList(namespace, startTimestampMillis, endTimestampMillis).size() > 0;
     }
 
     @Override
@@ -86,19 +98,15 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
                         final long startTimestampMillis,
                         final long endTimestampMillis) throws IOException {
         long startNanos = System.nanoTime();
-        long chunkTotal = 0;
         long totalEventsRestored = 0;
+        final List<Path> archives = getFileArchiveList(namespace, startTimestampMillis, endTimestampMillis);
         try {
-            for (long start = getFloorForWindow(startTimestampMillis, this.chunkMillis), end = start + chunkMillis - 1;
-                 start <= endTimestampMillis;
-                 start += this.chunkMillis, end += this.chunkMillis) {
-                final Path archiveFile = getFileArchive(namespace, start);
-                chunkTotal++;
-                totalEventsRestored += doRestore(events, namespace, archiveFile);
+            for (final Path archive : archives) {
+                totalEventsRestored += doRestore(events, namespace, archive);
             }
         } finally {
             logger.info("restoring {} chucks, {} events for namespace '{}' took {}s",
-                    chunkTotal, totalEventsRestored, namespace, TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startNanos));
+                    archives.size(), totalEventsRestored, namespace, TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startNanos));
         }
     }
 
@@ -195,8 +203,29 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
         }
     }
 
+    public List<Path> getFileArchiveList(final String namespace,
+                                         final long startTimestampMillis,
+                                         final long endTimestampMillis) throws IOException {
+        final long windowStart = getFloorForWindow(startTimestampMillis, this.chunkMillis);
+        final long windowEnd = getFloorForWindow(endTimestampMillis, this.chunkMillis) + endTimestampMillis;
+        return Files.list(Paths.get(this.baseDirectory, this.subDirectory))
+            .filter(path -> {
+                // filter to archive files that overlap with the timeframe
+                final String filename = path.getFileName().toString();
+                final Matcher matcher = archiveRegexPattern.matcher(filename);
+                if (filename.contains(namespace) && matcher.matches()) {
+                    final long fileStart = Long.parseLong(matcher.group("start"));
+                    final long fileEnd = Long.parseLong(matcher.group("end"));
+                    return (fileStart <= windowStart && fileEnd >= windowStart)
+                            || (fileStart <= windowEnd && fileEnd >= windowEnd)
+                            || (fileStart >= windowStart && fileEnd <= windowEnd);
+                }
+                return false;
+            }).collect(Collectors.toList());
+    }
+
     public Path getFileArchive(final String namespace, final long startTimestampMillis) {
-        return getDirectory(archivePathFormat,
+        return getFile(archivePathFormat,
                 CantorProperties.getKingdom(),
                 namespace,
                 startTimestampMillis,

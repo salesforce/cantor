@@ -96,7 +96,7 @@ public class FileObjectsArchiver extends AbstractBaseFileArchiver implements Obj
     }
 
     public Path getFileArchive(final String namespace) {
-        return getDirectory(archivePathFormat,
+        return getFile(archivePathFormat,
                 CantorProperties.getKingdom(),
                 namespace,
                 this.chunkCount);

@@ -17,9 +17,9 @@ public interface EventsArchiver {
      * <br><br>
      * It will depend on the implementation.
      */
-    default void archive(final Events events,
-                 final String namespace,
-                 final long endTimestampMillis) throws IOException {
+    default void archive(Events events,
+                         String namespace,
+                         long endTimestampMillis) throws IOException {
         archive(events, namespace, 0, endTimestampMillis, null, null);
     }
 
@@ -37,18 +37,6 @@ public interface EventsArchiver {
                  long endTimestampMillis,
                  Map<String, String> metadataQuery,
                  Map<String, String> dimensionsQuery) throws IOException;
-
-    /**
-     * Will retrieve and archive all events before the provided timestamp.
-     * <br><br>
-     * {@code archive()} may not necessarily store every event up to the {@code endTimestampMillis} as chunking of the
-     * data into buckets may be used.
-     * <br><br>
-     * It will depend on the implementation.
-     */
-    void archive(Events events,
-                 String namespace,
-                 long endTimestampMillis) throws IOException;
 
     /**
      * Will retrieve all archived chunks between the provided timestamps and load them back into Cantor.
