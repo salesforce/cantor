@@ -11,6 +11,20 @@ import java.util.Map;
 public interface EventsArchiver {
 
     /**
+     *  Checks for the existence of any archives that hold events in the provided timeframe.
+     *  <br><br>
+     *  {@code hasArchives()} is expected return {@literal true} if even one archived chunk overlaps with the timeframe,
+     *  and {@literal false} otherwise.
+     *  <br><br>
+     *  Depending on the implementation {@code restore()} could be called even if the exact query doesn't match any
+     *  events in the archive.
+     */
+    boolean hasArchives(final Events delegate,
+                        final String namespace,
+                        final long startTimestampMillis,
+                        final long endTimestampMillis);
+
+    /**
      * Will retrieve and archive all events using these given parameters and load this into the destination.
      */
     void archive(final Events events,

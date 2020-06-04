@@ -39,7 +39,10 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
                            final boolean includePayloads,
                            final boolean ascending,
                            final int limit) throws IOException {
-        // TODO: add restore logic
+        if (getArchiveDelegate().hasArchives(getDelegate(), namespace, startTimestampMillis, endTimestampMillis)) {
+            getArchiveDelegate().restore(getDelegate(), namespace, startTimestampMillis, endTimestampMillis);
+        }
+
         return getDelegate().get(namespace,
                         startTimestampMillis,
                         endTimestampMillis,
@@ -74,7 +77,10 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
                                              final Map<String, String> dimensionsQuery,
                                              final int aggregateIntervalMillis,
                                              final AggregationFunction aggregationFunction) throws IOException {
-        // TODO: add restore logic
+        if (getArchiveDelegate().hasArchives(getDelegate(), namespace, startTimestampMillis, endTimestampMillis)) {
+            getArchiveDelegate().restore(getDelegate(), namespace, startTimestampMillis, endTimestampMillis);
+        }
+
         return getDelegate().aggregate(namespace,
                         dimension,
                         startTimestampMillis,
@@ -93,7 +99,10 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
                                 final long endTimestampMillis,
                                 final Map<String, String> metadataQuery,
                                 final Map<String, String> dimensionsQuery) throws IOException {
-        // TODO: add restore logic
+        if (getArchiveDelegate().hasArchives(getDelegate(), namespace, startTimestampMillis, endTimestampMillis)) {
+            getArchiveDelegate().restore(getDelegate(), namespace, startTimestampMillis, endTimestampMillis);
+        }
+
         return getDelegate().metadata(namespace,
                         metadataKey,
                         startTimestampMillis,
