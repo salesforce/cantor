@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -41,6 +43,7 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
     private static final long MIN_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(1);
     private static final long MAX_CHUNK_MILLIS = TimeUnit.DAYS.toMillis(1);
 
+    private final Map<String, Long> fileArchiveCache = new HashMap<>();
 
     public FileEventsArchiver(final String baseDirectory, final long chunkMillis) {
         super(baseDirectory, chunkMillis);
@@ -102,6 +105,14 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
         final List<Path> archives = getFileArchiveList(namespace, startTimestampMillis, endTimestampMillis);
         try {
             for (final Path archive : archives) {
+                final long lastUpdated = Files.readAttributes(archive, BasicFileAttributes.class)
+                        .lastModifiedTime()
+                        .toMillis();
+                if (this.fileArchiveCache.getOrDefault(archive.toString(), 0L) == lastUpdated) {
+                    // skipping file that hasn't changed and has been restored once before
+                    continue;
+                }
+                this.fileArchiveCache.put(archive.toString(), lastUpdated);
                 totalEventsRestored += doRestore(events, namespace, archive);
             }
         } finally {
@@ -134,7 +145,9 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
         if (!checkArchiveArguments(events, namespace, destination)) {
             logger.warn("file already exists and is not empty, pulling to merge: {}", destination);
             try (final ArchiveInputStream archive = getArchiveInputStream(destination)) {
-                chunkBuilder.mergeFrom(archive);
+                while (archive.getNextEntry() != null) {
+                    chunkBuilder.mergeFrom(archive);
+                }
             }
         }
 
@@ -172,6 +185,7 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
         // create the namespace, in case the user hasn't already
         // TODO: potential bug here; seeing data deletion when creating a namespace that already exists
         events.create(namespace);
+        cleanRestoredEvents(events, namespace, archiveFile);
 
         long startNanos = System.nanoTime();
         long eventsRestored = 0;
@@ -203,11 +217,28 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
         }
     }
 
+    // remove all restored events in this chunk to prevent duplicates
+    private void cleanRestoredEvents(final Events events,
+                                     final String namespace,
+                                     final Path archiveFile) throws IOException {
+        final String filename = archiveFile.getFileName().toString();
+        final Matcher matcher = archiveRegexPattern.matcher(filename);
+        if (matcher.matches()) {
+            final long start = Long.parseLong(matcher.group("start"));
+            final long end = Long.parseLong(matcher.group("end"));
+            final HashMap<String, String> metadataMap = new HashMap<>();
+            metadataMap.put(FLAG_RESTORED, "true");
+            events.delete(namespace, start, end, metadataMap, null);
+        }
+    }
+
     public List<Path> getFileArchiveList(final String namespace,
                                          final long startTimestampMillis,
                                          final long endTimestampMillis) throws IOException {
         final long windowStart = getFloorForWindow(startTimestampMillis, this.chunkMillis);
-        final long windowEnd = getFloorForWindow(endTimestampMillis, this.chunkMillis) + endTimestampMillis;
+        final long windowEnd = (endTimestampMillis <= Long.MAX_VALUE - this.chunkMillis)
+                ? getFloorForWindow(endTimestampMillis, this.chunkMillis) + this.chunkMillis - 1
+                : endTimestampMillis;
         return Files.list(Paths.get(this.baseDirectory, this.subDirectory))
             .filter(path -> {
                 // filter to archive files that overlap with the timeframe
@@ -216,9 +247,7 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
                 if (filename.contains(namespace) && matcher.matches()) {
                     final long fileStart = Long.parseLong(matcher.group("start"));
                     final long fileEnd = Long.parseLong(matcher.group("end"));
-                    return (fileStart <= windowStart && fileEnd >= windowStart)
-                            || (fileStart <= windowEnd && fileEnd >= windowEnd)
-                            || (fileStart >= windowStart && fileEnd <= windowEnd);
+                    return fileStart <= windowEnd && fileEnd >= windowStart;
                 }
                 return false;
             }).collect(Collectors.toList());

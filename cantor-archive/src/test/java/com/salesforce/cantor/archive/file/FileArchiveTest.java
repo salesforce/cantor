@@ -30,18 +30,19 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 public class FileArchiveTest {
-    private static final Map<String, Long> CANTOR_H2_NAMESPACES = new HashMap<>();
     private static final long TIMEFRAME_BOUND = System.currentTimeMillis();
     private static final long TIMEFRAME_ORIGIN = TIMEFRAME_BOUND - TimeUnit.DAYS.toMillis(2);
-    private static final String H2_DIRECTORY = "/tmp/cantor-s3-on-local";
+    private static final String H2_DIRECTORY = "/tmp/cantor-local-test";
     private static final String BASE_DIRECTORY = "/tmp/cantor-archive-test";
     private static final long HOUR_MILLIS = TimeUnit.HOURS.toMillis(1);
 
+    private Map<String, Long> cantorH2Namespaces;
     private Cantor localCantor;
     private FileArchiver archiver;
 
     @BeforeMethod
     public void setup() throws IOException {
+        this.cantorH2Namespaces = new HashMap<>();
         final File baseDirectory = new File(BASE_DIRECTORY);
         baseDirectory.delete();
         baseDirectory.mkdirs();
@@ -51,7 +52,8 @@ public class FileArchiveTest {
     }
 
     @AfterMethod
-    public void teardown() {
+    public void teardown() throws IOException {
+        // delete test archive
         final File baseDirectory = new File(BASE_DIRECTORY);
         final String[] entries = baseDirectory.list();
         if (entries != null) {
@@ -61,11 +63,15 @@ public class FileArchiveTest {
             }
         }
         baseDirectory.delete();
+        // delete test cantor data
+        for (final String cantorH2Namespace : this.cantorH2Namespaces.keySet()) {
+            this.localCantor.events().drop(cantorH2Namespace);
+        }
     }
 
     @Test
     public void testEventsArchive() throws IOException {
-        for (final Map.Entry<String, Long> cantorH2Namespace : CANTOR_H2_NAMESPACES.entrySet()) {
+        for (final Map.Entry<String, Long> cantorH2Namespace : this.cantorH2Namespaces.entrySet()) {
             final long endTimestamp = getFloorForWindow(cantorH2Namespace.getValue(), HOUR_MILLIS) - 1;
             final List<Events.Event> events = this.localCantor.events()
                     .get(cantorH2Namespace.getKey(), TIMEFRAME_ORIGIN, endTimestamp + HOUR_MILLIS);
@@ -81,7 +87,7 @@ public class FileArchiveTest {
 
     @Test
     public void testEventsArchiveIdempotent() throws IOException {
-        for (final Map.Entry<String, Long> cantorH2Namespace : CANTOR_H2_NAMESPACES.entrySet()) {
+        for (final Map.Entry<String, Long> cantorH2Namespace : this.cantorH2Namespaces.entrySet()) {
             final long endTimestamp = getFloorForWindow(cantorH2Namespace.getValue(), HOUR_MILLIS) - 1;
             final List<Events.Event> events = this.localCantor.events()
                     .get(cantorH2Namespace.getKey(), TIMEFRAME_ORIGIN, endTimestamp + HOUR_MILLIS);
@@ -97,17 +103,25 @@ public class FileArchiveTest {
             validateArchive(events, cantorH2Namespace.getKey(), endTimestamp);
 
             // run again restoring all events then expire again with one new event;
-            this.localCantor.events().store(cantorH2Namespace.getKey(), cantorH2Namespace.getValue(), null, null);
-            final List<Events.Event> moreEvents = this.localCantor.events()
+            this.localCantor.events().store(cantorH2Namespace.getKey(), TIMEFRAME_ORIGIN, null, null);
+            final List<Events.Event> allEvents = this.localCantor.events()
                     .get(cantorH2Namespace.getKey(), TIMEFRAME_ORIGIN, TIMEFRAME_BOUND);
+            final List<Events.Event> allEventsAgain = this.localCantor.events()
+                    .get(cantorH2Namespace.getKey(), TIMEFRAME_ORIGIN, TIMEFRAME_BOUND);
+            Assert.assertEquals(allEvents.size(), allEventsAgain.size(), "incorrect number of events after second call to get events: " + cantorH2Namespace.getKey());
             this.localCantor.events().expire(cantorH2Namespace.getKey(), TIMEFRAME_BOUND);
-            validateArchive(moreEvents, cantorH2Namespace.getKey(), TIMEFRAME_BOUND);
+            validateArchive(allEventsAgain, cantorH2Namespace.getKey(), TIMEFRAME_BOUND);
+
+            // last run with dirtied archive file
+            final List<Events.Event> refreshedEvents = this.localCantor.events()
+                    .get(cantorH2Namespace.getKey(), TIMEFRAME_ORIGIN, TIMEFRAME_BOUND);
+            Assert.assertEquals(refreshedEvents.size(), allEvents.size(), "incorrect number of events after restoration for events: " + cantorH2Namespace.getKey());
         }
     }
 
     @Test
     public void testEventsArchiveZero() throws IOException {
-        for (final String cantorH2Namespace : CANTOR_H2_NAMESPACES.keySet()) {
+        for (final String cantorH2Namespace : this.cantorH2Namespaces.keySet()) {
             final List<Events.Event> events = this.localCantor.events()
                     .get(cantorH2Namespace, 0, HOUR_MILLIS);
             this.localCantor.events().expire(cantorH2Namespace, HOUR_MILLIS);
@@ -152,7 +166,7 @@ public class FileArchiveTest {
         for (int namespaceCount = 0; namespaceCount < random.nextInt(2, 5); namespaceCount++) {
             final String namespace = "cantor-archive-test-" + Math.abs(UUID.randomUUID().hashCode());
             this.localCantor.events().create(namespace);
-            CANTOR_H2_NAMESPACES.put(namespace, random.nextLong(TIMEFRAME_ORIGIN, TIMEFRAME_BOUND));
+            this.cantorH2Namespaces.put(namespace, random.nextLong(TIMEFRAME_ORIGIN, TIMEFRAME_BOUND));
 
             for (int eventCount = 0; eventCount < random.nextInt(100, 1000); eventCount++) { // 1GB max
                 final byte[] randomPayload = new byte[random.nextInt(0, 1_000_000)]; // 1MB max
