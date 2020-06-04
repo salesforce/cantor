@@ -24,6 +24,19 @@ public interface EventsArchiver {
     }
 
     /**
+     * Will retrieve and archive all events before the provided timestamp.
+     * <br><br>
+     * {@code archive()} may store events past {@code endTimestampMillis} as chunking of the data into buckets may be used.
+     * <br><br>
+     * It will depend on the implementation.
+     */
+    default void archive(final Events events,
+                 final String namespace,
+                 final long endTimestampMillis) throws IOException {
+        archive(events, namespace, 0, endTimestampMillis, null, null);
+    }
+
+    /**
      * Will retrieve and archive all events using these given parameters and load this into the destination.
      * <br><br>
      * {@code archive()} may store events before {@code startTimestampMillis} and past {@code endTimestampMillis}
