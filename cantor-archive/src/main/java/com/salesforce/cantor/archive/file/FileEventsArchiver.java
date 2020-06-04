@@ -38,7 +38,7 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkNamespace;
 public class FileEventsArchiver extends AbstractBaseFileArchiver implements EventsArchiver {
     private static final Logger logger = LoggerFactory.getLogger(FileEventsArchiver.class);
     private static final String archivePathFormat = "/archive-events-%s-%s-%d-%d";
-    private static final Pattern archiveRegexPattern = Pattern.compile("archive-events-.*-.*-(?<start>\\d{13})-(?<end>\\d{13})");
+    private static final Pattern archiveRegexPattern = Pattern.compile("archive-events-.*-.*-(?<start>\\d+)-(?<end>\\d+)");
 
     private static final long MIN_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(1);
     private static final long MAX_CHUNK_MILLIS = TimeUnit.DAYS.toMillis(1);
@@ -69,16 +69,16 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
         long startNanos = System.nanoTime();
         long totalEventsArchived = 0;
         try {
-            for (long end = getCeilingForWindow(endTimestampMillis) - 1, start = (end + 1) - this.chunkMillis;
+            for (long start = getFloorForChunk(endTimestampMillis), end = endTimestampMillis;
                  end > 0;
                  end -= this.chunkMillis, start -= this.chunkMillis) {
                 final long archivedEvents = doArchive(
                         events, namespace,
-                        start, end,
+                        Math.max(start, startTimestampMillis), end,
                         metadataQuery, dimensionsQuery,
                         getFileArchive(namespace, start));
                 totalEventsArchived += archivedEvents;
-                final long floorForStart = getFloorForChunk(startTimestampMillis, this.chunkMillis);
+                final long floorForStart = getFloorForChunk(startTimestampMillis);
                 if (archivedEvents == 0 && events.first(namespace, floorForStart + this.chunkMillis, start) == null) {
                     // TODO: build a heuristic to jump to the next chunk with events to archive instead of this hack to handle events with zero for a timestamp
                     if (events.first(namespace, floorForStart, floorForStart + this.chunkMillis - 1) != null) {
@@ -88,6 +88,11 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
                     }
                     // no more events left to archive
                     return;
+                }
+
+                if (end == endTimestampMillis) {
+                    // after first partial archive archive full chunks
+                    end = getCeilingForChunk(end) - 1;
                 }
             }
         } finally {
@@ -236,9 +241,9 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
     public List<Path> getFileArchiveList(final String namespace,
                                          final long startTimestampMillis,
                                          final long endTimestampMillis) throws IOException {
-        final long windowStart = getFloorForChunk(startTimestampMillis, this.chunkMillis);
+        final long windowStart = getFloorForChunk(startTimestampMillis);
         final long windowEnd = (endTimestampMillis <= Long.MAX_VALUE - this.chunkMillis)
-                ? getFloorForChunk(endTimestampMillis, this.chunkMillis) + this.chunkMillis - 1
+                ? getCeilingForChunk(endTimestampMillis)
                 : endTimestampMillis;
         return Files.list(Paths.get(this.baseDirectory, this.subDirectory))
             .filter(path -> {
