@@ -21,7 +21,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static org.testng.Assert.*;
 
-public class FileSetsArchiverTest {
+public class SetsArchiverOnFileTest {
 
     @Test
     public void testArchiveSets() throws IOException {
@@ -41,7 +41,7 @@ public class FileSetsArchiverTest {
 
         Files.createDirectories(Paths.get(basePath, "output"));
         final Path outputPath = Paths.get(basePath, "output",  "test-archive.tar.gz");
-        FileSetsArchiver.archive(cantor.sets(), namespace, outputPath, FileSetsArchiver.MAX_CHUNK_SIZE);
+        SetsArchiverOnFile.archive(cantor.sets(), namespace, outputPath, SetsArchiverOnFile.MAX_CHUNK_SIZE);
 
         assertTrue(Files.exists(outputPath), "archive file missing");
         assertNotEquals(Files.size(outputPath), 0, "empty archive file shouldn't exist");
@@ -53,7 +53,7 @@ public class FileSetsArchiverTest {
             assertThrows(IOException.class, () -> vCantor.sets().size(vNamespace, set));
         }
 
-        FileSetsArchiver.restore(vCantor.sets(), vNamespace, outputPath);
+        SetsArchiverOnFile.restore(vCantor.sets(), vNamespace, outputPath);
         for (final String set : allSets.keySet()) {
             final Map<String, Long> expectedEntries = allSets.get(set);
             assertEquals(vCantor.sets().size(vNamespace, set), expectedEntries.size(), "didn't restore expected number of entries");

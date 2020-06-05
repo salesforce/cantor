@@ -7,7 +7,6 @@
 
 package com.salesforce.cantor.archive;
 
-import com.salesforce.cantor.misc.CantorProperties;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveOutputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
@@ -27,10 +26,10 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 import static com.salesforce.cantor.common.CommonPreconditions.checkString;
 
 abstract class AbstractBaseArchiver {
-    private static final String archivePrefixFormat = "archive-%s-%s-";
+    private static final String archivePrefixFormat = "archive-%s-";
 
     static Path createTempFile(final String namespace) throws IOException {
-        return File.createTempFile(String.format(archivePrefixFormat, CantorProperties.getKingdom(), namespace), null).toPath();
+        return File.createTempFile(String.format(archivePrefixFormat, namespace), null).toPath();
     }
 
     static void writeArchiveEntry(final ArchiveOutputStream archive, final String name, final byte[] bytes) throws IOException {

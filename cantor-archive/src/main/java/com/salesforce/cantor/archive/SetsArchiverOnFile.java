@@ -8,6 +8,7 @@
 package com.salesforce.cantor.archive;
 
 import com.salesforce.cantor.Sets;
+import com.salesforce.cantor.misc.archivable.SetsArchiver;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveOutputStream;
@@ -21,8 +22,8 @@ import java.util.Map;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 
-public class FileSetsArchiver extends AbstractBaseArchiver {
-    private static final Logger logger = LoggerFactory.getLogger(FileSetsArchiver.class);
+public class SetsArchiverOnFile extends AbstractBaseArchiver implements SetsArchiver {
+    private static final Logger logger = LoggerFactory.getLogger(SetsArchiverOnFile.class);
 
     public static final int MAX_CHUNK_SIZE = 1_000;
 
@@ -66,5 +67,20 @@ public class FileSetsArchiver extends AbstractBaseArchiver {
             }
             logger.info("restored {} entries int namespace '{}' from archive file {}", total, namespace, archiveFile);
         }
+    }
+
+    @Override
+    public boolean hasArchives(final String namespace, final String set) {
+        return false;
+    }
+
+    @Override
+    public void archive(final Sets sets, final String namespace, final String set) throws IOException {
+
+    }
+
+    @Override
+    public void restore(final Sets sets, final String namespace) throws IOException {
+
     }
 }

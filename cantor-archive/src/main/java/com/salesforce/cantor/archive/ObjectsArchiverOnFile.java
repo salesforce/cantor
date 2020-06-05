@@ -9,6 +9,7 @@ package com.salesforce.cantor.archive;
 
 import com.google.protobuf.ByteString;
 import com.salesforce.cantor.Objects;
+import com.salesforce.cantor.misc.archivable.ObjectsArchiver;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveOutputStream;
@@ -22,8 +23,8 @@ import java.util.Map;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 
-public class FileObjectsArchiver extends AbstractBaseArchiver {
-    private static final Logger logger = LoggerFactory.getLogger(FileObjectsArchiver.class);
+public class ObjectsArchiverOnFile extends AbstractBaseArchiver implements ObjectsArchiver {
+    private static final Logger logger = LoggerFactory.getLogger(ObjectsArchiverOnFile.class);
 
     public static final int MAX_CHUNK_SIZE = 1_000;
 
@@ -73,5 +74,20 @@ public class FileObjectsArchiver extends AbstractBaseArchiver {
             builder.putObjects(entry.getKey(), ByteString.copyFrom(entry.getValue()));
         }
         return builder.build().toByteArray();
+    }
+
+    @Override
+    public boolean hasArchives(final String namespace) {
+        return false;
+    }
+
+    @Override
+    public void archive(final Objects objects, final String namespace, final String key) throws IOException {
+
+    }
+
+    @Override
+    public void restore(final Objects objects, final String namespace) throws IOException {
+
     }
 }

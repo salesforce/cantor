@@ -5,22 +5,23 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.misc.archivable;
+package com.salesforce.cantor.misc.archivable.impl;
 
 import com.salesforce.cantor.Events;
+import com.salesforce.cantor.misc.archivable.CantorArchiver;
+import com.salesforce.cantor.misc.archivable.EventsArchiver;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Wrapper class around a delegate Events instance, adding logging and time spent.
  */
-public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events, EventsArchiver> implements Events {
-    public ArchivableEvents(final Events delegate, final EventsArchiver archiver) {
+public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events, CantorArchiver> implements Events {
+    public ArchivableEvents(final Events delegate, final CantorArchiver archiver) {
         super(delegate, archiver);
     }
 
@@ -39,10 +40,7 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
                            final boolean includePayloads,
                            final boolean ascending,
                            final int limit) throws IOException {
-        if (getArchiveDelegate().hasArchives(getDelegate(), namespace, startTimestampMillis, endTimestampMillis)) {
-            getArchiveDelegate().restore(getDelegate(), namespace, startTimestampMillis, endTimestampMillis);
-        }
-
+        tryRestore(namespace, startTimestampMillis, endTimestampMillis);
         return getDelegate().get(namespace,
                         startTimestampMillis,
                         endTimestampMillis,
@@ -60,6 +58,7 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
                       final long endTimestampMillis,
                       final Map<String, String> metadataQuery,
                       final Map<String, String> dimensionsQuery) throws IOException {
+        // choosing not to archive explicitly deleted events; will not delete events already archived
         return getDelegate().delete(namespace,
                         startTimestampMillis,
                         endTimestampMillis,
@@ -77,10 +76,7 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
                                              final Map<String, String> dimensionsQuery,
                                              final int aggregateIntervalMillis,
                                              final AggregationFunction aggregationFunction) throws IOException {
-        if (getArchiveDelegate().hasArchives(getDelegate(), namespace, startTimestampMillis, endTimestampMillis)) {
-            getArchiveDelegate().restore(getDelegate(), namespace, startTimestampMillis, endTimestampMillis);
-        }
-
+        tryRestore(namespace, startTimestampMillis, endTimestampMillis);
         return getDelegate().aggregate(namespace,
                         dimension,
                         startTimestampMillis,
@@ -99,10 +95,7 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
                                 final long endTimestampMillis,
                                 final Map<String, String> metadataQuery,
                                 final Map<String, String> dimensionsQuery) throws IOException {
-        if (getArchiveDelegate().hasArchives(getDelegate(), namespace, startTimestampMillis, endTimestampMillis)) {
-            getArchiveDelegate().restore(getDelegate(), namespace, startTimestampMillis, endTimestampMillis);
-        }
-
+        tryRestore(namespace, startTimestampMillis, endTimestampMillis);
         return getDelegate().metadata(namespace,
                         metadataKey,
                         startTimestampMillis,
@@ -115,12 +108,23 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
     @Override
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
         // archiving all before deletion
-        getArchiveDelegate().archive(getDelegate(),
-                        namespace,
-                        endTimestampMillis
-                );
+        getArchiver().events().archive(getDelegate(),
+                namespace,
+                endTimestampMillis
+        );
 
         getDelegate().expire(namespace, endTimestampMillis);
     }
-}
 
+    /**
+     * Calling user implemented {@link EventsArchiver#hasArchives(String, long, long)} method to check if restore should
+     * be executed.
+     */
+    private void tryRestore(final String namespace,
+                            final long startTimestampMillis,
+                            final long endTimestampMillis) throws IOException {
+        if (getArchiver().events().hasArchives(namespace, startTimestampMillis, endTimestampMillis)) {
+            getArchiver().events().restore(getDelegate(), namespace, startTimestampMillis, endTimestampMillis);
+        }
+    }
+}

@@ -5,19 +5,20 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.misc.archivable;
+package com.salesforce.cantor.misc.archivable.impl;
 
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Events;
 import com.salesforce.cantor.Objects;
 import com.salesforce.cantor.Sets;
+import com.salesforce.cantor.misc.archivable.CantorArchiver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 
 /**
- * The ArchivableCantor implementation is a wrapper around a delegate Cantor instance and an {@link Archiver} reference.
+ * The ArchivableCantor implementation is a wrapper around a delegate Cantor instance and an {@link CantorArchiver} reference.
  * The {@code delegate} is the main data-store with direct implementations of {@link Sets} and {@link Objects}.
  * The {@code archiveDelegate} is used to archive any events removed when calling {@link Events#expire} or
  * {@link Events#delete} for longer term storage.
@@ -27,8 +28,8 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
  * Use it like this:
  * <pre>
  * Cantor delegate = ...
- * Archiver<?> archiveDelegate = ...
- * Cantor cantor = new ArchivableCantor(delegate, archiveDelegate);
+ * Archiver archiver = ...
+ * Cantor cantor = new ArchivableCantor(delegate, archiver);
  * </pre>
  */
 public class ArchivableCantor implements Cantor {
@@ -38,16 +39,16 @@ public class ArchivableCantor implements Cantor {
     private final Sets sets;
     private final Events events;
 
-    public ArchivableCantor(final Cantor delegate, final Archiver archiveDelegate) {
+    public ArchivableCantor(final Cantor delegate, final CantorArchiver archiver) {
         checkArgument(delegate != null, "null delegate");
-        checkArgument(archiveDelegate != null, "null archiveDelegate");
+        checkArgument(archiver != null, "null archiver");
 
-        logger.info("new instance of loggable cantor created");
+        logger.info("new instance of archivable cantor created");
 
         //TODO: add support for ArchivableObjects and ArchivableSets
         this.objects = delegate.objects();
         this.sets = delegate.sets();
-        this.events = new ArchivableEvents(delegate.events(), archiveDelegate.eventsArchiver());
+        this.events = new ArchivableEvents(delegate.events(), archiver);
     }
 
     @Override

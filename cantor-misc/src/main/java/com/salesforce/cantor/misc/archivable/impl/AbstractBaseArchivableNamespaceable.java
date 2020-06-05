@@ -5,19 +5,20 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.misc.archivable;
+package com.salesforce.cantor.misc.archivable.impl;
 
 import com.salesforce.cantor.Namespaceable;
+import com.salesforce.cantor.misc.archivable.CantorArchiver;
 
 import java.io.IOException;
 import java.util.Collection;
 
-abstract class AbstractBaseArchivableNamespaceable<D extends Namespaceable, T extends EventsArchiver>
+abstract class AbstractBaseArchivableNamespaceable<T extends Namespaceable, A extends CantorArchiver>
                 implements Namespaceable {
-    private final D delegate;
-    private final T archiveDelegate;
+    private final T delegate;
+    private final A archiveDelegate;
 
-    public AbstractBaseArchivableNamespaceable(final D delegate, final T archiveDelegate) {
+    public AbstractBaseArchivableNamespaceable(final T delegate, final A archiveDelegate) {
         this.delegate = delegate;
         this.archiveDelegate = archiveDelegate;
     }
@@ -37,11 +38,11 @@ abstract class AbstractBaseArchivableNamespaceable<D extends Namespaceable, T ex
         getDelegate().drop(namespace);
     }
 
-    protected D getDelegate() {
+    protected T getDelegate() {
         return this.delegate;
     }
 
-    protected T getArchiveDelegate() {
+    protected A getArchiver() {
         return this.archiveDelegate;
     }
 }

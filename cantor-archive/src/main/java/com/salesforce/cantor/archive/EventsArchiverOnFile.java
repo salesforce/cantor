@@ -25,8 +25,8 @@ import java.util.concurrent.TimeUnit;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 
-public class FileEventsArchiver extends AbstractBaseArchiver implements EventsArchiver<Path> {
-    private static final Logger logger = LoggerFactory.getLogger(FileEventsArchiver.class);
+public class EventsArchiverOnFile extends AbstractBaseArchiver implements EventsArchiver {
+    private static final Logger logger = LoggerFactory.getLogger(EventsArchiverOnFile.class);
 
     public static final long MIN_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(1);
     public static final long MAX_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(60);
@@ -38,7 +38,7 @@ public class FileEventsArchiver extends AbstractBaseArchiver implements EventsAr
                         final Map<String, String> metadataQuery,
                         final Map<String, String> dimensionsQuery,
                         final long chunkMillis) throws IOException {
-        FileEventsArchiver.archive(
+        EventsArchiverOnFile.archive(
                 events, namespace,
                 startTimestampMillis, endTimestampMillis,
                 metadataQuery, dimensionsQuery,
@@ -116,5 +116,25 @@ public class FileEventsArchiver extends AbstractBaseArchiver implements EventsAr
             logger.info("restoring {} events into namespace '{}' from archive file {} took {}s",
                     totalEventsRestored, namespace, archiveFile, TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startNanos));
         }
+    }
+
+    @Override
+    public boolean hasArchives(final String namespace, final long startTimestampMillis, final long endTimestampMillis) {
+        return false;
+    }
+
+    @Override
+    public void archive(final Events events, final String namespace, final long startTimestampMillis, final long endTimestampMillis, final Map<String, String> metadataQuery, final Map<String, String> dimensionsQuery) throws IOException {
+
+    }
+
+    @Override
+    public void archive(final Events events, final String namespace, final long endTimestampMillis) throws IOException {
+
+    }
+
+    @Override
+    public void restore(final Events events, final String namespace, final long startTimestampMillis, final long endTimestampMillis) throws IOException {
+
     }
 }

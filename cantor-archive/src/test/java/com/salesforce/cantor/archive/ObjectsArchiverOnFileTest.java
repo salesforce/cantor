@@ -21,7 +21,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static org.testng.Assert.*;
 
-public class FileObjectsArchiverTest {
+public class ObjectsArchiverOnFileTest {
 
     @Test
     public void testArchiveRestoreObjects() throws IOException {
@@ -33,7 +33,7 @@ public class FileObjectsArchiverTest {
 
         Files.createDirectories(Paths.get(basePath, "output"));
         final Path outputPath = Paths.get(basePath, "output",  "test-archive.tar.gz");
-        FileObjectsArchiver.archive(cantor.objects(), namespace, outputPath, FileObjectsArchiver.MAX_CHUNK_SIZE);
+        ObjectsArchiverOnFile.archive(cantor.objects(), namespace, outputPath, ObjectsArchiverOnFile.MAX_CHUNK_SIZE);
 
         assertTrue(Files.exists(outputPath), "archive file missing");
         assertNotEquals(Files.size(outputPath), 0, "empty archive file shouldn't exist");
@@ -41,7 +41,7 @@ public class FileObjectsArchiverTest {
         final String vNamespace = UUID.randomUUID().toString();
         final Cantor vCantor = getCantor(Paths.get(basePath, "verify").toString());
         assertThrows(IOException.class, () -> vCantor.objects().size(vNamespace));
-        FileObjectsArchiver.restore(vCantor.objects(), vNamespace, outputPath);
+        ObjectsArchiverOnFile.restore(vCantor.objects(), vNamespace, outputPath);
 
         assertEquals(vCantor.objects().size(vNamespace), stored.size(), "didn't restore expected number of objects");
         final Collection<String> vKeys = vCantor.objects().keys(vNamespace, 0, -1);
@@ -59,10 +59,10 @@ public class FileObjectsArchiverTest {
 
         Files.createDirectories(Paths.get(basePath, "output"));
         final Path outputPath = Paths.get(basePath, "output", "test-archive.tar.gz");
-        FileObjectsArchiver.archive(cantor.objects(), namespace, outputPath, FileObjectsArchiver.MAX_CHUNK_SIZE);
+        ObjectsArchiverOnFile.archive(cantor.objects(), namespace, outputPath, ObjectsArchiverOnFile.MAX_CHUNK_SIZE);
         assertTrue(Files.exists(outputPath), "archiving zero objects should still produce file");
 
-        FileObjectsArchiver.restore(cantor.objects(), namespace, outputPath);
+        ObjectsArchiverOnFile.restore(cantor.objects(), namespace, outputPath);
         assertEquals(cantor.objects().size(namespace), 0,  "shouldn't have restored any objects");
     }
 
