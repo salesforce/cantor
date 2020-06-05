@@ -82,7 +82,7 @@ public class ObjectsArchiverOnFile extends AbstractBaseArchiver implements Objec
     }
 
     @Override
-    public void archive(final Objects objects, final String namespace, final String key) throws IOException {
+    public void archive(final Objects objects, final String namespace) throws IOException {
 
     }
 

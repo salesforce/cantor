@@ -1,6 +1,5 @@
 package com.salesforce.cantor.misc.archivable;
 
-import com.salesforce.cantor.Objects;
 import com.salesforce.cantor.Sets;
 import com.salesforce.cantor.misc.archivable.impl.ArchivableEvents;
 
@@ -20,18 +19,16 @@ public interface SetsArchiver {
     boolean hasArchives(String namespace, String set);
 
     /**
-     * Will retrieve and archive all sets in a namespace.
+     * Will retrieve and archive the provided set in a namespace.
      */
-    default void archive(Sets sets, String namespace) throws IOException {
-        for (final String set : sets.namespaces()) {
-            archive(sets, namespace, set);
-        }
+    default void archive(Sets sets, String namespace, String set) throws IOException {
+        archive(sets, namespace);
     }
 
     /**
-     * Will retrieve and archive the provided set in a namespace.
+     * Will retrieve and archive all sets in a namespace.
      */
-    void archive(Sets sets, String namespace, String set) throws IOException;
+    void archive(Sets sets, String namespace) throws IOException;
 
     /**
      * Will restore an archived set for this namespace by name.

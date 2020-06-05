@@ -75,7 +75,7 @@ public class SetsArchiverOnFile extends AbstractBaseArchiver implements SetsArch
     }
 
     @Override
-    public void archive(final Sets sets, final String namespace, final String set) throws IOException {
+    public void archive(final Sets sets, final String namespace) throws IOException {
 
     }
 

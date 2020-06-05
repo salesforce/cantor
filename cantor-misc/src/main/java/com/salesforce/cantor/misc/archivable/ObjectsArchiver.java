@@ -18,18 +18,16 @@ public interface ObjectsArchiver {
     boolean hasArchives(String namespace);
 
     /**
-     * Will retrieve and archive all objects in the provided namespace.
+     * Will retrieve and archive a specific object by key.
      */
-    default void archive(Objects objects, String namespace) throws IOException {
-        for (final String key : objects.keys(namespace, 0, -1)) {
-            archive(objects, namespace, key);
-        }
+    default void archive(Objects objects, String namespace, String key) throws IOException {
+        archive(objects, namespace);
     }
 
     /**
-     * Will retrieve and archive a specific object by key.
+     * Will retrieve and archive all objects in the provided namespace.
      */
-    void archive(Objects objects, String namespace, String key) throws IOException;
+    void archive(Objects objects, String namespace) throws IOException;
 
     /**
      * Will restore an archived object for this namespace by key.
