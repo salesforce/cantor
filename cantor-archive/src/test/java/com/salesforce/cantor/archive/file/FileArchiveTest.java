@@ -12,6 +12,7 @@ import com.salesforce.cantor.Events;
 import com.salesforce.cantor.archive.EventsChunk;
 import com.salesforce.cantor.archive.TestUtils;
 import com.salesforce.cantor.h2.CantorOnH2;
+import com.salesforce.cantor.misc.archivable.impl.ArchivableCantor;
 import com.salesforce.cantor.misc.archivable.CantorArchiver;
 import com.salesforce.cantor.misc.archivable.impl.ArchivableCantor;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
