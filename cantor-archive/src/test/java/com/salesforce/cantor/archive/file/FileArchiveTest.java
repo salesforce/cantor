@@ -11,7 +11,7 @@ import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Events;
 import com.salesforce.cantor.archive.EventsChunk;
 import com.salesforce.cantor.h2.CantorOnH2;
-import com.salesforce.cantor.misc.archivable.ArchivableCantor;
+import com.salesforce.cantor.misc.archivable.impl.ArchivableCantor;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
@@ -38,7 +38,7 @@ public class FileArchiveTest {
 
     private Map<String, Long> cantorH2Namespaces;
     private Cantor localCantor;
-    private FileArchiver archiver;
+    private ArchiverOnFile archiver;
 
     @BeforeMethod
     public void setup() throws IOException {
@@ -46,7 +46,7 @@ public class FileArchiveTest {
         final File baseDirectory = new File(BASE_DIRECTORY);
         baseDirectory.delete();
         baseDirectory.mkdirs();
-        this.archiver = new FileArchiver(BASE_DIRECTORY, 100, HOUR_MILLIS);
+        this.archiver = new ArchiverOnFile(BASE_DIRECTORY, 100, HOUR_MILLIS);
         this.localCantor = new ArchivableCantor(new CantorOnH2(H2_DIRECTORY), archiver);
         generateData();
     }
@@ -155,12 +155,12 @@ public class FileArchiveTest {
                                  final long endTimestamp) throws IOException {
         if (events.size() > 0) {
             int eventCount = 0;
-            final FileEventsArchiver fileEventsArchiver = (FileEventsArchiver) this.archiver.eventsArchiver();
+            final EventsArchiverOnFile eventsArchiver = (EventsArchiverOnFile) this.archiver.events();
             for (long end = endTimestamp; end > 0; end -= HOUR_MILLIS) {
-                final Path fileArchive = fileEventsArchiver.getFileArchive(cantorH2Namespace, end + 1);
+                final Path fileArchive = eventsArchiver.getFileArchive(cantorH2Namespace, end + 1);
                 if (!fileArchive.toFile().exists()) return;
 
-                try (final ArchiveInputStream archiveInputStream = fileEventsArchiver.getArchiveInputStream(fileArchive)) {
+                try (final ArchiveInputStream archiveInputStream = eventsArchiver.getArchiveInputStream(fileArchive)) {
                     while (archiveInputStream.getNextEntry() != null) {
                         final EventsChunk chunk = EventsChunk.parseFrom(archiveInputStream);
                         eventCount += chunk.getEventsCount();

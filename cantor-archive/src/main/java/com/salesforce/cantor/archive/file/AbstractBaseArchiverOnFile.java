@@ -14,12 +14,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.TimeUnit;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 import static com.salesforce.cantor.common.CommonPreconditions.checkString;
 
-public abstract class AbstractBaseFileArchiver {
+public abstract class AbstractBaseArchiverOnFile {
     protected static final String FLAG_RESTORED = ".cantor-archive-restored";
 
     protected final String baseDirectory;
@@ -29,15 +28,15 @@ public abstract class AbstractBaseFileArchiver {
     // default to nothing for no sub directory
     protected String subDirectory = "";
 
-    public AbstractBaseFileArchiver(final String baseDirectory, final long chunkMillis) {
+    public AbstractBaseArchiverOnFile(final String baseDirectory, final long chunkMillis) {
         this(baseDirectory, 0, chunkMillis);
     }
 
-    public AbstractBaseFileArchiver(final String baseDirectory, final int chunkCount) {
+    public AbstractBaseArchiverOnFile(final String baseDirectory, final int chunkCount) {
         this(baseDirectory, chunkCount, 0);
     }
 
-    public AbstractBaseFileArchiver(final String baseDirectory, final int chunkCount, final long chunkMillis) {
+    public AbstractBaseArchiverOnFile(final String baseDirectory, final int chunkCount, final long chunkMillis) {
         this.baseDirectory = baseDirectory;
         this.chunkCount = chunkCount;
         this.chunkMillis = chunkMillis;

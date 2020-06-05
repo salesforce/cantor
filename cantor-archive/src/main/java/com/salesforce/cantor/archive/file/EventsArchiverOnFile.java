@@ -11,7 +11,6 @@ import com.google.protobuf.ByteString;
 import com.salesforce.cantor.Events;
 import com.salesforce.cantor.archive.EventsChunk;
 import com.salesforce.cantor.common.EventsPreconditions;
-import com.salesforce.cantor.misc.CantorProperties;
 import com.salesforce.cantor.misc.archivable.EventsArchiver;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
@@ -35,17 +34,17 @@ import java.util.stream.Collectors;
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 import static com.salesforce.cantor.common.CommonPreconditions.checkNamespace;
 
-public class FileEventsArchiver extends AbstractBaseFileArchiver implements EventsArchiver {
-    private static final Logger logger = LoggerFactory.getLogger(FileEventsArchiver.class);
-    private static final String archivePathFormat = "/archive-events-%s-%s-%d-%d";
-    private static final Pattern archiveRegexPattern = Pattern.compile("archive-events-.*-.*-(?<start>\\d+)-(?<end>\\d+)");
+public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements EventsArchiver {
+    private static final Logger logger = LoggerFactory.getLogger(EventsArchiverOnFile.class);
+    private static final String archivePathFormat = "/archive-events-%s-%d-%d";
+    private static final Pattern archiveRegexPattern = Pattern.compile("archive-events-.*-(?<start>\\d+)-(?<end>\\d+)");
 
     private static final long MIN_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(1);
     private static final long MAX_CHUNK_MILLIS = TimeUnit.DAYS.toMillis(1);
 
     private final Map<String, Long> fileArchiveCache = new HashMap<>();
 
-    public FileEventsArchiver(final String baseDirectory, final long chunkMillis) {
+    public EventsArchiverOnFile(final String baseDirectory, final long chunkMillis) {
         super(baseDirectory, chunkMillis);
     }
 
@@ -261,7 +260,6 @@ public class FileEventsArchiver extends AbstractBaseFileArchiver implements Even
 
     public Path getFileArchive(final String namespace, final long startTimestampMillis) {
         return getFile(archivePathFormat,
-                CantorProperties.getKingdom(),
                 namespace,
                 startTimestampMillis,
                 startTimestampMillis + chunkMillis - 1);

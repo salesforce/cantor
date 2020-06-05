@@ -10,7 +10,6 @@ package com.salesforce.cantor.archive.file;
 import com.google.protobuf.ByteString;
 import com.salesforce.cantor.Objects;
 import com.salesforce.cantor.archive.ObjectsChunk;
-import com.salesforce.cantor.misc.CantorProperties;
 import com.salesforce.cantor.misc.archivable.ObjectsArchiver;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
@@ -25,14 +24,19 @@ import java.util.Map;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 
-public class FileObjectsArchiver extends AbstractBaseFileArchiver implements ObjectsArchiver {
-    private static final Logger logger = LoggerFactory.getLogger(FileObjectsArchiver.class);
-    protected static final String archivePathFormat = "/archive-objects-%s-%s-%d";
+public class ObjectsArchiverOnFile extends AbstractBaseArchiverOnFile implements ObjectsArchiver {
+    private static final Logger logger = LoggerFactory.getLogger(ObjectsArchiverOnFile.class);
+    protected static final String archivePathFormat = "/archive-objects-%s-%d";
 
     public static final int MAX_CHUNK_SIZE = 1_000;
 
-    public FileObjectsArchiver(final String baseDirectory, final int archiveChunkCount) {
+    public ObjectsArchiverOnFile(final String baseDirectory, final int archiveChunkCount) {
         super(baseDirectory, archiveChunkCount);
+    }
+
+    @Override
+    public boolean hasArchives(final String namespace) {
+        return false;
     }
 
     @Override
@@ -97,7 +101,6 @@ public class FileObjectsArchiver extends AbstractBaseFileArchiver implements Obj
 
     public Path getFileArchive(final String namespace) {
         return getFile(archivePathFormat,
-                CantorProperties.getKingdom(),
                 namespace,
                 this.chunkCount);
     }

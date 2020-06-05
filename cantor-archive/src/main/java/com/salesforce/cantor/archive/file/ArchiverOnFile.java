@@ -1,6 +1,6 @@
 package com.salesforce.cantor.archive.file;
 
-import com.salesforce.cantor.misc.archivable.Archiver;
+import com.salesforce.cantor.misc.archivable.CantorArchiver;
 import com.salesforce.cantor.misc.archivable.EventsArchiver;
 import com.salesforce.cantor.misc.archivable.ObjectsArchiver;
 import com.salesforce.cantor.misc.archivable.SetsArchiver;
@@ -16,28 +16,28 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
  * An implementation of the archiver which stores data on disk.
  *
  * {@code baseDirectory} and {@code chunkMillis} can specified or will default to
- * {@link FileArchiver#defaultArchivePathBase} and {@link FileArchiver#defaultChunkMillis} respectively
+ * {@link ArchiverOnFile#defaultArchivePathBase} and {@link ArchiverOnFile#defaultChunkMillis} respectively
  */
-public class FileArchiver implements Archiver {
-    private static final Logger logger = LoggerFactory.getLogger(FileArchiver.class);
+public class ArchiverOnFile implements CantorArchiver {
+    private static final Logger logger = LoggerFactory.getLogger(ArchiverOnFile.class);
 
     protected static final String defaultArchivePathBase = "/tmp/cantor-archive";
     protected static final int defaultChunkCount = 1_000;
     protected static final long defaultChunkMillis = TimeUnit.HOURS.toMillis(1);
 
-    private final FileSetsArchiver setsArchive;
-    private final FileObjectsArchiver objectsArchive;
-    private final FileEventsArchiver eventsArchive;
+    private final SetsArchiverOnFile setsArchive;
+    private final ObjectsArchiverOnFile objectsArchive;
+    private final EventsArchiverOnFile eventsArchive;
 
-    public FileArchiver() {
+    public ArchiverOnFile() {
         this(defaultArchivePathBase);
     }
 
-    public FileArchiver(final String baseDirectory) {
+    public ArchiverOnFile(final String baseDirectory) {
         this(baseDirectory, defaultChunkCount, defaultChunkMillis);
     }
 
-    public FileArchiver(final String baseDirectory, final int archiveChunkCount, final long eventsChunkMillis) {
+    public ArchiverOnFile(final String baseDirectory, final int archiveChunkCount, final long eventsChunkMillis) {
         checkArgument(baseDirectory != null && !baseDirectory.isEmpty(), "null/empty baseDirectory");
         checkArgument(archiveChunkCount > 0, "archiveChunkCount must be greater than zero");
         checkArgument(eventsChunkMillis > 0, "eventsChunkMillis must be greater than zero");
@@ -48,23 +48,23 @@ public class FileArchiver implements Archiver {
             throw new IllegalStateException("Failed to create base directory for file archive: " + baseDirectory);
         }
 
-        this.setsArchive = new FileSetsArchiver(baseDirectory, archiveChunkCount);
-        this.objectsArchive = new FileObjectsArchiver(baseDirectory, archiveChunkCount);
-        this.eventsArchive = new FileEventsArchiver(baseDirectory, eventsChunkMillis);
+        this.setsArchive = new SetsArchiverOnFile(baseDirectory, archiveChunkCount);
+        this.objectsArchive = new ObjectsArchiverOnFile(baseDirectory, archiveChunkCount);
+        this.eventsArchive = new EventsArchiverOnFile(baseDirectory, eventsChunkMillis);
     }
 
     @Override
-    public SetsArchiver setsArchiver() {
+    public SetsArchiver sets() {
         return this.setsArchive;
     }
 
     @Override
-    public ObjectsArchiver objectsArchiver() {
+    public ObjectsArchiver objects() {
         return this.objectsArchive;
     }
 
     @Override
-    public EventsArchiver eventsArchiver() {
+    public EventsArchiver events() {
         return this.eventsArchive;
     }
 }
