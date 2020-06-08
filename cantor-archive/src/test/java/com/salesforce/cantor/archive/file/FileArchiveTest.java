@@ -46,7 +46,7 @@ public class FileArchiveTest {
         final File baseDirectory = new File(BASE_DIRECTORY);
         baseDirectory.delete();
         baseDirectory.mkdirs();
-        this.archiver = new ArchiverOnFile(BASE_DIRECTORY, 100, HOUR_MILLIS);
+        this.archiver = new ArchiverOnFile(BASE_DIRECTORY, HOUR_MILLIS);
         this.localCantor = new ArchivableCantor(new CantorOnH2(H2_DIRECTORY), archiver);
         generateData();
     }
@@ -127,6 +127,7 @@ public class FileArchiveTest {
             // last run with dirtied archive file
             final List<Events.Event> refreshedEvents = this.localCantor.events()
                     .get(cantorH2Namespace.getKey(), TIMEFRAME_ORIGIN, TIMEFRAME_BOUND);
+            // TODO: very occasionally this test flaps with one of the two below asserts failing; need to find the issue
             Assert.assertEquals(refreshedEvents.size(), allEvents.size(), "incorrect number of events after restoration for events: " + cantorH2Namespace.getKey());
 
             // sanity check no events have been lost

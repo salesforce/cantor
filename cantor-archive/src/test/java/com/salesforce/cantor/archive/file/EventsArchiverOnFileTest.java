@@ -29,7 +29,7 @@ public class EventsArchiverOnFileTest {
     @Test
     public void testArchiveEvents() throws IOException {
         final String basePath = Paths.get(System.getProperty("java.io.tmpdir"), "cantor-archive-sets-test", UUID.randomUUID().toString()).toString();
-        final ArchiverOnFile archiver = new ArchiverOnFile(basePath, 1, TimeUnit.MINUTES.toMillis(1L));
+        final ArchiverOnFile archiver = new ArchiverOnFile(basePath, TimeUnit.MINUTES.toMillis(1L));
         final EventsArchiverOnFile eventsArchiver = (EventsArchiverOnFile) archiver.events();
         final Cantor cantor = getCantor(Paths.get(basePath, "input").toString());
         final String namespace = UUID.randomUUID().toString();
@@ -78,7 +78,7 @@ public class EventsArchiverOnFileTest {
     @Test
     public void testArchiveEventsOverlap() throws IOException {
         final String basePath = Paths.get(System.getProperty("java.io.tmpdir"), "cantor-archive-sets-test", UUID.randomUUID().toString()).toString();
-        final ArchiverOnFile archiver = new ArchiverOnFile(basePath, 1, TimeUnit.MINUTES.toMillis(10L));
+        final ArchiverOnFile archiver = new ArchiverOnFile(basePath, TimeUnit.MINUTES.toMillis(10L));
         final EventsArchiverOnFile eventsArchiver = (EventsArchiverOnFile) archiver.events();
         final Cantor cantor = getCantor(Paths.get(basePath, "input").toString());
         final String namespace = UUID.randomUUID().toString();
@@ -128,7 +128,7 @@ public class EventsArchiverOnFileTest {
     @Test
     public void testArchiveEventsEmpty() throws IOException {
         final String basePath = Paths.get(System.getProperty("java.io.tmpdir"), "cantor-archive-sets-test", UUID.randomUUID().toString()).toString();
-        final ArchiverOnFile archiver = new ArchiverOnFile(basePath, 1, TimeUnit.MINUTES.toMillis(1L));
+        final ArchiverOnFile archiver = new ArchiverOnFile(basePath, TimeUnit.MINUTES.toMillis(1L));
         final EventsArchiverOnFile eventsArchiver = (EventsArchiverOnFile) archiver.events();
         final Cantor cantor = getCantor(Paths.get(basePath, "input").toString());
 
