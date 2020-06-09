@@ -22,7 +22,6 @@ public class ArchiverOnFile implements CantorArchiver {
     private static final Logger logger = LoggerFactory.getLogger(ArchiverOnFile.class);
 
     protected static final String defaultArchivePathBase = "/tmp/cantor-archive";
-    protected static final int defaultChunkCount = 1_000;
     protected static final long defaultChunkMillis = TimeUnit.HOURS.toMillis(1);
 
     private final SetsArchiverOnFile setsArchive;
@@ -34,12 +33,11 @@ public class ArchiverOnFile implements CantorArchiver {
     }
 
     public ArchiverOnFile(final String baseDirectory) {
-        this(baseDirectory, defaultChunkCount, defaultChunkMillis);
+        this(baseDirectory, defaultChunkMillis);
     }
 
-    public ArchiverOnFile(final String baseDirectory, final int archiveChunkCount, final long eventsChunkMillis) {
+    public ArchiverOnFile(final String baseDirectory, final long eventsChunkMillis) {
         checkArgument(baseDirectory != null && !baseDirectory.isEmpty(), "null/empty baseDirectory");
-        checkArgument(archiveChunkCount > 0, "archiveChunkCount must be greater than zero");
         checkArgument(eventsChunkMillis > 0, "eventsChunkMillis must be greater than zero");
         logger.info("initializing file archiver with directory '{}' in {}ms chunks", baseDirectory, eventsChunkMillis);
 
@@ -48,8 +46,8 @@ public class ArchiverOnFile implements CantorArchiver {
             throw new IllegalStateException("Failed to create base directory for file archive: " + baseDirectory);
         }
 
-        this.setsArchive = new SetsArchiverOnFile(baseDirectory, archiveChunkCount);
-        this.objectsArchive = new ObjectsArchiverOnFile(baseDirectory, archiveChunkCount);
+        this.setsArchive = new SetsArchiverOnFile(baseDirectory);
+        this.objectsArchive = new ObjectsArchiverOnFile(baseDirectory);
         this.eventsArchive = new EventsArchiverOnFile(baseDirectory, eventsChunkMillis);
     }
 

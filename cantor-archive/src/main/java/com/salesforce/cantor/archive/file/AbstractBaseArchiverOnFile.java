@@ -20,23 +20,17 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkString;
 
 public abstract class AbstractBaseArchiverOnFile {
     protected final String baseDirectory;
-    protected final int chunkCount;
     protected final long chunkMillis;
 
     // default to nothing for no sub directory
     protected String subDirectory = "";
 
+    public AbstractBaseArchiverOnFile(final String baseDirectory) {
+        this(baseDirectory, 0);
+    }
+
     public AbstractBaseArchiverOnFile(final String baseDirectory, final long chunkMillis) {
-        this(baseDirectory, 0, chunkMillis);
-    }
-
-    public AbstractBaseArchiverOnFile(final String baseDirectory, final int chunkCount) {
-        this(baseDirectory, chunkCount, 0);
-    }
-
-    public AbstractBaseArchiverOnFile(final String baseDirectory, final int chunkCount, final long chunkMillis) {
         this.baseDirectory = baseDirectory;
-        this.chunkCount = chunkCount;
         this.chunkMillis = chunkMillis;
     }
 

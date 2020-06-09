@@ -8,29 +8,21 @@
 package com.salesforce.cantor.archive.file;
 
 import com.salesforce.cantor.Sets;
-import com.salesforce.cantor.archive.SetsChunk;
 import com.salesforce.cantor.misc.archivable.SetsArchiver;
-import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.apache.commons.compress.archivers.ArchiveInputStream;
-import org.apache.commons.compress.archivers.ArchiveOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Collection;
-import java.util.Map;
-
-import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 
 public class SetsArchiverOnFile extends AbstractBaseArchiverOnFile implements SetsArchiver {
     private static final Logger logger = LoggerFactory.getLogger(SetsArchiverOnFile.class);
-    private static final String archivePathFormat = "/archive-sets-%s-%d";
+    private static final String archivePathFormat = "/archive-sets-%s";
 
     public static final int MAX_CHUNK_SIZE = 1_000;
 
-    public SetsArchiverOnFile(final String baseDirectory, final int chunkCount) {
-        super(baseDirectory, chunkCount);
+    public SetsArchiverOnFile(final String baseDirectory) {
+        super(baseDirectory);
     }
 
     @Override
@@ -47,8 +39,6 @@ public class SetsArchiverOnFile extends AbstractBaseArchiverOnFile implements Se
     }
 
     public Path getFileArchive(final String namespace) {
-        return getFile(archivePathFormat,
-                namespace,
-                this.chunkCount);
+        return getFile(archivePathFormat, namespace);
     }
 }
