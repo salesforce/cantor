@@ -7,19 +7,26 @@
 
 package com.salesforce.cantor.archive.file;
 
+import com.google.protobuf.ByteString;
 import com.salesforce.cantor.Objects;
+import com.salesforce.cantor.archive.ObjectsChunk;
 import com.salesforce.cantor.misc.archivable.ObjectsArchiver;
+import org.apache.commons.compress.archivers.ArchiveEntry;
+import org.apache.commons.compress.archivers.ArchiveInputStream;
+import org.apache.commons.compress.archivers.ArchiveOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Collection;
+import java.util.Map;
 
 public class ObjectsArchiverOnFile extends AbstractBaseArchiverOnFile implements ObjectsArchiver {
     private static final Logger logger = LoggerFactory.getLogger(ObjectsArchiverOnFile.class);
     protected static final String archivePathFormat = "/archive-objects-%s";
 
-    public static final int MAX_CHUNK_SIZE = 1_000;
+    public static final int CHUNK_SIZE = 1_000;
 
     public ObjectsArchiverOnFile(final String baseDirectory) {
         super(baseDirectory);
@@ -29,7 +36,6 @@ public class ObjectsArchiverOnFile extends AbstractBaseArchiverOnFile implements
     public void archive(final Objects objects, final String namespace) throws IOException {
         final Path destination = getFileArchive(namespace);
         checkArchiveArguments(objects, namespace, destination);
-        checkArgument(this.chunkCount <= MAX_CHUNK_SIZE, "chunk size must be <=" + MAX_CHUNK_SIZE);
         doArchive(objects, namespace, destination);
     }
 
@@ -44,7 +50,7 @@ public class ObjectsArchiverOnFile extends AbstractBaseArchiverOnFile implements
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
             // get objects to archive in chunks in case of large namespaces
             int start = 0;
-            Collection<String> keys = objects.keys(namespace, start, this.chunkCount);
+            Collection<String> keys = objects.keys(namespace, start, CHUNK_SIZE);
             while (!keys.isEmpty()) {
                 final Map<String, byte[]> chunk = objects.get(namespace, keys);
                 final int end = start + chunk.size();
@@ -53,7 +59,7 @@ public class ObjectsArchiverOnFile extends AbstractBaseArchiverOnFile implements
                 writeArchiveEntry(archive, name, getBytes(chunk));
                 logger.info("archived {} objects ({}-{}) into chunk '{}'", chunk.size(), start, end, name);
                 start = end;
-                keys = objects.keys(namespace, start, this.chunkCount);
+                keys = objects.keys(namespace, start, CHUNK_SIZE);
             }
         }
     }
