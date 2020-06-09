@@ -93,9 +93,13 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
                         final String namespace,
                         final long startTimestampMillis,
                         final long endTimestampMillis) throws IOException {
+        checkNamespace(namespace);
+        checkArgument(startTimestampMillis >= 0, "invalid start timestamp");
+        checkArgument(endTimestampMillis >= startTimestampMillis, "end timestamp cannot be before start timestamp");
+
+        final List<Path> archives = getFileArchiveList(namespace, startTimestampMillis, endTimestampMillis);
         long startNanos = System.nanoTime();
         long totalEventsRestored = 0;
-        final List<Path> archives = getFileArchiveList(namespace, startTimestampMillis, endTimestampMillis);
         try {
             for (final Path archive : archives) {
                 totalEventsRestored += doRestore(events, namespace, archive);
