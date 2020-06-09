@@ -7,22 +7,42 @@
 
 package com.salesforce.cantor.archive.s3;
 
+import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Events;
+import com.salesforce.cantor.archive.file.ArchiverOnFile;
+import com.salesforce.cantor.archive.file.EventsArchiverOnFile;
 import com.salesforce.cantor.misc.archivable.CantorArchiver;
 import com.salesforce.cantor.misc.archivable.EventsArchiver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements EventsArchiver {
     private static final Logger logger = LoggerFactory.getLogger(EventsArchiverOnS3.class);
-    private static final String archiveFilename = "archive-events-%s-%d-%d";
+    private static final Pattern archiveRegexPattern = Pattern.compile("archive-events-.*-(?<start>\\d+)-(?<end>\\d+)");
+    private static final String archiveNamespace = "events-archive";
 
-    public EventsArchiverOnS3(final CantorArchiver fileArchiver, final long chunkMillis) {
-        super(fileArchiver, chunkMillis);
+    final EventsArchiverOnFile eventsArchiverOnFile;
+
+    public EventsArchiverOnS3(final Cantor cantorOnS3,
+                              final CantorArchiver fileArchiver,
+                              final long chunkMillis) throws IOException {
+        super(cantorOnS3, fileArchiver, chunkMillis);
         logger.info("events archiver chucking in {}ms chunks", chunkMillis);
+        this.eventsArchiverOnFile = (EventsArchiverOnFile) fileArchiver.events();
+        this.cantorOnS3.objects().create(archiveNamespace);
     }
 
     @Override
@@ -32,6 +52,15 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
                         final long endTimestampMillis,
                         final Map<String, String> metadataQuery,
                         final Map<String, String> dimensionsQuery) throws IOException {
+        // first archive to the local disk
+        this.eventsArchiverOnFile.archive(
+                events, namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery
+        );
+
+        // iterate over all archive files and upload them to s3
+        for (final Path archiveFile : this.eventsArchiverOnFile.getFileArchiveList(namespace, startTimestampMillis, endTimestampMillis)) {
+            doArchive(archiveFile.getFileName().toString(), archiveFile);
+        }
     }
 
     @Override
@@ -39,5 +68,69 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
                         final String namespace,
                         final long startTimestampMillis,
                         final long endTimestampMillis) throws IOException {
+        final Collection<String> archiveFilenames = this.cantorOnS3.objects().keys(archiveNamespace, 0, -1);
+        final List<String> archives = getMatchingArchives(archiveFilenames, startTimestampMillis, endTimestampMillis);
+        // TODO: should we run this in parallel?
+        final Path archiveLocation = ((ArchiverOnFile) this.fileArchiver).getArchiveLocation();
+        for (final String archiveObjectName : archives) {
+            final Path fileArchive = archiveLocation.resolve(archiveObjectName);
+            doRestore(events, namespace, archiveObjectName, fileArchive);
+            // delete temporary storage file
+            if (!fileArchive.toFile().delete()) {
+                logger.warn("failed to delete temp archive file {}", fileArchive);
+            }
+        }
+    }
+
+    private void doArchive(final String objectKey,
+                           final Path fileArchive) throws IOException {
+        int byteSize = 0;
+        long startNanos = System.nanoTime();
+        try (final InputStream uploadStream = Files.newInputStream(fileArchive)) {
+            byteSize = uploadStream.available();
+            final byte[] fileBytes = new byte[byteSize];
+            final int read = uploadStream.read(fileBytes);
+            if (read != byteSize) {
+                throw new IOException(String.format("failed to read all bytes into memory %d/%d read", read, byteSize));
+            }
+            // TODO: streams aren't working seemingly hitting their max buffer size causing a amazonaws.ResetException
+            this.cantorOnS3.objects().store(archiveNamespace, objectKey, fileBytes);
+        } finally {
+            logger.info("uploading file '{}' ({} bytes) took {}s",
+                    fileArchive, byteSize, TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startNanos));
+        }
+    }
+
+    private void doRestore(final Events events,
+                           final String namespace,
+                           final String objectKey,
+                           final Path fileArchive) throws IOException {
+        // logging at this level will be handled by the fileArchiver
+        final byte[] fileBytes = this.cantorOnS3.objects().get(archiveNamespace, objectKey);
+        try (final OutputStream temporaryStorage = Files.newOutputStream(fileArchive)) {
+            temporaryStorage.write(fileBytes);
+            temporaryStorage.flush();
+            ((EventsArchiverOnFile) this.fileArchiver.events()).doRestore(events, namespace, fileArchive);
+        }
+    }
+
+    private List<String> getMatchingArchives(final Collection<String> archiveFilenames,
+                                             final long startTimestampMillis,
+                                             final long endTimestampMillis) {
+        final long windowStart = getFloorForChunk(startTimestampMillis);
+        final long windowEnd = (endTimestampMillis <= Long.MAX_VALUE - this.chunkMillis)
+                ? getCeilingForChunk(endTimestampMillis)
+                : endTimestampMillis;
+        return archiveFilenames.stream()
+                .filter(filename -> {
+                    // filter to archive files that overlap with the timeframe
+                    final Matcher matcher = archiveRegexPattern.matcher(filename);
+                    if (matcher.matches()) {
+                        final long fileStart = Long.parseLong(matcher.group("start"));
+                        final long fileEnd = Long.parseLong(matcher.group("end"));
+                        return fileStart <= windowEnd && fileEnd >= windowStart;
+                    }
+                    return false;
+                }).collect(Collectors.toList());
     }
 }

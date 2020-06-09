@@ -7,6 +7,7 @@
 
 package com.salesforce.cantor.archive.s3;
 
+import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Sets;
 import com.salesforce.cantor.misc.archivable.CantorArchiver;
 import com.salesforce.cantor.misc.archivable.SetsArchiver;
@@ -21,8 +22,8 @@ public class SetsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements SetsAr
 
     public static final int MAX_CHUNK_SIZE = 1_000;
 
-    public SetsArchiverOnS3(final CantorArchiver fileArchiver) {
-        super(fileArchiver);
+    public SetsArchiverOnS3(final Cantor s3Cantor, final CantorArchiver fileArchiver) {
+        super(s3Cantor, fileArchiver);
     }
 
     @Override

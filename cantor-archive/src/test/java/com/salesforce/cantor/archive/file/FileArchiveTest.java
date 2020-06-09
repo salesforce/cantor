@@ -10,6 +10,7 @@ package com.salesforce.cantor.archive.file;
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Events;
 import com.salesforce.cantor.archive.EventsChunk;
+import com.salesforce.cantor.archive.TestUtils;
 import com.salesforce.cantor.h2.CantorOnH2;
 import com.salesforce.cantor.misc.archivable.CantorArchiver;
 import com.salesforce.cantor.misc.archivable.impl.ArchivableCantor;
@@ -26,9 +27,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class FileArchiveTest {
     private static final long timeframeBound = System.currentTimeMillis();
@@ -49,7 +49,7 @@ public class FileArchiveTest {
         baseDirectory.mkdirs();
         this.archiver = new ArchiverOnFile(FileArchiveTest.baseDirectory, hourMillis);
         this.localCantor = new ArchivableCantor(new CantorOnH2(h2Directory), archiver);
-        generateData();
+        TestUtils.generateData(this.localCantor, TIMEFRAME_ORIGIN, TIMEFRAME_BOUND, cantorH2Namespaces);
     }
 
     @AfterMethod
@@ -76,7 +76,7 @@ public class FileArchiveTest {
             final List<Events.Event> totalEvents = this.localCantor.events()
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, timeframeBound);
 
-            final long endTimestamp = getFloorForWindow(cantorH2Namespace.getValue(), hourMillis) - 1;
+            final long endTimestamp = TestUtils.getFloorForWindow(cantorH2Namespace.getValue(), hourMillis) - 1;
             final List<Events.Event> events = this.localCantor.events()
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, cantorH2Namespace.getValue());
             this.localCantor.events().expire(cantorH2Namespace.getKey(), cantorH2Namespace.getValue());
@@ -100,7 +100,7 @@ public class FileArchiveTest {
             final List<Events.Event> totalEvents = this.localCantor.events()
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, timeframeBound);
 
-            final long endTimestamp = getFloorForWindow(cantorH2Namespace.getValue(), hourMillis) - 1;
+            final long endTimestamp = TestUtils.getFloorForWindow(cantorH2Namespace.getValue(), hourMillis) - 1;
             final List<Events.Event> events = this.localCantor.events()
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, cantorH2Namespace.getValue());
             this.localCantor.events().expire(cantorH2Namespace.getKey(), cantorH2Namespace.getValue());
@@ -176,46 +176,5 @@ public class FileArchiveTest {
             final List<String> filesList = Arrays.asList(files);
             filesList.forEach(file -> Assert.assertFalse(file.contains(cantorH2Namespace), "no events archived but found archive file for namespace: " + cantorH2Namespace));
         }
-    }
-
-    private void generateData() throws IOException {
-        final ThreadLocalRandom random = ThreadLocalRandom.current();
-        for (int namespaceCount = 0; namespaceCount < random.nextInt(2, 5); namespaceCount++) {
-            final String namespace = "cantor-archive-test-" + Math.abs(UUID.randomUUID().hashCode());
-            this.localCantor.events().create(namespace);
-            this.cantorH2Namespaces.put(namespace, random.nextLong(timeframeOrigin, timeframeBound));
-
-            for (int eventCount = 0; eventCount < random.nextInt(100, 1000); eventCount++) { // 1GB max
-                final byte[] randomPayload = new byte[random.nextInt(0, 1_000_000)]; // 1MB max
-                random.nextBytes(randomPayload);
-                this.localCantor.events().store(
-                    namespace, random.nextLong(timeframeOrigin, timeframeBound),
-                        null,null, randomPayload
-                );
-            }
-            final Map<String, String> metadataMap = new HashMap<>();
-            metadataMap.put("test-event-metadata", "test-generate");
-            this.localCantor.events().store(
-                    namespace, timeframeOrigin - 1,
-                    metadataMap,null, null
-            );
-            this.localCantor.events().store(
-                    namespace, timeframeBound + 1,
-                    metadataMap,null, null
-            );
-            for (int eventCount = 0; eventCount < random.nextInt(1, 10); eventCount++) { // 1MB max
-                // throw in a few random events at zero timestamp
-                final byte[] randomPayload = new byte[random.nextInt(0, 100_000)]; // 100KB max
-                random.nextBytes(randomPayload);
-                this.localCantor.events().store(
-                        namespace, 0,
-                        null,null, null
-                );
-            }
-        }
-    }
-
-    private long getFloorForWindow(final long timestampMillis, final long chunkMillis) {
-        return (timestampMillis / chunkMillis) * chunkMillis;
     }
 }

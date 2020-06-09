@@ -7,6 +7,7 @@
 
 package com.salesforce.cantor.archive.s3;
 
+import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Objects;
 import com.salesforce.cantor.misc.archivable.CantorArchiver;
 import com.salesforce.cantor.misc.archivable.ObjectsArchiver;
@@ -21,8 +22,8 @@ public class ObjectsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Obj
 
     public static final int MAX_CHUNK_SIZE = 1_000;
 
-    public ObjectsArchiverOnS3(final CantorArchiver fileArchiver) {
-        super(fileArchiver);
+    public ObjectsArchiverOnS3(final Cantor s3Cantor, final CantorArchiver fileArchiver) {
+        super(s3Cantor, fileArchiver);
     }
 
     @Override
