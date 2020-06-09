@@ -86,7 +86,7 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
         }
     }
 
-    private void doArchive(final String objectKey,
+    public void doArchive(final String objectKey,
                            final Path archiveFile) throws IOException {
         int byteSize = 0;
         long startNanos = System.nanoTime();
@@ -105,7 +105,7 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
         }
     }
 
-    private void doRestore(final Events events,
+    public void doRestore(final Events events,
                            final String namespace,
                            final String objectKey,
                            final Path archiveFile) throws IOException {
@@ -118,7 +118,7 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
         }
     }
 
-    private List<String> getMatchingArchives(final String namespace,
+    public List<String> getMatchingArchives(final String namespace,
                                              final Collection<String> archiveFilenames,
                                              final long startTimestampMillis,
                                              final long endTimestampMillis) {

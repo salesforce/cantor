@@ -16,6 +16,7 @@ import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,7 @@ public class ArchiverOnS3Test {
     private static final long TIMEFRAME_ORIGIN = TIMEFRAME_BOUND - TimeUnit.DAYS.toMillis(2);
     private static final String H2_DIRECTORY = "/tmp/cantor-local-test";
     private static final long HOUR_MILLIS = TimeUnit.HOURS.toMillis(1);
+    private static final String ARCHIVE_NAMESPACE = "events-archive";
 
     private Map<String, Long> cantorH2Namespaces;
     private Cantor cantorLocal;
@@ -66,11 +68,14 @@ public class ArchiverOnS3Test {
         final List<Events.Event> totalEvents = this.cantorLocal.events()
                 .get(cantorH2Namespace.getKey(), TIMEFRAME_ORIGIN, TIMEFRAME_BOUND);
 
-        final long endTimestamp = TestUtils.getFloorForWindow(cantorH2Namespace.getValue(), HOUR_MILLIS) - 1;
         final List<Events.Event> events = this.cantorLocal.events()
                 .get(cantorH2Namespace.getKey(), TIMEFRAME_ORIGIN, cantorH2Namespace.getValue());
         this.cantorLocal.events().expire(cantorH2Namespace.getKey(), cantorH2Namespace.getValue());
-        Assert.assertTrue(this.archiver.events().hasArchives(cantorH2Namespace.getKey(), TIMEFRAME_ORIGIN, endTimestamp));
+
+        // check that at least one archive was made (which should always be true since we generate events at timestamp 0)
+        final Collection<String> archiveFilenames = this.cantorOnS3.objects().keys(ARCHIVE_NAMESPACE, 0, -1);
+        final List<String> matchingArchives = ((EventsArchiverOnS3) this.archiver.events()).getMatchingArchives(cantorH2Namespace.getKey(), archiveFilenames, 0, cantorH2Namespace.getValue());
+        Assert.assertNotEquals(matchingArchives.size(), 0);
 
         // restore the events
         final List<Events.Event> restoreEvents = this.cantorLocal.events()
@@ -93,7 +98,11 @@ public class ArchiverOnS3Test {
             final List<Events.Event> events = this.cantorLocal.events()
                     .get(cantorH2Namespace.getKey(), TIMEFRAME_ORIGIN, cantorH2Namespace.getValue());
             this.cantorLocal.events().expire(cantorH2Namespace.getKey(), cantorH2Namespace.getValue());
-            Assert.assertTrue(this.archiver.events().hasArchives(cantorH2Namespace.getKey(), TIMEFRAME_ORIGIN, endTimestamp));
+
+            // check that at least one archive was made (which should always be true since we generate events at timestamp 0)
+            final Collection<String> archiveFilenames = this.cantorOnS3.objects().keys(ARCHIVE_NAMESPACE, 0, -1);
+            final List<String> matchingArchives = ((EventsArchiverOnS3) this.archiver.events()).getMatchingArchives(cantorH2Namespace.getKey(), archiveFilenames, 0, cantorH2Namespace.getValue());
+            Assert.assertNotEquals(matchingArchives.size(), 0);
 
             // restore the events
             final List<Events.Event> restoreEvents = this.cantorLocal.events()
