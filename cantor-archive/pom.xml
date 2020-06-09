@@ -49,6 +49,12 @@
             <artifactId>cantor-misc</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!--CANTOR S3-->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-s3</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!--PROTOBUF-->
         <dependency>
             <groupId>com.google.protobuf</groupId>
@@ -81,13 +87,6 @@
         <dependency>
             <groupId>com.salesforce.cantor</groupId>
             <artifactId>cantor-grpc-client</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <!--CANTOR S3-->
-        <dependency>
-            <groupId>com.salesforce.cantor</groupId>
-            <artifactId>cantor-s3</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
