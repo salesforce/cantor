@@ -40,7 +40,7 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
                            final boolean includePayloads,
                            final boolean ascending,
                            final int limit) throws IOException {
-        tryRestore(namespace, startTimestampMillis, endTimestampMillis);
+        getArchiver().events().restore(getDelegate(), namespace, startTimestampMillis, endTimestampMillis);
         return getDelegate().get(namespace,
                         startTimestampMillis,
                         endTimestampMillis,
@@ -76,7 +76,7 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
                                              final Map<String, String> dimensionsQuery,
                                              final int aggregateIntervalMillis,
                                              final AggregationFunction aggregationFunction) throws IOException {
-        tryRestore(namespace, startTimestampMillis, endTimestampMillis);
+        getArchiver().events().restore(getDelegate(), namespace, startTimestampMillis, endTimestampMillis);
         return getDelegate().aggregate(namespace,
                         dimension,
                         startTimestampMillis,
@@ -95,7 +95,7 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
                                 final long endTimestampMillis,
                                 final Map<String, String> metadataQuery,
                                 final Map<String, String> dimensionsQuery) throws IOException {
-        tryRestore(namespace, startTimestampMillis, endTimestampMillis);
+        getArchiver().events().restore(getDelegate(), namespace, startTimestampMillis, endTimestampMillis);
         return getDelegate().metadata(namespace,
                         metadataKey,
                         startTimestampMillis,
@@ -108,23 +108,7 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
     @Override
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
         // archiving all before deletion
-        getArchiver().events().archive(getDelegate(),
-                namespace,
-                endTimestampMillis
-        );
-
+        getArchiver().events().archive(getDelegate(),namespace, endTimestampMillis);
         getDelegate().expire(namespace, endTimestampMillis);
-    }
-
-    /**
-     * Calling user implemented {@link EventsArchiver#hasArchives(String, long, long)} method to check if restore should
-     * be executed.
-     */
-    private void tryRestore(final String namespace,
-                            final long startTimestampMillis,
-                            final long endTimestampMillis) throws IOException {
-        if (getArchiver().events().hasArchives(namespace, startTimestampMillis, endTimestampMillis)) {
-            getArchiver().events().restore(getDelegate(), namespace, startTimestampMillis, endTimestampMillis);
-        }
     }
 }

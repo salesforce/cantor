@@ -10,20 +10,6 @@ import java.util.Map;
  * EventsArchiver is the contract used by {@link ArchivableEvents} when handling archiving of events
  */
 public interface EventsArchiver {
-
-    /**
-     *  Checks for the existence of any archives that hold events in the provided timeframe.
-     *  <br><br>
-     *  {@code hasArchives()} is expected to return {@literal true} if even one archived chunk overlaps with the timeframe,
-     *  and {@literal false} otherwise.
-     *  <br><br>
-     *  Depending on the implementation {@code restore()} could be called even if the exact query doesn't match any
-     *  events in the archive.
-     */
-    boolean hasArchives(String namespace,
-                        long startTimestampMillis,
-                        long endTimestampMillis);
-
     /**
      * Will retrieve and archive all events using these given parameters and load this into the destination.
      */

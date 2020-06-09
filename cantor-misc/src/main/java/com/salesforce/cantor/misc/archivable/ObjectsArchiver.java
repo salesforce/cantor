@@ -10,14 +10,6 @@ import java.io.IOException;
  */
 public interface ObjectsArchiver {
     /**
-     *  Checks for the existence of any archives that hold objects for the provided namespace.
-     *  <br><br>
-     *  {@code hasArchives()} is expected to return {@literal true} if an archive for the provided namespace exists,
-     *  and {@literal false} otherwise.
-     */
-    boolean hasArchives(String namespace);
-
-    /**
      * Will retrieve and archive a specific object by key.
      */
     default void archive(Objects objects, String namespace, String key) throws IOException {

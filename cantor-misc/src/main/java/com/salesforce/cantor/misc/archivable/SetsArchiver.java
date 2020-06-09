@@ -10,15 +10,6 @@ import java.io.IOException;
  */
 public interface SetsArchiver {
     /**
-     *  Checks for the existence of any archives for the given set, and
-     *  will result in {@code restore()} being called if true
-     *  <br><br>
-     *  Depending on the implementation {@code restore()} could be called even if the set doesn't exist, given
-     *  the namespace does.
-     */
-    boolean hasArchives(String namespace, String set);
-
-    /**
      * Will retrieve and archive the provided set in a namespace.
      */
     default void archive(Sets sets, String namespace, String set) throws IOException {
