@@ -8,12 +8,18 @@
 package com.salesforce.cantor.archive.file;
 
 import com.salesforce.cantor.Sets;
+import com.salesforce.cantor.archive.SetsChunk;
 import com.salesforce.cantor.misc.archivable.SetsArchiver;
+import org.apache.commons.compress.archivers.ArchiveEntry;
+import org.apache.commons.compress.archivers.ArchiveInputStream;
+import org.apache.commons.compress.archivers.ArchiveOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Collection;
+import java.util.Map;
 
 public class SetsArchiverOnFile extends AbstractBaseArchiverOnFile implements SetsArchiver {
     private static final Logger logger = LoggerFactory.getLogger(SetsArchiverOnFile.class);
@@ -29,7 +35,6 @@ public class SetsArchiverOnFile extends AbstractBaseArchiverOnFile implements Se
     public void archive(final Sets sets, final String namespace) throws IOException {
         final Path destination = getFileArchive(namespace);
         checkArchiveArguments(sets, namespace, destination);
-        checkArgument(this.chunkCount <= MAX_CHUNK_SIZE, "chunk size must be <=" + MAX_CHUNK_SIZE);
         doArchive(sets, namespace, destination);
     }
 
@@ -48,7 +53,7 @@ public class SetsArchiverOnFile extends AbstractBaseArchiverOnFile implements Se
             for (final String set : setNames) {
                 logger.info("archiving set {}.{}", namespace, set);
                 int start = 0;
-                Map<String, Long> entries = sets.get(namespace, set, start, this.chunkCount);
+                Map<String, Long> entries = sets.get(namespace, set, start, CHUNK_SIZE);
                 while (!entries.isEmpty()) {
                     final int end = start + entries.size();
                     final String name = String.format("sets-%s-%s-%s-%s", namespace, set, start, end);
@@ -57,7 +62,7 @@ public class SetsArchiverOnFile extends AbstractBaseArchiverOnFile implements Se
                     writeArchiveEntry(archive, name, chunk.toByteArray());
                     logger.info("archived {} entries ({}-{}) into chunk '{}' for set {}.{}", entries.size(), start, end, name, namespace, set);
                     start = end;
-                    entries = sets.get(namespace, set, start, this.chunkCount);
+                    entries = sets.get(namespace, set, start, CHUNK_SIZE);
                 }
             }
         }
