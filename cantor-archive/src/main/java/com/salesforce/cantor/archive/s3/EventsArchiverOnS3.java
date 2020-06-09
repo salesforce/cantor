@@ -60,6 +60,10 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
         // iterate over all archive files and upload them to s3
         for (final Path archiveFile : this.eventsArchiverOnFile.getFileArchiveList(namespace, startTimestampMillis, endTimestampMillis)) {
             doArchive(archiveFile.getFileName().toString(), archiveFile);
+            // delete temporary storage file
+            if (!archiveFile.toFile().delete()) {
+                logger.warn("failed to delete temp archive file {}", archiveFile);
+            }
         }
     }
 
@@ -69,24 +73,24 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
                         final long startTimestampMillis,
                         final long endTimestampMillis) throws IOException {
         final Collection<String> archiveFilenames = this.cantorOnS3.objects().keys(archiveNamespace, 0, -1);
-        final List<String> archives = getMatchingArchives(archiveFilenames, startTimestampMillis, endTimestampMillis);
+        final List<String> archives = getMatchingArchives(namespace, archiveFilenames, startTimestampMillis, endTimestampMillis);
         // TODO: should we run this in parallel?
         final Path archiveLocation = ((ArchiverOnFile) this.fileArchiver).getArchiveLocation();
         for (final String archiveObjectName : archives) {
-            final Path fileArchive = archiveLocation.resolve(archiveObjectName);
-            doRestore(events, namespace, archiveObjectName, fileArchive);
+            final Path archiveFile = archiveLocation.resolve(archiveObjectName);
+            doRestore(events, namespace, archiveObjectName, archiveFile);
             // delete temporary storage file
-            if (!fileArchive.toFile().delete()) {
-                logger.warn("failed to delete temp archive file {}", fileArchive);
+            if (!archiveFile.toFile().delete()) {
+                logger.warn("failed to delete temp archive file {}", archiveFile);
             }
         }
     }
 
     private void doArchive(final String objectKey,
-                           final Path fileArchive) throws IOException {
+                           final Path archiveFile) throws IOException {
         int byteSize = 0;
         long startNanos = System.nanoTime();
-        try (final InputStream uploadStream = Files.newInputStream(fileArchive)) {
+        try (final InputStream uploadStream = Files.newInputStream(archiveFile)) {
             byteSize = uploadStream.available();
             final byte[] fileBytes = new byte[byteSize];
             final int read = uploadStream.read(fileBytes);
@@ -97,24 +101,25 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
             this.cantorOnS3.objects().store(archiveNamespace, objectKey, fileBytes);
         } finally {
             logger.info("uploading file '{}' ({} bytes) took {}s",
-                    fileArchive, byteSize, TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startNanos));
+                    archiveFile, byteSize, TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startNanos));
         }
     }
 
     private void doRestore(final Events events,
                            final String namespace,
                            final String objectKey,
-                           final Path fileArchive) throws IOException {
+                           final Path archiveFile) throws IOException {
         // logging at this level will be handled by the fileArchiver
         final byte[] fileBytes = this.cantorOnS3.objects().get(archiveNamespace, objectKey);
-        try (final OutputStream temporaryStorage = Files.newOutputStream(fileArchive)) {
+        try (final OutputStream temporaryStorage = Files.newOutputStream(archiveFile)) {
             temporaryStorage.write(fileBytes);
             temporaryStorage.flush();
-            ((EventsArchiverOnFile) this.fileArchiver.events()).doRestore(events, namespace, fileArchive);
+            ((EventsArchiverOnFile) this.fileArchiver.events()).doRestore(events, namespace, archiveFile);
         }
     }
 
-    private List<String> getMatchingArchives(final Collection<String> archiveFilenames,
+    private List<String> getMatchingArchives(final String namespace,
+                                             final Collection<String> archiveFilenames,
                                              final long startTimestampMillis,
                                              final long endTimestampMillis) {
         final long windowStart = getFloorForChunk(startTimestampMillis);
@@ -125,7 +130,7 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
                 .filter(filename -> {
                     // filter to archive files that overlap with the timeframe
                     final Matcher matcher = archiveRegexPattern.matcher(filename);
-                    if (matcher.matches()) {
+                    if (filename.contains(namespace) && matcher.matches()) {
                         final long fileStart = Long.parseLong(matcher.group("start"));
                         final long fileEnd = Long.parseLong(matcher.group("end"));
                         return fileStart <= windowEnd && fileEnd >= windowStart;
