@@ -11,6 +11,7 @@ import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Events;
 import com.salesforce.cantor.archive.EventsChunk;
 import com.salesforce.cantor.h2.CantorOnH2;
+import com.salesforce.cantor.misc.archivable.CantorArchiver;
 import com.salesforce.cantor.misc.archivable.impl.ArchivableCantor;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.testng.Assert;
@@ -38,7 +39,7 @@ public class FileArchiveTest {
 
     private Map<String, Long> cantorH2Namespaces;
     private Cantor localCantor;
-    private ArchiverOnFile archiver;
+    private CantorArchiver archiver;
 
     @BeforeMethod
     public void setup() throws IOException {
@@ -127,7 +128,6 @@ public class FileArchiveTest {
             // last run with dirtied archive file
             final List<Events.Event> refreshedEvents = this.localCantor.events()
                     .get(cantorH2Namespace.getKey(), TIMEFRAME_ORIGIN, TIMEFRAME_BOUND);
-            // TODO: very occasionally this test flaps with one of the two below asserts failing; need to find the issue
             Assert.assertEquals(refreshedEvents.size(), allEvents.size(), "incorrect number of events after restoration for events: " + cantorH2Namespace.getKey());
 
             // sanity check no events have been lost

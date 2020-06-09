@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,8 +41,6 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
     private static final String FLAG_RESTORED = ".cantor-archive-restored";
     private static final long MIN_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(1);
     private static final long MAX_CHUNK_MILLIS = TimeUnit.DAYS.toMillis(1);
-
-    private final Map<String, Long> fileArchiveCache = new HashMap<>();
 
     public EventsArchiverOnFile(final String baseDirectory, final long chunkMillis) {
         super(baseDirectory, chunkMillis);
@@ -101,14 +98,6 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
         final List<Path> archives = getFileArchiveList(namespace, startTimestampMillis, endTimestampMillis);
         try {
             for (final Path archive : archives) {
-                final long lastUpdated = Files.readAttributes(archive, BasicFileAttributes.class)
-                        .lastModifiedTime()
-                        .toMillis();
-                if (this.fileArchiveCache.getOrDefault(archive.toString(), 0L) == lastUpdated) {
-                    // skipping file that hasn't changed and has been restored once before
-                    continue;
-                }
-                this.fileArchiveCache.put(archive.toString(), lastUpdated);
                 totalEventsRestored += doRestore(events, namespace, archive);
             }
         } finally {
