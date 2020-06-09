@@ -25,13 +25,6 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
     }
 
     @Override
-    public boolean hasArchives(final String namespace,
-                               final long startTimestampMillis,
-                               final long endTimestampMillis) throws IOException {
-        return false;
-    }
-
-    @Override
     public void archive(final Events events,
                         final String namespace,
                         final long startTimestampMillis,

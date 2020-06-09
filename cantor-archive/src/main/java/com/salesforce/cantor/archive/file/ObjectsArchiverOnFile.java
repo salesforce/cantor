@@ -26,11 +26,6 @@ public class ObjectsArchiverOnFile extends AbstractBaseArchiverOnFile implements
     }
 
     @Override
-    public boolean hasArchives(final String namespace) {
-        return false;
-    }
-
-    @Override
     public void archive(final Objects objects, final String namespace) throws IOException {
     }
 
