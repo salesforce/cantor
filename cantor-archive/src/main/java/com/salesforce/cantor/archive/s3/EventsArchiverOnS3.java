@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 
 public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements EventsArchiver {
     private static final Logger logger = LoggerFactory.getLogger(EventsArchiverOnS3.class);
-    private static final Pattern archiveRegexPattern = Pattern.compile("archive-events-.*-(?<start>\\d+)-(?<end>\\d+)");
+    private static final Pattern archiveRegexPattern = Pattern.compile("archive-events-(?<namespace>.*)-(?<start>\\d+)-(?<end>\\d+)");
     private static final String archiveNamespace = "events-archive";
 
     final EventsArchiverOnFile eventsArchiverOnFile;
@@ -52,6 +52,14 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
                         final long endTimestampMillis,
                         final Map<String, String> metadataQuery,
                         final Map<String, String> dimensionsQuery) throws IOException {
+        final Collection<String> archiveFilenames = this.cantorOnS3.objects().keys(archiveNamespace, 0, -1);
+        final List<String> archives = getMatchingArchives(namespace, archiveFilenames, startTimestampMillis, endTimestampMillis);
+        final Path archiveLocation = ((ArchiverOnFile) this.fileArchiver).getArchiveLocation();
+        for (final String objectKey : archives) {
+            logger.debug("objectKey already exists, pulling to merge: {}", objectKey);
+            restoreFromS3(objectKey, archiveLocation.resolve(objectKey));
+        }
+
         // first archive to the local disk
         this.eventsArchiverOnFile.archive(
                 events, namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery
@@ -87,7 +95,7 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
     }
 
     public void doArchive(final String objectKey,
-                           final Path archiveFile) throws IOException {
+                          final Path archiveFile) throws IOException {
         int byteSize = 0;
         long startNanos = System.nanoTime();
         try (final InputStream uploadStream = Files.newInputStream(archiveFile)) {
@@ -110,12 +118,8 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
                            final String objectKey,
                            final Path archiveFile) throws IOException {
         // logging at this level will be handled by the fileArchiver
-        final byte[] fileBytes = this.cantorOnS3.objects().get(archiveNamespace, objectKey);
-        try (final OutputStream temporaryStorage = Files.newOutputStream(archiveFile)) {
-            temporaryStorage.write(fileBytes);
-            temporaryStorage.flush();
-            ((EventsArchiverOnFile) this.fileArchiver.events()).doRestore(events, namespace, archiveFile);
-        }
+        restoreFromS3(objectKey, archiveFile);
+        ((EventsArchiverOnFile) this.fileArchiver.events()).doRestore(events, namespace, archiveFile);
     }
 
     public List<String> getMatchingArchives(final String namespace,
@@ -130,12 +134,21 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
                 .filter(filename -> {
                     // filter to archive files that overlap with the timeframe
                     final Matcher matcher = archiveRegexPattern.matcher(filename);
-                    if (filename.contains(namespace) && matcher.matches()) {
+                    if (matcher.matches() && matcher.group("namespace").equals(namespace)) {
                         final long fileStart = Long.parseLong(matcher.group("start"));
                         final long fileEnd = Long.parseLong(matcher.group("end"));
                         return fileStart <= windowEnd && fileEnd >= windowStart;
                     }
                     return false;
                 }).collect(Collectors.toList());
+    }
+
+    public void restoreFromS3(final String objectKey, final Path archiveLocation) throws IOException {
+        // pulling file down from s3
+        final byte[] fileBytes = this.cantorOnS3.objects().get(archiveNamespace, objectKey);
+        try (final OutputStream temporaryStorage = Files.newOutputStream(archiveLocation)) {
+            temporaryStorage.write(fileBytes);
+            temporaryStorage.flush();
+        }
     }
 }

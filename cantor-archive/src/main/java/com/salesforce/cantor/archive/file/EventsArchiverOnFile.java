@@ -36,7 +36,7 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkNamespace;
 public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements EventsArchiver {
     private static final Logger logger = LoggerFactory.getLogger(EventsArchiverOnFile.class);
     private static final String archivePathFormat = "/archive-events-%s-%d-%d";
-    private static final Pattern archiveRegexPattern = Pattern.compile("archive-events-.*-(?<start>\\d+)-(?<end>\\d+)");
+    private static final Pattern archiveRegexPattern = Pattern.compile("archive-events-(?<namespace>.*)-(?<start>\\d+)-(?<end>\\d+)");
 
     private static final String isRestoredFlag = ".cantor-archive-restored";
     private static final long minChunkMillis = TimeUnit.MINUTES.toMillis(1);
@@ -239,7 +239,7 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
                 // filter to archive files that overlap with the timeframe
                 final String filename = path.getFileName().toString();
                 final Matcher matcher = archiveRegexPattern.matcher(filename);
-                if (filename.contains(namespace) && matcher.matches()) {
+                if (matcher.matches() && matcher.group("namespace").equals(namespace)) {
                     final long fileStart = Long.parseLong(matcher.group("start"));
                     final long fileEnd = Long.parseLong(matcher.group("end"));
                     // -------s-------------e---------  <- start and end parameters
