@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -187,20 +188,7 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
             ArchiveEntry entry;
             while ((entry = archive.getNextEntry()) != null) {
                 final EventsChunk chunk = EventsChunk.parseFrom(archive);
-                for (final EventsChunk.Event event : chunk.getEventsList()) {
-                    if (ByteString.EMPTY.equals(event.getPayload())) {
-                        events.store(namespace,
-                                event.getTimestampMillis(),
-                                event.getMetadataMap(),
-                                event.toBuilder().putDimensions(isRestoredFlag, 1).getDimensionsMap());
-                    } else {
-                        events.store(namespace,
-                                event.getTimestampMillis(),
-                                event.getMetadataMap(),
-                                event.toBuilder().putDimensions(isRestoredFlag, 1).getDimensionsMap(),
-                                event.getPayload().toByteArray());
-                    }
-                }
+                events.store(namespace, toEvents(chunk.getEventsList()));
                 logger.info("read {} entries from chunk {} ({} bytes) into {}", chunk.getEventsCount(), entry.getName(), entry.getSize(), namespace);
                 eventsRestored += chunk.getEventsCount();
             }
@@ -209,6 +197,23 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
             logger.info("restoring {} events into namespace '{}' from archive file {} took {}s",
                     eventsRestored, namespace, archiveFile, TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startNanos));
         }
+    }
+
+    private List<Events.Event> toEvents(final List<EventsChunk.Event> eventsList) {
+        final List<Events.Event> events = new ArrayList<>();
+        for (final EventsChunk.Event event : eventsList) {
+            events.add(
+                new Events.Event(
+                    event.getTimestampMillis(),
+                    event.toBuilder().putMetadata(FLAG_RESTORED, "true").getMetadataMap(),
+                    event.getDimensionsMap(),
+                    !ByteString.EMPTY.equals(event.getPayload())
+                            ? event.getPayload().toByteArray()
+                            : null
+                )
+            );
+        }
+        return events;
     }
 
     // remove all restored events in this chunk to prevent duplicates
