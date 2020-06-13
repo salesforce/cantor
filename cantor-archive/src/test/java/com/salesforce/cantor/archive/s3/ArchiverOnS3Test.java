@@ -180,7 +180,7 @@ public class ArchiverOnS3Test {
             int eventCount = 0;
             for (final String file : fileArchive) {
                 final Path archiveLocation = Paths.get(archivePathBase, file);
-                eventsArchiver.restoreFromS3(file, archiveLocation);
+                eventsArchiver.pullFile(file, archiveLocation);
                 try (final ArchiveInputStream archiveInputStream = getArchiveInputStream(archiveLocation)) {
                     while (archiveInputStream.getNextEntry() != null) {
                         final EventsChunk chunk = EventsChunk.parseFrom(archiveInputStream);

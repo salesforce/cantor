@@ -57,7 +57,7 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
         final Path archiveLocation = ((ArchiverOnFile) this.fileArchiver).getArchiveLocation();
         for (final String objectKey : archives) {
             logger.debug("objectKey already exists, pulling to merge: {}", objectKey);
-            restoreFromS3(objectKey, archiveLocation.resolve(objectKey));
+            pullFile(objectKey, archiveLocation.resolve(objectKey));
         }
 
         // first archive to the local disk
@@ -83,13 +83,13 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
         final Collection<String> archiveFilenames = this.cantorOnS3.objects().keys(archiveNamespace, 0, -1);
         final List<String> archives = getMatchingArchives(namespace, archiveFilenames, startTimestampMillis, endTimestampMillis);
         // TODO: should we run this in parallel?
+        // logging at this level will be handled by the fileArchiver
         final Path archiveLocation = ((ArchiverOnFile) this.fileArchiver).getArchiveLocation();
         for (final String archiveObjectName : archives) {
             final Path archiveFile = archiveLocation.resolve(archiveObjectName);
-            doRestore(events, namespace, archiveObjectName, archiveFile);
-            // delete temporary storage file
-            if (!archiveFile.toFile().delete()) {
-                logger.warn("failed to delete temp archive file {}", archiveFile);
+            // no need to restore a file already
+            if (pullFile(archiveObjectName, archiveFile)) {
+                ((EventsArchiverOnFile) this.fileArchiver.events()).doRestore(events, namespace, archiveFile);
             }
         }
     }
@@ -113,19 +113,10 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
         }
     }
 
-    public void doRestore(final Events events,
-                           final String namespace,
-                           final String objectKey,
-                           final Path archiveFile) throws IOException {
-        // logging at this level will be handled by the fileArchiver
-        restoreFromS3(objectKey, archiveFile);
-        ((EventsArchiverOnFile) this.fileArchiver.events()).doRestore(events, namespace, archiveFile);
-    }
-
     public List<String> getMatchingArchives(final String namespace,
-                                             final Collection<String> archiveFilenames,
-                                             final long startTimestampMillis,
-                                             final long endTimestampMillis) {
+                                            final Collection<String> archiveFilenames,
+                                            final long startTimestampMillis,
+                                            final long endTimestampMillis) {
         final long windowStart = getFloorForChunk(startTimestampMillis);
         final long windowEnd = (endTimestampMillis <= Long.MAX_VALUE - this.chunkMillis)
                 ? getCeilingForChunk(endTimestampMillis)
@@ -143,12 +134,20 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
                 }).collect(Collectors.toList());
     }
 
-    public void restoreFromS3(final String objectKey, final Path archiveLocation) throws IOException {
+    public boolean pullFile(final String objectKey, final Path archiveLocation) throws IOException {
+        // check for archive stored on disk
+        // TODO: add checksum evaluation to confirm the file currently pulled down is not outdated
+        if (archiveLocation.toFile().exists()) {
+            return false;
+        }
+
         // pulling file down from s3
+        logger.debug("local file not found, pulling file from s3: {}", objectKey);
         final byte[] fileBytes = this.cantorOnS3.objects().get(archiveNamespace, objectKey);
         try (final OutputStream temporaryStorage = Files.newOutputStream(archiveLocation)) {
             temporaryStorage.write(fileBytes);
             temporaryStorage.flush();
         }
+        return true;
     }
 }
