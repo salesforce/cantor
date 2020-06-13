@@ -189,6 +189,7 @@ public class ArchiverOnS3Test {
                                 && event.getTimestampMillis() <= endTimestamp).count();
                     }
                 }
+                archiveLocation.toFile().delete();
             }
             Assert.assertEquals(eventCount, events.size(), "events that were expired were not archived");
         } else {
