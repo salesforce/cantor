@@ -121,6 +121,7 @@
         <module>cantor-server</module>
         <module>cantor-http-server</module>
         <module>cantor-archive</module>
+        <module>cantor-phoenix</module>
     </modules>
 
     <dependencyManagement>
