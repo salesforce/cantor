@@ -62,11 +62,11 @@ public abstract class AbstractBaseArchiverOnFile {
         return new TarArchiveInputStream(new GzipCompressorInputStream(new BufferedInputStream(Files.newInputStream(archiveFile))));
     }
 
-    protected boolean checkArchiveArguments(final Object instance, final String namespace, final Path destination) throws IOException {
+    protected boolean checkArchiveArguments(final Object instance, final String namespace, final Path destination) {
         checkArgument(instance != null, "null cantor instance, can't archive");
         checkString(namespace, "null/empty namespace, can't archive");
         checkArgument(destination != null, "null destination, can't archive");
-        return Files.notExists(destination) || Files.size(destination) == 0;
+        return Files.notExists(destination) || destination.toFile().length() == 0;
     }
 
     protected void checkRestoreArguments(final Object instance, final String namespace, final Path archiveFile) {
