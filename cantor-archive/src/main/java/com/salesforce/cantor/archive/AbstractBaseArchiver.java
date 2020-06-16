@@ -48,10 +48,10 @@ abstract class AbstractBaseArchiver {
         return new TarArchiveInputStream(new GzipCompressorInputStream(new BufferedInputStream(Files.newInputStream(archiveFile))));
     }
 
-    static void checkArchiveArguments(final Object instance, final String namespace, final Path destination) throws IOException {
+    static void checkArchiveArguments(final Object instance, final String namespace, final Path destination) {
         checkArgument(instance != null, "null cantor instance, can't archive");
         checkString(namespace, "null/empty namespace, can't archive");
-        checkArgument(Files.notExists(destination) || Files.size(destination) == 0, "destination already exists and is not empty, can't archive");
+        checkArgument(Files.notExists(destination) || destination.toFile().length() == 0, "destination already exists and is not empty, can't archive");
     }
 
     static void checkRestoreArguments(final Object instance, final String namespace, final Path archiveFile) {

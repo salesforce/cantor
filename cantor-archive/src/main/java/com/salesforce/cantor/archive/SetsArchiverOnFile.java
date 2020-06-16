@@ -70,11 +70,6 @@ public class SetsArchiverOnFile extends AbstractBaseArchiver implements SetsArch
     }
 
     @Override
-    public boolean hasArchives(final String namespace, final String set) {
-        return false;
-    }
-
-    @Override
     public void archive(final Sets sets, final String namespace) throws IOException {
 
     }

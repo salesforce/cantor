@@ -119,11 +119,6 @@ public class EventsArchiverOnFile extends AbstractBaseArchiver implements Events
     }
 
     @Override
-    public boolean hasArchives(final String namespace, final long startTimestampMillis, final long endTimestampMillis) {
-        return false;
-    }
-
-    @Override
     public void archive(final Events events, final String namespace, final long startTimestampMillis, final long endTimestampMillis, final Map<String, String> metadataQuery, final Map<String, String> dimensionsQuery) throws IOException {
 
     }
