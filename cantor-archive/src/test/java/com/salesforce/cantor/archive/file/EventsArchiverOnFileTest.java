@@ -178,7 +178,6 @@ public class EventsArchiverOnFileTest {
         assertEquals(actual.getTimestampMillis(), expected.getTimestampMillis(), "timestamps don't match");
         expected.getDimensions().put(isRestoredFlag, restored);
         assertEqualsDeep(actual.getDimensions(), expected.getDimensions(), "dimensions don't match");
-        expected.getMetadata().put(AbstractBaseArchiverOnFile.FLAG_RESTORED, restored);
         assertEqualsDeep(actual.getMetadata(), expected.getMetadata(), "metadata don't match");
         if (expected.getPayload() == null) {
             assertTrue(actual.getPayload() ==  null || actual.getPayload().length == 0,

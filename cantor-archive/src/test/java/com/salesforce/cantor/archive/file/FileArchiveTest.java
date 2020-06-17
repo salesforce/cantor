@@ -50,7 +50,7 @@ public class FileArchiveTest {
         baseDirectory.mkdirs();
         this.archiver = new ArchiverOnFile(FileArchiveTest.baseDirectory, hourMillis);
         this.localCantor = new ArchivableCantor(new CantorOnH2(h2Directory), archiver);
-        TestUtils.generateData(this.localCantor, TIMEFRAME_ORIGIN, TIMEFRAME_BOUND, cantorH2Namespaces);
+        TestUtils.generateData(this.localCantor, timeframeOrigin, timeframeBound, cantorH2Namespaces);
     }
 
     @AfterMethod

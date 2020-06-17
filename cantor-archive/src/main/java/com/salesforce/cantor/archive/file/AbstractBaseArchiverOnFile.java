@@ -19,8 +19,6 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 import static com.salesforce.cantor.common.CommonPreconditions.checkString;
 
 public abstract class AbstractBaseArchiverOnFile {
-    protected static final String FLAG_RESTORED = ".cantor-archive-restored";
-
     protected final String baseDirectory;
     protected final long chunkMillis;
 
