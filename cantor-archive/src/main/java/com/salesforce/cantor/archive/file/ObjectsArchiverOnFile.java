@@ -26,7 +26,7 @@ public class ObjectsArchiverOnFile extends AbstractBaseArchiverOnFile implements
     private static final Logger logger = LoggerFactory.getLogger(ObjectsArchiverOnFile.class);
     protected static final String archivePathFormat = "/archive-objects-%s";
 
-    public static final int CHUNK_SIZE = 1_000;
+    public static final int chunkSize = 1_000;
 
     public ObjectsArchiverOnFile(final String baseDirectory) {
         super(baseDirectory);
@@ -50,7 +50,7 @@ public class ObjectsArchiverOnFile extends AbstractBaseArchiverOnFile implements
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
             // get objects to archive in chunks in case of large namespaces
             int start = 0;
-            Collection<String> keys = objects.keys(namespace, start, CHUNK_SIZE);
+            Collection<String> keys = objects.keys(namespace, start, chunkSize);
             while (!keys.isEmpty()) {
                 final Map<String, byte[]> chunk = objects.get(namespace, keys);
                 final int end = start + chunk.size();
@@ -59,7 +59,7 @@ public class ObjectsArchiverOnFile extends AbstractBaseArchiverOnFile implements
                 writeArchiveEntry(archive, name, getBytes(chunk));
                 logger.info("archived {} objects ({}-{}) into chunk '{}'", chunk.size(), start, end, name);
                 start = end;
-                keys = objects.keys(namespace, start, CHUNK_SIZE);
+                keys = objects.keys(namespace, start, chunkSize);
             }
         }
     }
