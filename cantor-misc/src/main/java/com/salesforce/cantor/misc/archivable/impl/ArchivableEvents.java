@@ -109,6 +109,6 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
         // archiving all before deletion
         getArchiver().events().archive(getDelegate(),namespace, endTimestampMillis);
-        getDelegate().expire(namespace, endTimestampMillis);
+        getDelegate().delete(namespace, 0, endTimestampMillis, null, null);
     }
 }
