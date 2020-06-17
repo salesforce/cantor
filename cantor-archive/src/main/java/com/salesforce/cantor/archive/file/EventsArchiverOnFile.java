@@ -38,14 +38,17 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
     private static final String archivePathFormat = "/archive-events-%s-%d-%d";
     private static final Pattern archiveRegexPattern = Pattern.compile("archive-events-.*-(?<start>\\d+)-(?<end>\\d+)");
 
-    private static final String FLAG_RESTORED = ".cantor-archive-restored";
-    private static final long MIN_CHUNK_MILLIS = TimeUnit.MINUTES.toMillis(1);
-    private static final long MAX_CHUNK_MILLIS = TimeUnit.DAYS.toMillis(1);
+    private static final String isRestoredFlag = ".cantor-archive-restored";
+    private static final long minChunkMillis = TimeUnit.MINUTES.toMillis(1);
+    private static final long maxChunkMillis = TimeUnit.DAYS.toMillis(1);
 
     public EventsArchiverOnFile(final String baseDirectory, final long chunkMillis) {
         super(baseDirectory, chunkMillis);
+        checkArgument(this.chunkMillis >= minChunkMillis, "archive chunk millis must be greater than " + minChunkMillis);
+        checkArgument(this.chunkMillis <= maxChunkMillis, "archive chunk millis must be less than " + maxChunkMillis);
     }
 
+    // partitioning and file naming logic is done here followed by the actual archiving logic in doArchive
     @Override
     public void archive(final Events events,
                         final String namespace,
@@ -88,6 +91,7 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
         }
     }
 
+    // partitioning and file resolution logic is done here followed by the actual restoration logic in doRestore
     @Override
     public void restore(final Events events,
                         final String namespace,
@@ -110,6 +114,7 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
         }
     }
 
+    // real archiving logic which will archive the entire timeframe matching the query into the provided file
     public long doArchive(final Events events,
                           final String namespace,
                           final long startTimestampMillis,
@@ -117,10 +122,7 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
                           final Map<String, String> metadataQuery,
                           final Map<String, String> dimensionsQuery,
                           final Path destination) throws IOException {
-        checkArgument(this.chunkMillis >= MIN_CHUNK_MILLIS, "archive chunk millis must be greater than " + MIN_CHUNK_MILLIS);
-        checkArgument(this.chunkMillis <= MAX_CHUNK_MILLIS, "archive chunk millis must be less than " + MAX_CHUNK_MILLIS);
         EventsPreconditions.checkGet(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-
         long startNanos = System.nanoTime();
         long eventsArchived = 0;
 
@@ -143,8 +145,8 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
             // todo: can we do this differently? This doubles the memory we hold on to :(
             for (final Events.Event event : chunkEvents) {
-                final String restoredEvent = event.getMetadata().getOrDefault(FLAG_RESTORED, "false");
-                if (Boolean.parseBoolean(restoredEvent)) {
+                final double restoredEvent = event.getDimensions().getOrDefault(isRestoredFlag, 0d);
+                if (restoredEvent > 0) {
                     // skip elements that have already been restored to prevent duplication
                     continue;
                 }
@@ -163,10 +165,13 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
             return eventsArchived;
         } finally {
             logger.info("archiving {}ms chunk for namespace '{}' took {}s",
-                    this.chunkMillis, namespace, TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startNanos));
+                    endTimestampMillis - startTimestampMillis,
+                    namespace,
+                    TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startNanos));
         }
     }
 
+    // real restoration logic which takes any archive file provided and loads the entire contents into events under the given namespace
     public long doRestore(final Events events,
                           final String namespace,
                           final Path archiveFile) throws IOException {
@@ -186,13 +191,13 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
                     if (ByteString.EMPTY.equals(event.getPayload())) {
                         events.store(namespace,
                                 event.getTimestampMillis(),
-                                event.toBuilder().putMetadata(FLAG_RESTORED, "true").getMetadataMap(),
-                                event.getDimensionsMap());
+                                event.getMetadataMap(),
+                                event.toBuilder().putDimensions(isRestoredFlag, 1).getDimensionsMap());
                     } else {
                         events.store(namespace,
                                 event.getTimestampMillis(),
-                                event.toBuilder().putMetadata(FLAG_RESTORED, "true").getMetadataMap(),
-                                event.getDimensionsMap(),
+                                event.getMetadataMap(),
+                                event.toBuilder().putDimensions(isRestoredFlag, 1).getDimensionsMap(),
                                 event.getPayload().toByteArray());
                     }
                 }
@@ -215,12 +220,13 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
         if (matcher.matches()) {
             final long start = Long.parseLong(matcher.group("start"));
             final long end = Long.parseLong(matcher.group("end"));
-            final HashMap<String, String> metadataMap = new HashMap<>();
-            metadataMap.put(FLAG_RESTORED, "true");
-            events.delete(namespace, start, end, metadataMap, null);
+            final HashMap<String, String> dimensionMap = new HashMap<>();
+            dimensionMap.put(isRestoredFlag, "1");
+            events.delete(namespace, start, end, null, dimensionMap);
         }
     }
 
+    // retrieves all archive files that overlap with the timeframe
     public List<Path> getFileArchiveList(final String namespace,
                                          final long startTimestampMillis,
                                          final long endTimestampMillis) throws IOException {
@@ -236,16 +242,21 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
                 if (filename.contains(namespace) && matcher.matches()) {
                     final long fileStart = Long.parseLong(matcher.group("start"));
                     final long fileEnd = Long.parseLong(matcher.group("end"));
+                    // -------s-------------e---------  <- start and end parameters
+                    // ssssssssssssssssssssss           <- first check
+                    //        eeeeeeeeeeeeeeeeeeeeeeee  <- second check
+                    // any combination of s and e the file overlaps the timeframe
                     return fileStart <= windowEnd && fileEnd >= windowStart;
                 }
                 return false;
             }).collect(Collectors.toList());
     }
 
-    public Path getFileArchive(final String namespace, final long startTimestampMillis) {
+    // resolve archive filename
+    public Path getFileArchive(final String namespace, final long chunkStartMillis) {
         return getFile(archivePathFormat,
                 namespace,
-                startTimestampMillis,
-                startTimestampMillis + chunkMillis - 1);
+                chunkStartMillis,
+                chunkStartMillis + chunkMillis - 1);
     }
 }

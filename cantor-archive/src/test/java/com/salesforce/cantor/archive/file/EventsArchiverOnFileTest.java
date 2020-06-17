@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 import static org.testng.Assert.*;
 
 public class EventsArchiverOnFileTest {
-    private static final String FLAG_RESTORED = ".cantor-archive-restored";
+    private static final String isRestoredFlag = ".cantor-archive-restored";
 
     @Test
     public void testArchiveEvents() throws IOException {
@@ -44,7 +44,7 @@ public class EventsArchiverOnFileTest {
         for (final Event actualEvent : actual) {
             assertTrue(actualEvent.getMetadata().containsKey("guid"), "event missing guid");
             final Event expectedEvent = stored.get(actualEvent.getMetadata().get("guid"));
-            assertEventsEqual(actualEvent, expectedEvent, "false");
+            assertEventsEqual(actualEvent, expectedEvent, 0d);
         }
 
         // archive events in 1 minute chunks
@@ -171,13 +171,13 @@ public class EventsArchiverOnFileTest {
     }
 
     private void assertEventsEqual(final Event actual, final Event expected) {
-        assertEventsEqual(actual, expected, "true");
+        assertEventsEqual(actual, expected, 1d);
     }
 
-    private void assertEventsEqual(final Event actual, final Event expected, final String restored) {
+    private void assertEventsEqual(final Event actual, final Event expected, final double restored) {
         assertEquals(actual.getTimestampMillis(), expected.getTimestampMillis(), "timestamps don't match");
+        expected.getDimensions().put(isRestoredFlag, restored);
         assertEqualsDeep(actual.getDimensions(), expected.getDimensions(), "dimensions don't match");
-        expected.getMetadata().put(FLAG_RESTORED, restored);
         assertEqualsDeep(actual.getMetadata(), expected.getMetadata(), "metadata don't match");
         if (expected.getPayload() == null) {
             assertTrue(actual.getPayload() ==  null || actual.getPayload().length == 0,
@@ -198,7 +198,7 @@ public class EventsArchiverOnFileTest {
                 event = new Event(ts(start, end), meta(), dim());
             }
             event.getMetadata().put("guid", UUID.randomUUID().toString());
-            event.getMetadata().put(FLAG_RESTORED, "false");
+            event.getDimensions().put(isRestoredFlag, 0d);
             assertNull(stored.put(event.getMetadata().get("guid"), event), "already stored this guid");
             events.store(namespace, event);
         }
