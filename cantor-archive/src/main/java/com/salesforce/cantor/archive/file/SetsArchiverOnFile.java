@@ -19,7 +19,7 @@ public class SetsArchiverOnFile extends AbstractBaseArchiverOnFile implements Se
     private static final Logger logger = LoggerFactory.getLogger(SetsArchiverOnFile.class);
     private static final String archivePathFormat = "/archive-sets-%s";
 
-    public static final int MAX_CHUNK_SIZE = 1_000;
+    public static final int maxChunkSize = 1_000;
 
     public SetsArchiverOnFile(final String baseDirectory) {
         super(baseDirectory);

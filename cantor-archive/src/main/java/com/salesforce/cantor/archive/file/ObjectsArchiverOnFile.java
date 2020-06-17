@@ -19,7 +19,7 @@ public class ObjectsArchiverOnFile extends AbstractBaseArchiverOnFile implements
     private static final Logger logger = LoggerFactory.getLogger(ObjectsArchiverOnFile.class);
     protected static final String archivePathFormat = "/archive-objects-%s";
 
-    public static final int MAX_CHUNK_SIZE = 1_000;
+    public static final int maxChunkSize = 1_000;
 
     public ObjectsArchiverOnFile(final String baseDirectory) {
         super(baseDirectory);
