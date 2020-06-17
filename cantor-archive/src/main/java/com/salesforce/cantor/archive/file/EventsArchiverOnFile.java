@@ -205,8 +205,8 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
             events.add(
                 new Events.Event(
                     event.getTimestampMillis(),
-                    event.toBuilder().putMetadata(FLAG_RESTORED, "true").getMetadataMap(),
-                    event.getDimensionsMap(),
+                    event.getMetadataMap(),
+                    event.toBuilder().putDimensions(isRestoredFlag, 1d).getDimensionsMap(),
                     !ByteString.EMPTY.equals(event.getPayload())
                             ? event.getPayload().toByteArray()
                             : null
