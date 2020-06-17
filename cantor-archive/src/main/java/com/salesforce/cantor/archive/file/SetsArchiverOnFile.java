@@ -25,7 +25,7 @@ public class SetsArchiverOnFile extends AbstractBaseArchiverOnFile implements Se
     private static final Logger logger = LoggerFactory.getLogger(SetsArchiverOnFile.class);
     private static final String archivePathFormat = "/archive-sets-%s";
 
-    public static final int maxChunkSize = 1_000;
+    public static final int chunkSize = 1_000;
 
     public SetsArchiverOnFile(final String baseDirectory) {
         super(baseDirectory);
@@ -53,7 +53,7 @@ public class SetsArchiverOnFile extends AbstractBaseArchiverOnFile implements Se
             for (final String set : setNames) {
                 logger.info("archiving set {}.{}", namespace, set);
                 int start = 0;
-                Map<String, Long> entries = sets.get(namespace, set, start, CHUNK_SIZE);
+                Map<String, Long> entries = sets.get(namespace, set, start, chunkSize);
                 while (!entries.isEmpty()) {
                     final int end = start + entries.size();
                     final String name = String.format("sets-%s-%s-%s-%s", namespace, set, start, end);
@@ -62,7 +62,7 @@ public class SetsArchiverOnFile extends AbstractBaseArchiverOnFile implements Se
                     writeArchiveEntry(archive, name, chunk.toByteArray());
                     logger.info("archived {} entries ({}-{}) into chunk '{}' for set {}.{}", entries.size(), start, end, name, namespace, set);
                     start = end;
-                    entries = sets.get(namespace, set, start, CHUNK_SIZE);
+                    entries = sets.get(namespace, set, start, chunkSize);
                 }
             }
         }
