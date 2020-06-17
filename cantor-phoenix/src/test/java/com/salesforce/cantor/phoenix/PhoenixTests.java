@@ -10,7 +10,7 @@ public class PhoenixTests {
 
     static {
         try {
-            cantor = new CantorOnPhoenix("jdbc:phoenix:localhost");
+            cantor = new CantorOnPhoenix(getDataSource());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -18,5 +18,9 @@ public class PhoenixTests {
 
     static Cantor getCantor() throws IOException {
         return cantor;
+    }
+
+    private static DataSource getDataSource() {
+        return PhoenixDataSourceProvider.getDatasource();
     }
 }

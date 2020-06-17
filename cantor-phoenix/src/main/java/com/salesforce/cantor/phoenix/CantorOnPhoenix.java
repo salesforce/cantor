@@ -2,14 +2,14 @@ package com.salesforce.cantor.phoenix;
 
 import com.salesforce.cantor.*;
 
+import javax.sql.DataSource;
 import java.io.IOException;
-import java.sql.Connection;
 
 public class CantorOnPhoenix implements Cantor {
     private final Events events;
 
-    public CantorOnPhoenix(final String url) throws IOException {
-        this.events = new EventsOnPhoenix(url);
+    public CantorOnPhoenix(final DataSource datasource) throws IOException {
+        this.events = new EventsOnPhoenix(datasource);
     }
 
     @Override
