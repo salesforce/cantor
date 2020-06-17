@@ -26,11 +26,6 @@ public class SetsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements SetsAr
     }
 
     @Override
-    public boolean hasArchives(final String namespace, final String set) {
-        return false;
-    }
-
-    @Override
     public void archive(final Sets sets, final String namespace) throws IOException {
     }
 

@@ -26,11 +26,6 @@ public class ObjectsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Obj
     }
 
     @Override
-    public boolean hasArchives(final String namespace) {
-        return false;
-    }
-
-    @Override
     public void archive(final Objects objects, final String namespace) throws IOException {
     }
 
