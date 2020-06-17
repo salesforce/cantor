@@ -61,7 +61,7 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
         long totalEventsArchived = 0;
         try {
             for (long start = getFloorForChunk(endTimestampMillis), end = endTimestampMillis;
-                 end > 0;
+                 end > startTimestampMillis;
                  end -= this.chunkMillis, start -= this.chunkMillis) {
                 final long archivedEvents = doArchive(
                         events, namespace,
@@ -83,7 +83,7 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
 
                 if (end == endTimestampMillis) {
                     // after first partial archive archive full chunks
-                    end = getCeilingForChunk(end) - 1;
+                    end = getCeilingForChunk(end);
                 }
             }
         } finally {

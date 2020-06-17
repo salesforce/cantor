@@ -23,7 +23,7 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 public class ArchiverOnFile implements CantorArchiver {
     private static final Logger logger = LoggerFactory.getLogger(ArchiverOnFile.class);
 
-    protected static final String defaultArchivePathBase = "cantor-archive";
+    protected static final String defaultArchivePathBase = "cantor-archive-data";
     protected static final long defaultChunkMillis = TimeUnit.HOURS.toMillis(1);
 
     private final SetsArchiverOnFile setsArchive;

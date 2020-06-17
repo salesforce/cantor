@@ -26,6 +26,6 @@ public abstract class AbstractBaseArchiverOnS3 {
         if (timestampMillis >= Long.MAX_VALUE - this.chunkMillis) {
             return Long.MAX_VALUE;
         }
-        return getFloorForChunk(timestampMillis) + this.chunkMillis + 1;
+        return getFloorForChunk(timestampMillis) + this.chunkMillis - 1;
     }
 }
