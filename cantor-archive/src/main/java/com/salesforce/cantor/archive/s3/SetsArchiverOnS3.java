@@ -28,9 +28,11 @@ public class SetsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements SetsAr
 
     @Override
     public void archive(final Sets sets, final String namespace) throws IOException {
+        // not implemented yet
     }
 
     @Override
     public void restore(final Sets sets, final String namespace) throws IOException {
+        // not implemented yet
     }
 }

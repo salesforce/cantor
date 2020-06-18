@@ -69,8 +69,11 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
                         metadataQuery, dimensionsQuery,
                         getFileArchive(namespace, start));
                 totalEventsArchived += archivedEvents;
+                // evaluate whether to continue iterator or jump to the end
                 final long floorForStart = getFloorForChunk(startTimestampMillis);
-                if (archivedEvents == 0 && events.first(namespace, floorForStart + this.chunkMillis, start) == null) {
+                if (archivedEvents == 0
+                        && start > floorForStart + this.chunkMillis
+                        && events.first(namespace, floorForStart + this.chunkMillis, start) == null) {
                     // TODO: build a heuristic to jump to the next chunk with events to archive instead of this hack to handle events with zero for a timestamp
                     if (events.first(namespace, floorForStart, floorForStart + this.chunkMillis - 1) != null) {
                         start = floorForStart + this.chunkMillis;
@@ -127,7 +130,12 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
         long startNanos = System.nanoTime();
         long eventsArchived = 0;
 
-        final List<Events.Event> chunkEvents = events.get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, true, true, 0);
+        // get all events that haven't been archived before
+        final List<Events.Event> chunkEvents = events
+                .get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, true, true, 0)
+                .stream()
+                .filter(event -> event.getDimensions().getOrDefault(isRestoredFlag, 0d) == 0)
+                .collect(Collectors.toList());
         if (chunkEvents.size() == 0) {
             // exit if no events
             return eventsArchived;
@@ -146,12 +154,6 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
             // todo: can we do this differently? This doubles the memory we hold on to :(
             for (final Events.Event event : chunkEvents) {
-                final double restoredEvent = event.getDimensions().getOrDefault(isRestoredFlag, 0d);
-                if (restoredEvent > 0) {
-                    // skip elements that have already been restored to prevent duplication
-                    continue;
-                }
-
                 final EventsChunk.Event.Builder eventBuilder = EventsChunk.Event.newBuilder()
                         .setTimestampMillis(event.getTimestampMillis())
                         .putAllDimensions(event.getDimensions())

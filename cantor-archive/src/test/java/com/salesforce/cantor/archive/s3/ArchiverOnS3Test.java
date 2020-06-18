@@ -106,7 +106,6 @@ public class ArchiverOnS3Test {
             final List<Events.Event> totalEvents = this.cantorLocal.events()
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, timeframeBound);
 
-            final long endTimestamp = TestUtils.getFloorForWindow(cantorH2Namespace.getValue(), hourMillis) - 1;
             final List<Events.Event> events = this.cantorLocal.events()
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, cantorH2Namespace.getValue());
             this.cantorLocal.events().expire(cantorH2Namespace.getKey(), cantorH2Namespace.getValue());

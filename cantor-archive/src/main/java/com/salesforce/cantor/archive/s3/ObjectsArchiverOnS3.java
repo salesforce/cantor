@@ -28,9 +28,11 @@ public class ObjectsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Obj
 
     @Override
     public void archive(final Objects objects, final String namespace) throws IOException {
+        // not implemented yet
     }
 
     @Override
     public void restore(final Objects objects, final String namespace) throws IOException {
+        // not implemented yet
     }
 }

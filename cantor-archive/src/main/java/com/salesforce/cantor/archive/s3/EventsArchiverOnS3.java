@@ -29,6 +29,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
+
 public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements EventsArchiver {
     private static final Logger logger = LoggerFactory.getLogger(EventsArchiverOnS3.class);
     private static final Pattern archiveRegexPattern = Pattern.compile("archive-events-(?<namespace>.*)-(?<start>\\d+)-(?<end>\\d+)");
@@ -52,6 +54,7 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
                         final long endTimestampMillis,
                         final Map<String, String> metadataQuery,
                         final Map<String, String> dimensionsQuery) throws IOException {
+        // ensuring that any archive files for this time period that already exist will be merged and not lost
         final Collection<String> archiveFilenames = this.cantorOnS3.objects().keys(archiveNamespace, 0, -1);
         final List<String> archives = getMatchingArchives(namespace, archiveFilenames, startTimestampMillis, endTimestampMillis);
         final Path archiveLocation = ((ArchiverOnFile) this.fileArchiver).getArchiveLocation();
@@ -67,7 +70,7 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
 
         // iterate over all archive files and upload them to s3
         for (final Path archiveFile : this.eventsArchiverOnFile.getFileArchiveList(namespace, startTimestampMillis, endTimestampMillis)) {
-            doArchive(archiveFile.getFileName().toString(), archiveFile);
+            uploadToS3(archiveFile.getFileName().toString(), archiveFile);
             // delete temporary storage file
             if (!archiveFile.toFile().delete()) {
                 logger.warn("failed to delete temp archive file {}", archiveFile);
@@ -94,8 +97,9 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
         }
     }
 
-    public void doArchive(final String objectKey,
-                          final Path archiveFile) throws IOException {
+    // takes any file and uploads it to S3
+    public void uploadToS3(final String objectKey, final Path archiveFile) throws IOException {
+        checkArgument(Files.exists(archiveFile) && archiveFile.toFile().length() != 0, "file doesn't exist or is empty: " + archiveFile);
         int byteSize = 0;
         long startNanos = System.nanoTime();
         try (final InputStream uploadStream = Files.newInputStream(archiveFile)) {
@@ -113,6 +117,7 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
         }
     }
 
+    // retrieves all archive files that overlap with the timeframe
     public List<String> getMatchingArchives(final String namespace,
                                             final Collection<String> archiveFilenames,
                                             final long startTimestampMillis,
@@ -134,6 +139,7 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
                 }).collect(Collectors.toList());
     }
 
+    // the archive file could potential already be on disk, but if not we need to get it from S3
     public boolean pullFile(final String objectKey, final Path archiveLocation) throws IOException {
         // check for archive stored on disk
         // TODO: add checksum evaluation to confirm the file currently pulled down is not outdated
