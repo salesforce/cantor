@@ -22,6 +22,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -54,13 +55,18 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
                         final long endTimestampMillis,
                         final Map<String, String> metadataQuery,
                         final Map<String, String> dimensionsQuery) throws IOException {
+        // temporary map of local archive files to check if they've been modified
+        final Map<String, Long> fileToModifiedTime = new HashMap<>();
+
         // ensuring that any archive files for this time period that already exist will be merged and not lost
         final Collection<String> archiveFilenames = this.cantorOnS3.objects().keys(archiveNamespace, 0, -1);
         final List<String> archives = getMatchingArchives(namespace, archiveFilenames, startTimestampMillis, endTimestampMillis);
         final Path archiveLocation = ((ArchiverOnFile) this.fileArchiver).getArchiveLocation();
         for (final String objectKey : archives) {
             logger.debug("objectKey already exists, pulling to merge: {}", objectKey);
-            pullFile(objectKey, archiveLocation.resolve(objectKey));
+            final Path fileLocation = archiveLocation.resolve(objectKey);
+            pullFile(objectKey, fileLocation);
+            fileToModifiedTime.put(objectKey, fileLocation.toFile().lastModified());
         }
 
         // first archive to the local disk
@@ -70,7 +76,12 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
 
         // iterate over all archive files and upload them to s3
         for (final Path archiveFile : this.eventsArchiverOnFile.getFileArchiveList(namespace, startTimestampMillis, endTimestampMillis)) {
-            uploadToS3(archiveFile.getFileName().toString(), archiveFile);
+            // only upload if the file was actually modified
+            final Long timeModified = fileToModifiedTime.get(archiveFile.getFileName().toString());
+            if (timeModified == null || timeModified != archiveFile.toFile().lastModified()) {
+                uploadToS3(archiveFile.getFileName().toString(), archiveFile);
+            }
+
             // delete temporary storage file
             if (!archiveFile.toFile().delete()) {
                 logger.warn("failed to delete temp archive file {}", archiveFile);
