@@ -46,6 +46,18 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
         logger.info("events archiver chucking in {}ms chunks", chunkMillis);
         this.eventsArchiverOnFile = (EventsArchiverOnFile) fileArchiver.events();
         this.cantorOnS3.objects().create(archiveNamespace);
+        // upload any archive files that are sitting in local storage
+        final Path archiveLocation = ((ArchiverOnFile) this.fileArchiver).getArchiveLocation();
+        final List<Path> archiveFiles = Files.list(archiveLocation)
+                .filter(Files::isRegularFile)
+                .collect(Collectors.toList());
+        for (final Path file : archiveFiles) {
+            uploadToS3(file.getFileName().toString(), file);
+            // delete temporary storage file
+            if (!file.toFile().delete()) {
+                logger.warn("failed to delete temp archive file during startup {}", file);
+            }
+        }
     }
 
     @Override
@@ -101,7 +113,7 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
         final Path archiveLocation = ((ArchiverOnFile) this.fileArchiver).getArchiveLocation();
         for (final String archiveObjectName : archives) {
             final Path archiveFile = archiveLocation.resolve(archiveObjectName);
-            // no need to restore a file already
+            // no need to restore a file already pulled down
             if (pullFile(archiveObjectName, archiveFile)) {
                 ((EventsArchiverOnFile) this.fileArchiver.events()).doRestore(events, namespace, archiveFile);
             }
