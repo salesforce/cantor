@@ -19,7 +19,7 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
  */
 public class ArchiverOnS3 implements CantorArchiver {
     private static final Logger logger = LoggerFactory.getLogger(ArchiverOnS3.class);
-    private static final String defaultArchivePathBase = "/tmp/cantor-s3-archive";
+    private static final String defaultArchivePathBase = "cantor-s3-archive-data";
     private static final long defaultChunkMillis = TimeUnit.HOURS.toMillis(1);
 
     private final SetsArchiverOnS3 setsArchive;

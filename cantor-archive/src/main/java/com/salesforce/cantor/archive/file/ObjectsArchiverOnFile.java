@@ -92,7 +92,6 @@ public class ObjectsArchiverOnFile extends AbstractBaseArchiverOnFile implements
     }
 
     public Path getFileArchive(final String namespace) {
-        return getFile(archivePathFormat,
-                namespace);
+        return getFile(archivePathFormat, namespace);
     }
 }

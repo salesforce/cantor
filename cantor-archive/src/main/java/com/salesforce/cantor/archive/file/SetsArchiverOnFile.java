@@ -85,7 +85,6 @@ public class SetsArchiverOnFile extends AbstractBaseArchiverOnFile implements Se
     }
 
     public Path getFileArchive(final String namespace) {
-        return getFile(archivePathFormat,
-                namespace);
+        return getFile(archivePathFormat, namespace);
     }
 }
