@@ -9,9 +9,7 @@ package com.salesforce.cantor.archive.s3;
 
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Events;
-import com.salesforce.cantor.archive.file.ArchiverOnFile;
 import com.salesforce.cantor.archive.file.EventsArchiverOnFile;
-import com.salesforce.cantor.misc.archivable.CantorArchiver;
 import com.salesforce.cantor.misc.archivable.EventsArchiver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,22 +30,22 @@ import java.util.stream.Collectors;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 
-public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements EventsArchiver {
+public class EventsArchiverOnS3 extends EventsArchiverOnFile implements EventsArchiver {
     private static final Logger logger = LoggerFactory.getLogger(EventsArchiverOnS3.class);
     private static final Pattern archiveRegexPattern = Pattern.compile("archive-events-(?<namespace>.*)-(?<start>\\d+)-(?<end>\\d+)");
     private static final String archiveNamespace = "events-archive";
 
-    final EventsArchiverOnFile eventsArchiverOnFile;
+    private final Cantor cantorOnS3;
 
     public EventsArchiverOnS3(final Cantor cantorOnS3,
-                              final CantorArchiver fileArchiver,
+                              final String baseDirectory,
                               final long chunkMillis) throws IOException {
-        super(cantorOnS3, fileArchiver, chunkMillis);
-        logger.info("events archiver chucking in {}ms chunks", chunkMillis);
-        this.eventsArchiverOnFile = (EventsArchiverOnFile) fileArchiver.events();
+        super(baseDirectory, chunkMillis);
+        logger.info("initializing events archiver chucking in {}ms chunks", chunkMillis);
+        this.cantorOnS3 = cantorOnS3;
         this.cantorOnS3.objects().create(archiveNamespace);
         // upload any archive files that are sitting in local storage
-        final Path archiveLocation = ((ArchiverOnFile) this.fileArchiver).getArchiveLocation();
+        final Path archiveLocation = super.getArchiveLocation();
         final List<Path> archiveFiles = Files.list(archiveLocation)
                 .filter(Files::isRegularFile)
                 .collect(Collectors.toList());
@@ -73,7 +71,7 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
         // ensuring that any archive files for this time period that already exist will be merged and not lost
         final Collection<String> archiveFilenames = this.cantorOnS3.objects().keys(archiveNamespace, 0, -1);
         final List<String> archives = getMatchingArchives(namespace, archiveFilenames, startTimestampMillis, endTimestampMillis);
-        final Path archiveLocation = ((ArchiverOnFile) this.fileArchiver).getArchiveLocation();
+        final Path archiveLocation = super.getArchiveLocation();
         for (final String objectKey : archives) {
             logger.debug("objectKey already exists, pulling to merge: {}", objectKey);
             final Path fileLocation = archiveLocation.resolve(objectKey);
@@ -82,12 +80,10 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
         }
 
         // first archive to the local disk
-        this.eventsArchiverOnFile.archive(
-                events, namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery
-        );
+        super.archive(events, namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
 
         // iterate over all archive files and upload them to s3
-        for (final Path archiveFile : this.eventsArchiverOnFile.getFileArchiveList(namespace, startTimestampMillis, endTimestampMillis)) {
+        for (final Path archiveFile : super.getFileArchiveList(namespace, startTimestampMillis, endTimestampMillis)) {
             // only upload if the file was actually modified
             final Long timeModified = fileToModifiedTime.get(archiveFile.getFileName().toString());
             if (timeModified == null || timeModified != archiveFile.toFile().lastModified()) {
@@ -110,12 +106,12 @@ public class EventsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements Even
         final List<String> archives = getMatchingArchives(namespace, archiveFilenames, startTimestampMillis, endTimestampMillis);
         // TODO: should we run this in parallel?
         // logging at this level will be handled by the fileArchiver
-        final Path archiveLocation = ((ArchiverOnFile) this.fileArchiver).getArchiveLocation();
+        final Path archiveLocation = super.getArchiveLocation();
         for (final String archiveObjectName : archives) {
             final Path archiveFile = archiveLocation.resolve(archiveObjectName);
             // no need to restore a file already pulled down
             if (pullFile(archiveObjectName, archiveFile)) {
-                ((EventsArchiverOnFile) this.fileArchiver.events()).doRestore(events, namespace, archiveFile);
+                super.doRestore(events, namespace, archiveFile);
             }
         }
     }

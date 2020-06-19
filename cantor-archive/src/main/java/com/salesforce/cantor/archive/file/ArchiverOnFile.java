@@ -8,8 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
@@ -29,7 +27,6 @@ public class ArchiverOnFile implements CantorArchiver {
     private final SetsArchiverOnFile setsArchive;
     private final ObjectsArchiverOnFile objectsArchive;
     private final EventsArchiverOnFile eventsArchive;
-    private final String baseDirectory;
 
     public ArchiverOnFile() {
         this(defaultArchivePathBase);
@@ -44,7 +41,6 @@ public class ArchiverOnFile implements CantorArchiver {
         checkArgument(eventsChunkMillis > 0, "eventsChunkMillis must be greater than zero");
         logger.info("initializing file archiver with directory '{}' in {}ms chunks", baseDirectory, eventsChunkMillis);
 
-        this.baseDirectory = baseDirectory;
         final File createDirectory = new File(baseDirectory);
         if (!createDirectory.mkdirs() && !createDirectory.exists()) {
             throw new IllegalStateException("Failed to create base directory for file archive: " + baseDirectory);
@@ -68,9 +64,5 @@ public class ArchiverOnFile implements CantorArchiver {
     @Override
     public EventsArchiver events() {
         return this.eventsArchive;
-    }
-
-    public Path getArchiveLocation() {
-        return Paths.get(this.baseDirectory);
     }
 }

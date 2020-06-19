@@ -119,7 +119,7 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
     }
 
     // real archiving logic which will archive the entire timeframe matching the query into the provided file
-    public long doArchive(final Events events,
+    protected long doArchive(final Events events,
                           final String namespace,
                           final long startTimestampMillis,
                           final long endTimestampMillis,
@@ -175,7 +175,7 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
     }
 
     // real restoration logic which takes any archive file provided and loads the entire contents into events under the given namespace
-    public long doRestore(final Events events,
+    protected long doRestore(final Events events,
                           final String namespace,
                           final Path archiveFile) throws IOException {
         checkRestoreArguments(events, namespace, archiveFile);
@@ -201,7 +201,7 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
         }
     }
 
-    private List<Events.Event> toEvents(final List<EventsChunk.Event> eventsList) {
+    protected List<Events.Event> toEvents(final List<EventsChunk.Event> eventsList) {
         final List<Events.Event> events = new ArrayList<>();
         for (final EventsChunk.Event event : eventsList) {
             events.add(
@@ -219,7 +219,7 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
     }
 
     // remove all restored events in this chunk to prevent duplicates
-    private void cleanRestoredEvents(final Events events,
+    protected void cleanRestoredEvents(final Events events,
                                      final String namespace,
                                      final Path archiveFile) throws IOException {
         final String filename = archiveFile.getFileName().toString();
@@ -234,7 +234,7 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
     }
 
     // retrieves all archive files that overlap with the timeframe
-    public List<Path> getFileArchiveList(final String namespace,
+    protected List<Path> getFileArchiveList(final String namespace,
                                          final long startTimestampMillis,
                                          final long endTimestampMillis) throws IOException {
         final long windowStart = getFloorForChunk(startTimestampMillis);
@@ -260,7 +260,7 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
     }
 
     // resolve archive filename
-    public Path getFileArchive(final String namespace, final long chunkStartMillis) {
+    protected Path getFileArchive(final String namespace, final long chunkStartMillis) {
         return getFile(archivePathFormat,
                 namespace,
                 chunkStartMillis,

@@ -25,20 +25,24 @@ public abstract class AbstractBaseArchiverOnFile {
     // default to nothing for no sub directory
     protected String subDirectory = "";
 
-    public AbstractBaseArchiverOnFile(final String baseDirectory) {
+    protected AbstractBaseArchiverOnFile(final String baseDirectory) {
         this(baseDirectory, 0);
     }
 
-    public AbstractBaseArchiverOnFile(final String baseDirectory, final long chunkMillis) {
+    protected AbstractBaseArchiverOnFile(final String baseDirectory, final long chunkMillis) {
         this.baseDirectory = baseDirectory;
         this.chunkMillis = chunkMillis;
     }
 
-    public Path getFile(final String fileNameFormat, final Object... args) {
+    protected Path getFile(final String fileNameFormat, final Object... args) {
         return Paths.get(this.baseDirectory, this.subDirectory, String.format(fileNameFormat, args));
     }
 
-    public void setSubDirectory(final String subDirectory) {
+    protected Path getArchiveLocation() {
+        return Paths.get(this.baseDirectory, this.subDirectory);
+    }
+
+    protected void setSubDirectory(final String subDirectory) {
         this.subDirectory = (subDirectory != null) ? subDirectory : "";
     }
 
