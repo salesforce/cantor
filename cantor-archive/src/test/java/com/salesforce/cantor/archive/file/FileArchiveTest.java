@@ -24,6 +24,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -86,12 +87,14 @@ public class FileArchiveTest {
             // restore the events
             final List<Events.Event> restoreEvents = this.localCantor.events()
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, cantorH2Namespace.getValue());
-            Assert.assertEquals(restoreEvents.size(), events.size(), "all events were not restored for namespace: " + cantorH2Namespace.getKey());
+            Assert.assertEquals(restoreEvents.size(), events.size(),
+                    getTestInfo(cantorH2Namespace, "all events were not restored"));
 
             // sanity check no events have been lost
             final List<Events.Event> totalEventsAgain = this.localCantor.events()
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, timeframeBound);
-            Assert.assertEquals(totalEventsAgain.size(), totalEvents.size(), "more events were expired than were archived for namespace: " + cantorH2Namespace.getKey());
+            Assert.assertEquals(totalEventsAgain.size(), totalEvents.size(),
+                    getTestInfo(cantorH2Namespace, "more events were expired than were archived"));
         }
     }
 
@@ -110,7 +113,8 @@ public class FileArchiveTest {
             // run again; restoring events
             final List<Events.Event> sameEvents = this.localCantor.events()
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, cantorH2Namespace.getValue());
-            Assert.assertEquals(sameEvents.size(), events.size(), "all events were not restored for namespace: " + cantorH2Namespace.getKey());
+            Assert.assertEquals(sameEvents.size(), events.size(),
+                    getTestInfo(cantorH2Namespace, "all events were not restored"));
             this.localCantor.events().expire(cantorH2Namespace.getKey(), cantorH2Namespace.getValue());
             // intentionally checking that noEvents had no impact by validating with events
             validateArchive(events, cantorH2Namespace.getKey(), endTimestamp);
@@ -122,33 +126,37 @@ public class FileArchiveTest {
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, timeframeBound);
             final List<Events.Event> allEventsAgain = this.localCantor.events()
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, timeframeBound);
-            Assert.assertEquals(allEvents.size(), allEventsAgain.size(), "incorrect number of events after second call to get events: " + cantorH2Namespace.getKey());
+            Assert.assertEquals(allEvents.size(), allEventsAgain.size(),
+                    getTestInfo(cantorH2Namespace, "incorrect number of events after second call"));
             this.localCantor.events().expire(cantorH2Namespace.getKey(), timeframeBound);
             validateArchive(allEventsAgain, cantorH2Namespace.getKey(), timeframeBound);
 
             // last run with dirtied archive file
             final List<Events.Event> refreshedEvents = this.localCantor.events()
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, timeframeBound);
-            Assert.assertEquals(refreshedEvents.size(), allEvents.size(), "incorrect number of events after restoration for events: " + cantorH2Namespace.getKey());
+            Assert.assertEquals(refreshedEvents.size(), allEvents.size(),
+                    getTestInfo(cantorH2Namespace, "incorrect number of events after restoration"));
 
             // sanity check no events have been lost
             // plus one for the extra event we added mid test
-            Assert.assertEquals(refreshedEvents.size(), totalEvents.size() + 1, "more events were expired than were archived for namespace: " + cantorH2Namespace.getKey());
+            Assert.assertEquals(refreshedEvents.size(), totalEvents.size() + 1,
+                    getTestInfo(cantorH2Namespace, "more events were expired than were archived"));
         }
     }
 
     @Test
     public void testEventsArchiveZero() throws IOException {
-        for (final String cantorH2Namespace : this.cantorH2Namespaces.keySet()) {
+        for (final Map.Entry<String, Long> cantorH2Namespace : this.cantorH2Namespaces.entrySet()) {
             final List<Events.Event> events = this.localCantor.events()
-                    .get(cantorH2Namespace, 0, hourMillis);
-            this.localCantor.events().expire(cantorH2Namespace, hourMillis);
-            validateArchive(events, cantorH2Namespace, hourMillis);
+                    .get(cantorH2Namespace.getKey(), 0, hourMillis);
+            this.localCantor.events().expire(cantorH2Namespace.getKey(), hourMillis);
+            validateArchive(events, cantorH2Namespace.getKey(), hourMillis);
 
             // restore the events
             final List<Events.Event> restoreEvents = this.localCantor.events()
-                    .get(cantorH2Namespace, 0, hourMillis);
-            Assert.assertEquals(restoreEvents.size(), events.size(), "all events were not restored for namespace: " + cantorH2Namespace);
+                    .get(cantorH2Namespace.getKey(), 0, hourMillis);
+            Assert.assertEquals(restoreEvents.size(), events.size(),
+                    getTestInfo(cantorH2Namespace, "all events were not restored"));
         }
     }
 
@@ -175,7 +183,18 @@ public class FileArchiveTest {
             if (files == null) return;
 
             final List<String> filesList = Arrays.asList(files);
-            filesList.forEach(file -> Assert.assertFalse(file.contains(cantorH2Namespace), "no events archived but found archive file for namespace: " + cantorH2Namespace));
+            filesList.forEach(file -> Assert.assertFalse(file.contains(cantorH2Namespace),
+                    getTestInfo(new AbstractMap.SimpleEntry<>(cantorH2Namespace, endTimestamp), "no events archived but found archive file")));
         }
+    }
+
+    private String getTestInfo(final Map.Entry<String, Long> cantorH2Namespace, final String message) {
+        // [namespace][origin-expiry-bound]msg
+        return String.format("[%s][%d-%d-%d] %s",
+                cantorH2Namespace.getKey(),
+                timeframeOrigin,
+                cantorH2Namespace.getValue(),
+                timeframeBound,
+                message);
     }
 }

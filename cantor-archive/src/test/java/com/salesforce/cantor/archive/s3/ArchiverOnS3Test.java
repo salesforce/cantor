@@ -37,7 +37,7 @@ public class ArchiverOnS3Test {
     private static final long timeframeBound = System.currentTimeMillis();
     private static final long timeframeOrigin = timeframeBound - TimeUnit.DAYS.toMillis(2);
     private static final String h2Directory = "/tmp/cantor-local-test";
-    private static final String archivePathBase = "/tmp/cantor-s3-archive";
+    private static final String archivePathBase = "cantor-s3-archive-data";
     private static final long hourMillis = TimeUnit.HOURS.toMillis(1);
     private static final String archiveNamespace = "events-archive";
 
@@ -85,18 +85,19 @@ public class ArchiverOnS3Test {
 
         // check that at least one archive was made (which should always be true since we generate events at timestamp 0)
         final Collection<String> archiveFilenames = this.cantorOnS3.objects().keys(archiveNamespace, 0, -1);
-        final List<String> matchingArchives = ((EventsArchiverOnS3) this.archiver.events()).getMatchingArchives(cantorH2Namespace.getKey(), archiveFilenames, 0, cantorH2Namespace.getValue());
+        final List<String> matchingArchives = ((EventsArchiverOnS3) this.archiver.events())
+                .getMatchingArchives(cantorH2Namespace.getKey(), archiveFilenames, 0, cantorH2Namespace.getValue());
         Assert.assertNotEquals(matchingArchives.size(), 0);
 
         // restore the events
         final List<Events.Event> restoreEvents = this.cantorLocal.events()
                 .get(cantorH2Namespace.getKey(), timeframeOrigin, cantorH2Namespace.getValue());
-        Assert.assertEquals(restoreEvents.size(), events.size(), "all events were not restored for namespace: " + cantorH2Namespace.getKey());
+        Assert.assertEquals(restoreEvents.size(), events.size(), getTestInfo(cantorH2Namespace, "all events were not restored"));
 
         // sanity check no events have been lost
         final List<Events.Event> totalEventsAgain = this.cantorLocal.events()
                 .get(cantorH2Namespace.getKey(), timeframeOrigin, timeframeBound);
-        Assert.assertEquals(totalEventsAgain.size(), totalEvents.size(), "more events were expired than were archived for namespace: " + cantorH2Namespace.getKey());
+        Assert.assertEquals(totalEventsAgain.size(), totalEvents.size(), getTestInfo(cantorH2Namespace, "more events were expired than were archived"));
     }
 
     @Test
@@ -112,18 +113,19 @@ public class ArchiverOnS3Test {
 
             // check that at least one archive was made (which should always be true since we generate events at timestamp 0)
             final Collection<String> archiveFilenames = this.cantorOnS3.objects().keys(archiveNamespace, 0, -1);
-            final List<String> matchingArchives = ((EventsArchiverOnS3) this.archiver.events()).getMatchingArchives(cantorH2Namespace.getKey(), archiveFilenames, 0, cantorH2Namespace.getValue());
-            Assert.assertNotEquals(matchingArchives.size(), 0);
+            final List<String> matchingArchives = ((EventsArchiverOnS3) this.archiver.events())
+                    .getMatchingArchives(cantorH2Namespace.getKey(), archiveFilenames, 0, cantorH2Namespace.getValue());
+            Assert.assertNotEquals(matchingArchives.size(), 0, getTestInfo(cantorH2Namespace, "no archives were created"));
 
             // restore the events
             final List<Events.Event> restoreEvents = this.cantorLocal.events()
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, cantorH2Namespace.getValue());
-            Assert.assertEquals(restoreEvents.size(), events.size(), "all events were not restored for namespace: " + cantorH2Namespace.getKey());
+            Assert.assertEquals(restoreEvents.size(), events.size(), getTestInfo(cantorH2Namespace, "all events were not restored"));
 
             // sanity check no events have been lost
             final List<Events.Event> totalEventsAgain = this.cantorLocal.events()
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, timeframeBound);
-            Assert.assertEquals(totalEventsAgain.size(), totalEvents.size(), "more events were expired than were archived for namespace: " + cantorH2Namespace.getKey());
+            Assert.assertEquals(totalEventsAgain.size(), totalEvents.size(), getTestInfo(cantorH2Namespace, "more events were expired than were archived"));
         }
     }
 
@@ -141,7 +143,7 @@ public class ArchiverOnS3Test {
             // run again; restoring events
             final List<Events.Event> sameEvents = this.cantorLocal.events()
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, cantorH2Namespace.getValue());
-            Assert.assertEquals(sameEvents.size(), events.size(), "all events were not restored for namespace: " + cantorH2Namespace.getKey());
+            Assert.assertEquals(sameEvents.size(), events.size(), getTestInfo(cantorH2Namespace, "all events were not restored"));
             this.cantorLocal.events().expire(cantorH2Namespace.getKey(), cantorH2Namespace.getValue());
             // intentionally checking that sameEvents had no impact by validating with events
             validateArchive(events, cantorH2Namespace.getKey(), cantorH2Namespace.getValue());
@@ -152,18 +154,18 @@ public class ArchiverOnS3Test {
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, timeframeBound);
             final List<Events.Event> allEventsAgain = this.cantorLocal.events()
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, timeframeBound);
-            Assert.assertEquals(allEvents.size(), allEventsAgain.size(), "incorrect number of events after second call to get events: " + cantorH2Namespace.getKey());
+            Assert.assertEquals(allEvents.size(), allEventsAgain.size(), getTestInfo(cantorH2Namespace, "incorrect number of events after second call"));
             this.cantorLocal.events().expire(cantorH2Namespace.getKey(), timeframeBound);
             validateArchive(allEventsAgain, cantorH2Namespace.getKey(), timeframeBound);
 
             // last run with dirtied archive file
             final List<Events.Event> refreshedEvents = this.cantorLocal.events()
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, timeframeBound);
-            Assert.assertEquals(refreshedEvents.size(), allEvents.size(), "incorrect number of events after restoration for events: " + cantorH2Namespace.getKey());
+            Assert.assertEquals(refreshedEvents.size(), allEvents.size(), getTestInfo(cantorH2Namespace, "incorrect number of events after restoration"));
 
             // sanity check no events have been lost
             // plus one for the extra event we added mid test
-            Assert.assertEquals(refreshedEvents.size(), totalEvents.size() + 1, "more events were expired than were archived for namespace: " + cantorH2Namespace.getKey());
+            Assert.assertEquals(refreshedEvents.size(), totalEvents.size() + 1, getTestInfo(cantorH2Namespace, "more events were expired than were archived"));
         }
     }
 
@@ -201,6 +203,16 @@ public class ArchiverOnS3Test {
 
     private ArchiveInputStream getArchiveInputStream(final Path archiveFile) throws IOException {
         return new TarArchiveInputStream(new GzipCompressorInputStream(new BufferedInputStream(Files.newInputStream(archiveFile))));
+    }
+
+    private String getTestInfo(final Map.Entry<String, Long> cantorH2Namespace, final String message) {
+        // [namespace][origin-expiry-bound]msg
+        return String.format("[%s][%d-%d-%d] %s",
+                cantorH2Namespace.getKey(),
+                timeframeOrigin,
+                cantorH2Namespace.getValue(),
+                timeframeBound,
+                message);
     }
 
     // insert real S3 client here to run integration testing
