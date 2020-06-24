@@ -9,8 +9,8 @@ import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 
-import com.sun.org.apache.xpath.internal.operations.Mult;
 import org.apache.commons.collections4.map.MultiKeyMap;
+import org.apache.hadoop.hbase.exceptions.IllegalArgumentIOException;
 
 public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events {
 
@@ -44,8 +44,20 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         //TODO: if one event failed, should the other events be stored or rolled back?
         for (Event e : batch) {
             try {
+                if (namespace == null) {
+                    throw new IllegalArgumentException("Namespace should not be null");
+                } else if (e.getTimestampMillis() < 0) {
+                    throw new IllegalArgumentException("Invalid timestamp: " + e.getTimestampMillis());
+                } else if (e.getTimestampMillis() == 0) { //TODO: why are <0 and == 0 different?
+                    throw new IOException("Invalid timestamp: timestamp is zero");
+                } if (e.getMetadata().size() > 100) {
+                    throw new IllegalArgumentException(String.format("Metadata size is %s, larger than 100", e.getMetadata().size()));
+                } else if (e.getDimensions().size() > 400) {
+                    throw new IllegalArgumentException(String.format("Dimensions size is %s, larger than 400", e.getDimensions().size()));
+                }
+
                 connection = openTransaction(getConnection());
-                executeUpdate(connection, upsertMainSql, e.getTimestampMillis(), namespace, e.getPayload());
+                executeUpdate(connection, upsertMainSql, e.getTimestampMillis(), namespace, (e.getPayload() == null) ? new byte[0] : e.getPayload());
 
                 metadataParameters = new ArrayList<>();
                 for (Map.Entry<String, String> m : e.getMetadata().entrySet()) {
@@ -72,7 +84,6 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         StringBuilder query = new StringBuilder();
         List<Object> parameterList = new ArrayList<>();
         Object[] parameters;
-        StringJoiner dQuery = new StringJoiner(" and ");
 
         if (includePayloads) { //TODO: not include namespace?
             query.append("select e.timestampMillis, e.id, e.payload from cantor_events as e ");
@@ -80,29 +91,7 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
             query.append("select e.timestampMillis, e.id from cantor_events as e ");
         }
 
-        if ((metadataQuery == null || metadataQuery.isEmpty()) && (dimensionsQuery == null || dimensionsQuery.isEmpty())) {
-            parameters = new Object[]{startTimestampMillis, endTimestampMillis, namespace};
-            query.append("where timestampMillis between ? and ? and namespace = ? ");
-        } else {
-
-            if (metadataQuery == null || metadataQuery.isEmpty()) {
-                addDimQueriesToQueryAndParam(query, parameterList, dimensionsQuery);
-                query.append("where d.timestampMillis is null and d.id is null ");
-            } else if (dimensionsQuery == null || dimensionsQuery.isEmpty()) {
-                addMetaQueriesToQueryAndParam(query, parameterList, metadataQuery);
-                query.append("where m.timestampMillis is null and m.id is null ");
-            } else {
-                addDimQueriesToQueryAndParam(query, parameterList, dimensionsQuery);
-                addMetaQueriesToQueryAndParam(query, parameterList, metadataQuery);
-                query.append("where d.timestampMillis is null and d.id is null and m.timestampMillis is null and m.id is null ");
-            }
-
-            query.append("and e.timestampMillis between ? and ? and namespace = ? ");
-            parameterList.add(startTimestampMillis);
-            parameterList.add(endTimestampMillis);
-            parameterList.add(namespace);
-            parameters = parameterList.toArray(new Object[parameterList.size()]);
-        }
+        parameters = buildQueryAndParamOnSubqueries(query, parameterList, startTimestampMillis, endTimestampMillis, namespace, metadataQuery, dimensionsQuery);
 
         if (ascending) {
             query.append("order by e.timestampMillis asc");
@@ -123,11 +112,17 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                     StringJoiner timeIdPairString = new StringJoiner(", ");
                     List<Object[]> mainResultMap = new ArrayList<>();
 
+                    boolean isEmpty = true;
                     while (mainResultSet.next()) {
+                        isEmpty = false;
                         long timestamp = mainResultSet.getLong("e.timestampMillis");
                         long id = mainResultSet.getLong("e.id");
                         timeIdPairString.add("(" + timestamp + ", " + id + ")");
                         mainResultMap.add(new Object[]{timestamp, id, (includePayloads) ? mainResultSet.getBytes("payload") : null});
+                    }
+
+                    if (isEmpty) {
+                        return events;
                     }
 
                     metadataSql.append(timeIdPairString.toString()).append(")");
@@ -175,6 +170,34 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
             throw new IOException(e);
         }
         return events;
+    }
+
+    private Object[] buildQueryAndParamOnSubqueries(StringBuilder query, List<Object> parameterList, long startTimestampMillis, long endTimestampMillis, String namespace, Map<String, String> metadataQuery, Map<String, String> dimensionsQuery) {
+        Object[] parameters;
+        if ((metadataQuery == null || metadataQuery.isEmpty()) && (dimensionsQuery == null || dimensionsQuery.isEmpty())) {
+            parameters = new Object[]{startTimestampMillis, endTimestampMillis, namespace};
+            query.append("where timestampMillis between ? and ? and namespace = ? ");
+        } else {
+
+            if (metadataQuery == null || metadataQuery.isEmpty()) {
+                addDimQueriesToQueryAndParam(query, parameterList, dimensionsQuery);
+                query.append("where d.timestampMillis is null and d.id is null ");
+            } else if (dimensionsQuery == null || dimensionsQuery.isEmpty()) {
+                addMetaQueriesToQueryAndParam(query, parameterList, metadataQuery);
+                query.append("where m.timestampMillis is null and m.id is null ");
+            } else {
+                addDimQueriesToQueryAndParam(query, parameterList, dimensionsQuery);
+                addMetaQueriesToQueryAndParam(query, parameterList, metadataQuery);
+                query.append("where d.timestampMillis is null and d.id is null and m.timestampMillis is null and m.id is null ");
+            }
+
+            query.append("and e.timestampMillis between ? and ? and namespace = ? ");
+            parameterList.add(startTimestampMillis);
+            parameterList.add(endTimestampMillis);
+            parameterList.add(namespace);
+            parameters = parameterList.toArray(new Object[parameterList.size()]);
+        }
+        return parameters;
     }
 
     private void addMetaQueriesToQueryAndParam(StringBuilder query, List<Object> parameterList, Map<String, String> queryMap) {
@@ -230,7 +253,47 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
     @Override
     public int delete(String namespace, long startTimestampMillis, long endTimestampMillis,
                       Map<String, String> metadataQuery, Map<String, String> dimensionsQuery) throws IOException {
-        return 0;
+        StringBuilder selectQuery = new StringBuilder("select e.timestampMillis, e.id from cantor_events as e ");
+        List<Object> parameterList = new ArrayList<>();
+        Object[] parameters = buildQueryAndParamOnSubqueries(selectQuery, parameterList, startTimestampMillis, endTimestampMillis, namespace, metadataQuery, dimensionsQuery);
+        int deletedRows;
+
+        try (final Connection connection = getConnection()) {
+            try (final PreparedStatement preparedStatement = connection.prepareStatement(selectQuery.toString())) {
+                addParameters(preparedStatement, parameters); //TODO: revert it back from "public"
+                try (final ResultSet mainResultSet = preparedStatement.executeQuery()) {
+                    StringBuilder deleteMainSql = new StringBuilder("delete from cantor_events where (timestampMillis, id) in (");
+                    StringBuilder deleteMetadataSql = new StringBuilder("delete from cantor_events_m where (timestampMillis, id) in (");
+                    StringBuilder deleteDimensionsSql = new StringBuilder("delete from cantor_events_d where (timestampMillis, id) in (");
+                    StringJoiner timeIdPairString = new StringJoiner(", ");
+                    List<Object[]> mainResultMap = new ArrayList<>();
+
+                    boolean isEmpty = true;
+                    while (mainResultSet.next()) {
+                        isEmpty = false;
+                        long timestamp = mainResultSet.getLong("e.timestampMillis");
+                        long id = mainResultSet.getLong("e.id");
+                        timeIdPairString.add("(" + timestamp + ", " + id + ")");
+                        mainResultMap.add(new Object[]{timestamp, id});
+                    }
+
+                    if (isEmpty) {
+                        return 0;
+                    }
+
+                    deleteMainSql.append(timeIdPairString.toString()).append(")");
+                    deleteMetadataSql.append(timeIdPairString.toString()).append(")");
+                    deleteDimensionsSql.append(timeIdPairString.toString()).append(")");
+
+                    executeUpdate(deleteMetadataSql.toString());
+                    executeUpdate(deleteDimensionsSql.toString());
+                    deletedRows = executeUpdate(deleteMainSql.toString());
+                }
+            }
+        } catch (SQLException e) {
+            throw new IOException(e);
+        }
+        return deletedRows;
     }
 
     @Override
