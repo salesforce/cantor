@@ -39,16 +39,18 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         String upsertMetadataSql = "upsert into cantor_events_m values (?, current value for cantor_events_id, ?, ?, next value for cantor_events_m_id)";
         String upsertDimensionsSql = "upsert into cantor_events_d values (?, current value for cantor_events_id, ?, ?, next value for cantor_events_d_id)";
         Connection connection = null;
-        List<Object[]> metadataParameters = null;
-        List<Object[]> dimensionsParameters = null;
-        //TODO: if one event failed, should the other events be stored or rolled back?
+        List<Object[]> metadataParameters;
+        List<Object[]> dimensionsParameters;
+        //TODO: how to batchUpdate with multiple statements w/ parameters
+        //TODO: if one event failed, are other events rolled back?
+        //TODO: if inserting into metadata/dimensions failed, how to roll back inserting into previous table(s)?
         for (Event e : batch) {
             try {
                 if (namespace == null) {
                     throw new IllegalArgumentException("Namespace should not be null");
                 } else if (e.getTimestampMillis() < 0) {
                     throw new IllegalArgumentException("Invalid timestamp: " + e.getTimestampMillis());
-                } else if (e.getTimestampMillis() == 0) { //TODO: why are <0 and == 0 different?
+                } else if (e.getTimestampMillis() == 0) { //TODO: why are < 0 and == 0 different?
                     throw new IOException("Invalid timestamp: timestamp is zero");
                 } if (e.getMetadata().size() > 100) {
                     throw new IllegalArgumentException(String.format("Metadata size is %s, larger than 100", e.getMetadata().size()));
@@ -101,7 +103,8 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         if (limit > 0) {
             query.append(" limit ").append(limit);
         }
-
+//        System.out.println(query.toString());
+//        System.out.println(parameterList);
         try (final Connection connection = getConnection()) {
             try (final PreparedStatement preparedStatement = connection.prepareStatement(query.toString())) {
                 addParameters(preparedStatement, parameters); //TODO: revert it back from "public"
@@ -178,7 +181,6 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
             parameters = new Object[]{startTimestampMillis, endTimestampMillis, namespace};
             query.append("where timestampMillis between ? and ? and namespace = ? ");
         } else {
-
             if (metadataQuery == null || metadataQuery.isEmpty()) {
                 addDimQueriesToQueryAndParam(query, parameterList, dimensionsQuery);
                 query.append("where d.timestampMillis is null and d.id is null ");
@@ -191,6 +193,9 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                 query.append("where d.timestampMillis is null and d.id is null and m.timestampMillis is null and m.id is null ");
             }
 
+            addConditionsForKeyExisting(query, parameterList, metadataQuery, true);
+            addConditionsForKeyExisting(query, parameterList, dimensionsQuery, false);
+
             query.append("and e.timestampMillis between ? and ? and namespace = ? ");
             parameterList.add(startTimestampMillis);
             parameterList.add(endTimestampMillis);
@@ -201,53 +206,66 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
     }
 
     private void addMetaQueriesToQueryAndParam(StringBuilder query, List<Object> parameterList, Map<String, String> queryMap) {
-        StringJoiner subqueries = new StringJoiner(" and ");
-        query.append("left join (select timestampMillis, id from cantor_events_m where ");
+        StringJoiner subqueries = new StringJoiner(" ");
+        query.append("left join (select timestampMillis, id from cantor_events_m where (case ");
 
         for (Map.Entry<String, String> q : queryMap.entrySet()) {
             parameterList.add(q.getKey());
             if (q.getValue().startsWith("~")) {
-                subqueries.add("(case when m_key = ? then m_value not like ? end)");
-                parameterList.add(q.getValue().substring(1).replace("*", "%"));
+                subqueries.add("when m_key = ? then m_value not like ?");
+                parameterList.add(q.getValue().substring(1).replace("*", "%")); //TODO: some query uses ".*"
             } else if (q.getValue().startsWith("!~")) {
-                subqueries.add("(case when m_key = ? then m_value like ? end)");
-                parameterList.add(q.getValue().substring(2).replace("*", "%"));
+                subqueries.add("when m_key = ? then m_value like ?");
+                parameterList.add(q.getValue().substring(2).replace("*", "%")); //TODO: some query uses ".*"
             } else if (q.getValue().startsWith("!")) { // exact not
-                subqueries.add("(case when m_key = ? then m_value = ? end)");
+                subqueries.add("when m_key = ? then m_value = ?");
                 parameterList.add(q.getValue().substring(1));
             } else { // exact match
-                subqueries.add("(case when m_key = ? then m_value != ? end)");
+                subqueries.add("when m_key = ? then m_value != ?");
                 parameterList.add(q.getValue());
             }
         }
-        query.append(subqueries.toString()).append(") as m on e.timestampMillis = m.timestampMillis and e.id = m.id ");
+        query.append(subqueries.toString()).append(" end)) as m on e.timestampMillis = m.timestampMillis and e.id = m.id ");
     }
 
     private void addDimQueriesToQueryAndParam(StringBuilder query, List<Object> parameterList, Map<String, String> queryMap) {
-        StringJoiner subqueries = new StringJoiner(" and ");
-        query.append("left join (select timestampMillis, id from cantor_events_d where ");
+        StringJoiner subqueries = new StringJoiner(" ");
+        query.append("left join (select timestampMillis, id from cantor_events_d where (case ");
 
         for (Map.Entry<String, String> q : queryMap.entrySet()) {
             parameterList.add(q.getKey());
             if (q.getValue().startsWith("<=")) {
-                subqueries.add("(case when d_key = ? then d_value > ? end)");
+                subqueries.add("when d_key = ? then d_value > ?");
                 parameterList.add(Double.parseDouble(q.getValue().substring(2)));
             } else if (q.getValue().startsWith(">=")) {
-                subqueries.add("(case when d_key = ? then d_value < ? end)");
+                subqueries.add("when d_key = ? then d_value < ?");
                 parameterList.add(Double.parseDouble(q.getValue().substring(2)));
             } else if (q.getValue().startsWith("<")) {
-                subqueries.add("(case when d_key = ? then d_value >= ? end)");
+                subqueries.add("when d_key = ? then d_value >= ?");
                 parameterList.add(Double.parseDouble(q.getValue().substring(1)));
             } else if (q.getValue().startsWith(">")) {
-                subqueries.add("(case when d_key = ? then d_value <= ? end)");
+                subqueries.add("when d_key = ? then d_value <= ?");
                 parameterList.add(Double.parseDouble(q.getValue().substring(1)));
             } else { // between and
-                subqueries.add("(case when d_key = ? then d_value not between ? and ? end)");
+                subqueries.add("when d_key = ? then d_value not between ? and ?");
                 parameterList.add(Double.parseDouble(q.getValue().split("\\.\\.")[0]));
                 parameterList.add(Double.parseDouble(q.getValue().split("\\.\\.")[1]));
             }
         }
-        query.append(subqueries.toString()).append(") as d on e.timestampMillis = d.timestampMillis and e.id = d.id ");
+        query.append(subqueries.toString()).append(" end)) as d on e.timestampMillis = d.timestampMillis and e.id = d.id ");
+    }
+
+    private void addConditionsForKeyExisting(StringBuilder query, List<Object> parameterList, Map<String, String> queryMap, boolean isMetadataQeury) {
+        if (queryMap != null) {
+            for (String key : queryMap.keySet()) {
+                if (isMetadataQeury){
+                    query.append("and exists (select 1 from cantor_events_m as m where m_key = ? and m.timestampMillis = e.timestampMillis and m.id = e.id) ");
+                } else {
+                    query.append("and exists (select 1 from cantor_events_d as d where d_key = ? and d.timestampMillis = e.timestampMillis and d.id = e.id) ");
+                }
+                parameterList.add(key);
+            }
+        }
     }
 
     @Override
