@@ -21,12 +21,14 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                 "id BIGINT, m_key VARCHAR, m_value VARCHAR, iid BIGINT PRIMARY KEY)";
         String createDimensionsTableSql = "create table if not exists cantor_events_d (timestampMillis BIGINT, " +
                 "id BIGINT, d_key VARCHAR, d_value DOUBLE, iid BIGINT PRIMARY KEY)";
+        String createNamespaceTableSql = "create table if not exists cantor_events_namespace (namespace VARCHAR CONSTRAINT pk PRIMARY KEY (namespace))";
         String createIDSeqSql = "create sequence if not exists cantor_events_id";
         String createMIDSeqSql = "create sequence if not exists cantor_events_m_id";
         String createDIDSeqSql = "create sequence if not exists cantor_events_d_id";
         executeUpdate(createMainTableSql);
         executeUpdate(createMetadataTableSql);
         executeUpdate(createDimensionsTableSql);
+        executeUpdate(createNamespaceTableSql);
         executeUpdate(createIDSeqSql);
         executeUpdate(createMIDSeqSql);
         executeUpdate(createDIDSeqSql); //TODO: batch create methods?
@@ -49,12 +51,12 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                     throw new IllegalArgumentException("Namespace should not be null");
                 } else if (e.getTimestampMillis() < 0) {
                     throw new IllegalArgumentException("Invalid timestamp: " + e.getTimestampMillis());
-                } else if (e.getTimestampMillis() == 0) { //TODO: why are < 0 and == 0 different cases?
-                    throw new IOException("Invalid timestamp: timestamp is zero");
                 } if (e.getMetadata().size() > 100) {
                     throw new IllegalArgumentException(String.format("Metadata size is %s, larger than 100", e.getMetadata().size()));
                 } else if (e.getDimensions().size() > 400) {
                     throw new IllegalArgumentException(String.format("Dimensions size is %s, larger than 400", e.getDimensions().size()));
+                } else if (!namespaces().contains(namespace)) {
+                    throw new IOException("Namespace does not exist");
                 }
 
                 connection = openTransaction(getConnection());
@@ -357,7 +359,48 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
 
     @Override
     public void expire(String namespace, long endTimestampMillis) throws IOException {
+    }
 
+    @Override
+    public Collection<String> namespaces() throws IOException {
+        Collection<String> result = new HashSet<>();
+        String query = "select * from cantor_events_namespace";
+        try (final Connection connection = getConnection()) {
+            try (final PreparedStatement preparedStatement = connection.prepareStatement(query.toString())) {
+                try (final ResultSet resultSet = preparedStatement.executeQuery()) {
+                    while (resultSet.next()) {
+                        result.add(resultSet.getString("namespace"));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new IOException(e);
+        }
+        return result;
+    }
+
+    @Override
+    public void create(String namespace) throws IOException {
+        String query = String.format("upsert into cantor_events_namespace values ('%s')", namespace);
+        executeUpdate(query);
+    }
+
+    @Override
+    public void drop(String namespace) throws IOException {
+        Connection connection = null;
+        try {
+            String query = String.format("delete from cantor_events_namespace where namespace = '%s'", namespace);
+            String deleteFromMetadataSql = String.format("delete from cantor_events_m where (timestampMillis, id) in (select timestampMillis, id from cantor_events where namespace = '%s')", namespace);
+            String deleteFromDimensionsSql = String.format("delete from cantor_events_m where (timestampMillis, id) in (select timestampMillis, id from cantor_events where namespace = '%s')", namespace);
+            String deleteFromMainSql = String.format("delete from cantor_events where namespace = '%s'", namespace);
+            connection = openTransaction(getConnection());
+            executeUpdate(connection, query);
+            executeUpdate(connection, deleteFromMetadataSql);
+            executeUpdate(connection, deleteFromDimensionsSql);
+            executeUpdate(connection, deleteFromMainSql);
+        } finally {
+            closeConnection(connection);
+        }
     }
 
     @Override
@@ -378,18 +421,5 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
     @Override
     protected String getNotRegexQuery(String column) {
         return null;
-    }
-
-    @Override
-    public Collection<String> namespaces() throws IOException {
-        return null;
-    }
-
-    @Override
-    public void create(String namespace) throws IOException {
-    }
-
-    @Override
-    public void drop(String namespace) throws IOException {
     }
 }
