@@ -10,7 +10,6 @@ import java.sql.*;
 import java.util.*;
 
 import org.apache.commons.collections4.map.MultiKeyMap;
-import org.apache.hadoop.hbase.exceptions.IllegalArgumentIOException;
 
 public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events {
 
@@ -41,7 +40,7 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         Connection connection = null;
         List<Object[]> metadataParameters;
         List<Object[]> dimensionsParameters;
-        //TODO: how to batchUpdate with multiple statements w/ parameters
+        //TODO: how to batchUpdate multiple statements w/ parameters
         //TODO: if one event failed, are other events rolled back?
         //TODO: if inserting into metadata/dimensions failed, how to roll back inserting into previous table(s)?
         for (Event e : batch) {
@@ -50,7 +49,7 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                     throw new IllegalArgumentException("Namespace should not be null");
                 } else if (e.getTimestampMillis() < 0) {
                     throw new IllegalArgumentException("Invalid timestamp: " + e.getTimestampMillis());
-                } else if (e.getTimestampMillis() == 0) { //TODO: why are < 0 and == 0 different?
+                } else if (e.getTimestampMillis() == 0) { //TODO: why are < 0 and == 0 different cases?
                     throw new IOException("Invalid timestamp: timestamp is zero");
                 } if (e.getMetadata().size() > 100) {
                     throw new IllegalArgumentException(String.format("Metadata size is %s, larger than 100", e.getMetadata().size()));
@@ -103,8 +102,8 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         if (limit > 0) {
             query.append(" limit ").append(limit);
         }
-//        System.out.println(query.toString());
-//        System.out.println(parameterList);
+        System.out.println(query.toString());
+        System.out.println(parameterList);
         try (final Connection connection = getConnection()) {
             try (final PreparedStatement preparedStatement = connection.prepareStatement(query.toString())) {
                 addParameters(preparedStatement, parameters); //TODO: revert it back from "public"
@@ -212,16 +211,24 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         for (Map.Entry<String, String> q : queryMap.entrySet()) {
             parameterList.add(q.getKey());
             if (q.getValue().startsWith("~")) {
-                subqueries.add("when m_key = ? then m_value not like ?");
-                parameterList.add(q.getValue().substring(1).replace("*", "%")); //TODO: some query uses ".*"
+                subqueries.add("when m_key = ? then not REGEXP_SUBSTR(m_value, ?) = m_value");
+                if (!q.getValue().contains(".*")) {
+                    parameterList.add(q.getValue().substring(1).replace("*", ".*"));
+                } else {
+                    parameterList.add(q.getValue().substring(1));
+                }
             } else if (q.getValue().startsWith("!~")) {
-                subqueries.add("when m_key = ? then m_value like ?");
-                parameterList.add(q.getValue().substring(2).replace("*", "%")); //TODO: some query uses ".*"
+                subqueries.add("when m_key = ? then REGEXP_SUBSTR(m_value, ?) = m_value");
+                if (!q.getValue().contains(".*")) {
+                    parameterList.add(q.getValue().substring(2).replace("*", ".*"));
+                } else {
+                    parameterList.add(q.getValue().substring(2));
+                }
             } else if (q.getValue().startsWith("!")) { // exact not
-                subqueries.add("when m_key = ? then m_value = ?");
+                subqueries.add("when m_key = ? then REGEXP_SUBSTR(m_value, ?) = m_value");
                 parameterList.add(q.getValue().substring(1));
             } else { // exact match
-                subqueries.add("when m_key = ? then m_value != ?");
+                subqueries.add("when m_key = ? then not REGEXP_SUBSTR(m_value, ?) = m_value");
                 parameterList.add(q.getValue());
             }
         }
