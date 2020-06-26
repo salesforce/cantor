@@ -102,8 +102,7 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         if (limit > 0) {
             query.append(" limit ").append(limit);
         }
-        System.out.println(query.toString());
-        System.out.println(parameterList);
+
         try (final Connection connection = getConnection()) {
             try (final PreparedStatement preparedStatement = connection.prepareStatement(query.toString())) {
                 addParameters(preparedStatement, parameters); //TODO: revert it back from "public"
@@ -175,9 +174,8 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
     }
 
     private Object[] buildQueryAndParamOnSubqueries(StringBuilder query, List<Object> parameterList, long startTimestampMillis, long endTimestampMillis, String namespace, Map<String, String> metadataQuery, Map<String, String> dimensionsQuery) {
-        Object[] parameters;
         if ((metadataQuery == null || metadataQuery.isEmpty()) && (dimensionsQuery == null || dimensionsQuery.isEmpty())) {
-            parameters = new Object[]{startTimestampMillis, endTimestampMillis, namespace};
+            parameterList.addAll(Arrays.asList(startTimestampMillis, endTimestampMillis, namespace));
             query.append("where timestampMillis between ? and ? and namespace = ? ");
         } else {
             if (metadataQuery == null || metadataQuery.isEmpty()) {
@@ -199,9 +197,9 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
             parameterList.add(startTimestampMillis);
             parameterList.add(endTimestampMillis);
             parameterList.add(namespace);
-            parameters = parameterList.toArray(new Object[parameterList.size()]);
+            ;
         }
-        return parameters;
+        return parameterList.toArray(new Object[parameterList.size()]);
     }
 
     private void addMetaQueriesToQueryAndParam(StringBuilder query, List<Object> parameterList, Map<String, String> queryMap) {
@@ -333,7 +331,28 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
     public Set<String> metadata(String namespace, String metadataKey, long startTimestampMillis,
                                 long endTimestampMillis, Map<String, String> metadataQuery,
                                 Map<String, String> dimensionsQuery) throws IOException {
-        return null;
+        Set<String> results = new HashSet<>();
+        StringBuilder query = new StringBuilder("select distinct m_value from cantor_events_m where m_key = ? and (timestampMillis, id) in (");
+        List<Object> parameterList = new ArrayList<>();
+        Object[] parameters;
+        parameterList.add(metadataKey);
+        query.append("select e.timestampMillis, e.id from cantor_events as e ");
+        parameters = buildQueryAndParamOnSubqueries(query, parameterList, startTimestampMillis, endTimestampMillis, namespace, metadataQuery, dimensionsQuery);
+        query.append(")");
+
+        try (final Connection connection = getConnection()) {
+            try (final PreparedStatement preparedStatement = connection.prepareStatement(query.toString())) {
+                addParameters(preparedStatement, parameters); //TODO: revert it back from "public"
+                try (final ResultSet resultSet = preparedStatement.executeQuery()) {
+                    while (resultSet.next()) {
+                        results.add(resultSet.getString("m_value"));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new IOException(e);
+        }
+        return results;
     }
 
     @Override
