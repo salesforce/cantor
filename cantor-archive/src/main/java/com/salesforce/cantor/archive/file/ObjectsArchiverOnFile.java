@@ -46,7 +46,7 @@ public class ObjectsArchiverOnFile extends AbstractBaseArchiverOnFile implements
         doRestore(objects, namespace, archiveFile);
     }
 
-    public void doArchive(final Objects objects, final String namespace, final Path destination) throws IOException {
+    protected void doArchive(final Objects objects, final String namespace, final Path destination) throws IOException {
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
             // get objects to archive in chunks in case of large namespaces
             int start = 0;
@@ -64,7 +64,7 @@ public class ObjectsArchiverOnFile extends AbstractBaseArchiverOnFile implements
         }
     }
 
-    public void doRestore(final Objects objects, final String namespace, final Path archiveFile) throws IOException {
+    protected void doRestore(final Objects objects, final String namespace, final Path archiveFile) throws IOException {
         // create the namespace, in case the user hasn't already
         objects.create(namespace);
         try (final ArchiveInputStream archive = getArchiveInputStream(archiveFile)) {
@@ -82,7 +82,7 @@ public class ObjectsArchiverOnFile extends AbstractBaseArchiverOnFile implements
         }
     }
 
-    private byte[] getBytes(final Map<String, byte[]> chunk) {
+    protected byte[] getBytes(final Map<String, byte[]> chunk) {
         final ObjectsChunk.Builder builder = ObjectsChunk.newBuilder();
         // have to convert all byte arrays into proto byte strings
         for (final Map.Entry<String, byte[]> entry : chunk.entrySet()) {
@@ -91,7 +91,7 @@ public class ObjectsArchiverOnFile extends AbstractBaseArchiverOnFile implements
         return builder.build().toByteArray();
     }
 
-    public Path getFileArchive(final String namespace) {
+    protected Path getFileArchive(final String namespace) {
         return getFile(archivePathFormat, namespace);
     }
 }

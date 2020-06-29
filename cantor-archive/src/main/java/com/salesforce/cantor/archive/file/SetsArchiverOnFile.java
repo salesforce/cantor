@@ -45,7 +45,7 @@ public class SetsArchiverOnFile extends AbstractBaseArchiverOnFile implements Se
         doRestore(sets, namespace, archiveFile);
     }
 
-    public void doArchive(final Sets sets, final String namespace, final Path destination) throws IOException {
+    protected void doArchive(final Sets sets, final String namespace, final Path destination) throws IOException {
         // get all sets for the namespace, any sets added after won't be archived
         final Collection<String> setNames = sets.sets(namespace);
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
@@ -68,7 +68,7 @@ public class SetsArchiverOnFile extends AbstractBaseArchiverOnFile implements Se
         }
     }
 
-    public void doRestore(final Sets sets, final String namespace, final Path archiveFile) throws IOException {
+    protected void doRestore(final Sets sets, final String namespace, final Path archiveFile) throws IOException {
         // create the namespace, in case the user hasn't already
         sets.create(namespace);
         try (final ArchiveInputStream archive = getArchiveInputStream(archiveFile)) {
@@ -84,7 +84,7 @@ public class SetsArchiverOnFile extends AbstractBaseArchiverOnFile implements Se
         }
     }
 
-    public Path getFileArchive(final String namespace) {
+    protected Path getFileArchive(final String namespace) {
         return getFile(archivePathFormat, namespace);
     }
 }
