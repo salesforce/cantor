@@ -106,7 +106,6 @@ public class ArchiverOnS3Test {
             final List<Events.Event> totalEvents = this.cantorLocal.events()
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, timeframeBound);
 
-            final long endTimestamp = TestUtils.getFloorForWindow(cantorH2Namespace.getValue(), hourMillis) - 1;
             final List<Events.Event> events = this.cantorLocal.events()
                     .get(cantorH2Namespace.getKey(), timeframeOrigin, cantorH2Namespace.getValue());
             this.cantorLocal.events().expire(cantorH2Namespace.getKey(), cantorH2Namespace.getValue());
@@ -180,7 +179,7 @@ public class ArchiverOnS3Test {
             int eventCount = 0;
             for (final String file : fileArchive) {
                 final Path archiveLocation = Paths.get(archivePathBase, file);
-                eventsArchiver.restoreFromS3(file, archiveLocation);
+                eventsArchiver.pullFile(file, archiveLocation);
                 try (final ArchiveInputStream archiveInputStream = getArchiveInputStream(archiveLocation)) {
                     while (archiveInputStream.getNextEntry() != null) {
                         final EventsChunk chunk = EventsChunk.parseFrom(archiveInputStream);
@@ -189,6 +188,7 @@ public class ArchiverOnS3Test {
                                 && event.getTimestampMillis() <= endTimestamp).count();
                     }
                 }
+                archiveLocation.toFile().delete();
             }
             Assert.assertEquals(eventCount, events.size(), "events that were expired were not archived");
         } else {
