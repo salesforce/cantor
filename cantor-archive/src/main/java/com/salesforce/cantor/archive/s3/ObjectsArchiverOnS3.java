@@ -9,21 +9,21 @@ package com.salesforce.cantor.archive.s3;
 
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Objects;
-import com.salesforce.cantor.misc.archivable.CantorArchiver;
+import com.salesforce.cantor.archive.file.AbstractBaseArchiverOnFile;
 import com.salesforce.cantor.misc.archivable.ObjectsArchiver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class ObjectsArchiverOnS3 extends AbstractBaseArchiverOnS3 implements ObjectsArchiver {
+public class ObjectsArchiverOnS3 extends AbstractBaseArchiverOnFile implements ObjectsArchiver {
     private static final Logger logger = LoggerFactory.getLogger(ObjectsArchiverOnS3.class);
     private static final String archiveFilename = "archive-objects-%s-%d";
 
     public static final int MAX_CHUNK_SIZE = 1_000;
 
-    public ObjectsArchiverOnS3(final Cantor s3Cantor, final CantorArchiver fileArchiver) {
-        super(s3Cantor, fileArchiver);
+    public ObjectsArchiverOnS3(final Cantor s3Cantor, final String baseDirectory) {
+        super(baseDirectory);
     }
 
     @Override
