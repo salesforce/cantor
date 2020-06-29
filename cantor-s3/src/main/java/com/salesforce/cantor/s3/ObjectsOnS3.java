@@ -61,7 +61,9 @@ public class ObjectsOnS3 implements StreamingObjects {
         this.bucketPrefix = bucketPrefix;
         this.bucketNameAllNamespaces = String.format("%s-all-namespaces", bucketPrefix);
         try {
-            this.s3Client.createBucket(bucketNameAllNamespaces);
+            if (!this.s3Client.doesBucketExistV2(bucketNameAllNamespaces)) {
+                this.s3Client.createBucket(bucketNameAllNamespaces);
+            }
         } catch (final AmazonS3Exception e) {
             logger.warn("exception creating required buckets for objects on s3:", e);
             throw new IOException("exception creating required buckets for objects on s3:", e);

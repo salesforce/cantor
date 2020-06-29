@@ -19,7 +19,11 @@ public class CantorOnS3 implements Cantor {
     private final Objects objects;
 
     public CantorOnS3(final AmazonS3 s3Client) throws IOException {
-        this.objects = new ObjectsOnS3(s3Client);
+        this(s3Client, "default");
+    }
+
+    public CantorOnS3(final AmazonS3 s3Client, final String bucketPrefix) throws IOException {
+        this.objects = new ObjectsOnS3(s3Client, bucketPrefix);
     }
 
     @Override

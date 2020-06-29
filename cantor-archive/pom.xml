@@ -28,6 +28,8 @@
         <maven.plugin.protobuf.version>0.6.1</maven.plugin.protobuf.version>
         <protobuf.version>3.4.0</protobuf.version>
         <commons-compress.version>1.19</commons-compress.version>
+        <s3mock.version>2.1.16</s3mock.version>
+        <jackson.version>2.10.0</jackson.version>
     </properties>
 
     <dependencies>
@@ -47,6 +49,12 @@
         <dependency>
             <groupId>com.salesforce.cantor</groupId>
             <artifactId>cantor-misc</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!--CANTOR S3-->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-s3</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!--PROTOBUF-->
@@ -84,11 +92,25 @@
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
-        <!--CANTOR S3-->
+        <!--S3 MOCK-->
         <dependency>
-            <groupId>com.salesforce.cantor</groupId>
-            <artifactId>cantor-s3</artifactId>
-            <version>${project.version}</version>
+            <groupId>com.adobe.testing</groupId>
+            <artifactId>s3mock-testng</artifactId>
+            <version>${s3mock.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!--JACKSON CORE-->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!--JACKSON DATABIND-->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
             <scope>test</scope>
         </dependency>
         <!-- LOGBACK-->
