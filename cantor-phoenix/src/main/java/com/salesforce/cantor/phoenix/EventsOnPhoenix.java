@@ -2,7 +2,6 @@ package com.salesforce.cantor.phoenix;
 
 import com.salesforce.cantor.Events;
 import com.salesforce.cantor.jdbc.AbstractBaseEventsOnJdbc;
-import static com.salesforce.cantor.jdbc.JdbcUtils.addParameters;
 
 import javax.sql.DataSource;
 import java.io.IOException;
@@ -330,7 +329,7 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                                        long endTimestampMillis, Map<String, String> metadataQuery,
                                        Map<String, String> dimensionsQuery, int aggregateIntervalMillis,
                                        AggregationFunction aggregationFunction) throws IOException {
-        return null;
+        return Collections.emptyMap();
     }
 
     @Override
@@ -406,6 +405,34 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
             closeConnection(connection);
         }
     }
+
+    public static void addParameters(final PreparedStatement preparedStatement, final Object... parameters)
+            throws SQLException {
+        if (parameters == null) {
+            return;
+        }
+        int index = 0;
+        for (final Object param : parameters) {
+            index++;
+            if (param instanceof Integer) {
+                preparedStatement.setInt(index, (Integer) param);
+            } else if (param instanceof Long) {
+                preparedStatement.setLong(index, (Long) param);
+            } else if (param instanceof Boolean) {
+                preparedStatement.setBoolean(index, (Boolean) param);
+            } else if (param instanceof String) {
+                preparedStatement.setString(index, (String) param);
+            } else if (param instanceof Double) {
+                preparedStatement.setDouble(index, (Double) param);
+            } else if (param instanceof Float) {
+                preparedStatement.setFloat(index, (Float) param);
+            } else if (param instanceof byte[]) {
+                preparedStatement.setBytes(index, (byte[]) param);
+            } else {
+                throw new IllegalStateException("invalid parameter type: " + param);
+            }
+        }
+    } //TODO: find a long term patch. If import from jdbc.utils right now it complains "cannot find symbol"
 
     @Override
     protected String getCreateChunkLookupTableSql(String namespace) {
