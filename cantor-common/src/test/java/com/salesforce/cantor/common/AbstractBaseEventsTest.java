@@ -288,6 +288,7 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
                 null
         );
         for (final Events.Event e : resultsLikePrefix) {
+            System.out.println(e.getMetadata().get(metadata));
             assertTrue(e.getMetadata().get(metadata).startsWith(prefix));
         }
         final Map<String, String> metadataNotLikePrefixQuery = new HashMap<>();

@@ -34,6 +34,10 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         executeUpdate(createDIDSeqSql); //TODO: batch create methods?
     }
 
+    public EventsOnPhoenix(final String path) throws IOException {
+        this(PhoenixDataSourceProvider.getDatasource(new PhoenixDataSourceProperties().setPath(path)));
+    }
+
     @Override
     public void store(String namespace, Collection<Event> batch) throws IOException {
         String upsertMainSql = "upsert into cantor_events values (?, next value for cantor_events_id, ?, ?)";
@@ -89,9 +93,9 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         Object[] parameters;
 
         if (includePayloads) { //TODO: not include namespace?
-            query.append("select e.timestampMillis, e.id, e.payload from cantor_events as e ");
+            query.append("select /*+ USE_SORT_MERGE_JOIN*/ e.timestampMillis, e.id, e.payload from cantor_events as e ");
         } else {
-            query.append("select e.timestampMillis, e.id from cantor_events as e ");
+            query.append("select /*+ USE_SORT_MERGE_JOIN*/ e.timestampMillis, e.id from cantor_events as e ");
         }
 
         parameters = buildQueryAndParamOnSubqueries(query, parameterList, startTimestampMillis, endTimestampMillis, namespace, metadataQuery, dimensionsQuery);
@@ -104,7 +108,8 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         if (limit > 0) {
             query.append(" limit ").append(limit);
         }
-
+        System.out.println(query.toString());
+        System.out.println(parameterList);
         try (final Connection connection = getConnection()) {
             try (final PreparedStatement preparedStatement = connection.prepareStatement(query.toString())) {
                 addParameters(preparedStatement, parameters); //TODO: revert it back from "public"
@@ -199,7 +204,6 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
             parameterList.add(startTimestampMillis);
             parameterList.add(endTimestampMillis);
             parameterList.add(namespace);
-            ;
         }
         return parameterList.toArray(new Object[parameterList.size()]);
     }
@@ -211,7 +215,7 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         for (Map.Entry<String, String> q : queryMap.entrySet()) {
             parameterList.add(q.getKey());
             if (q.getValue().startsWith("~")) {
-                subqueries.add("when m_key = ? then not REGEXP_SUBSTR(m_value, ?) = m_value");
+                subqueries.add("when m_key = ? then not (REGEXP_SUBSTR(m_value, ?) = m_value)");
                 if (!q.getValue().contains(".*")) {
                     parameterList.add(q.getValue().substring(1).replace("*", ".*"));
                 } else {
@@ -391,7 +395,7 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         try {
             String query = String.format("delete from cantor_events_namespace where namespace = '%s'", namespace);
             String deleteFromMetadataSql = String.format("delete from cantor_events_m where (timestampMillis, id) in (select timestampMillis, id from cantor_events where namespace = '%s')", namespace);
-            String deleteFromDimensionsSql = String.format("delete from cantor_events_m where (timestampMillis, id) in (select timestampMillis, id from cantor_events where namespace = '%s')", namespace);
+            String deleteFromDimensionsSql = String.format("delete from cantor_events_d where (timestampMillis, id) in (select timestampMillis, id from cantor_events where namespace = '%s')", namespace);
             String deleteFromMainSql = String.format("delete from cantor_events where namespace = '%s'", namespace);
             connection = openTransaction(getConnection());
             executeUpdate(connection, query);

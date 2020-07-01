@@ -1,5 +1,6 @@
 package com.salesforce.cantor.phoenix;
 
+import org.apache.hadoop.hbase.HConstants;
 import com.zaxxer.hikari.HikariDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,9 +10,10 @@ import javax.sql.DataSource;
 public class PhoenixDataSourceProvider {
     private static final Logger logger = LoggerFactory.getLogger(PhoenixDataSourceProvider.class);
 
-    public static synchronized DataSource getDatasource() {
+    public static synchronized DataSource getDatasource(final PhoenixDataSourceProperties builder) {
         return doGetDataSource();
     }
+
     private static DataSource doGetDataSource() {
         final String jdbcUrl = "jdbc:phoenix:localhost";
         try {
@@ -45,6 +47,7 @@ public class PhoenixDataSourceProvider {
         connectionPoolDataSource.addDataSourceProperty("continueBatchOnError", false);
         connectionPoolDataSource.addDataSourceProperty("maintainTimeStats", false);
         connectionPoolDataSource.addDataSourceProperty("maxRows", 100_000);  // max of 100,000 rows to be returned
+        connectionPoolDataSource.addDataSourceProperty(HConstants.HBASE_CLIENT_SCANNER_TIMEOUT_PERIOD, "800000");
 //        TODO allow users to override this by a flag
 //        connectionPoolDataSource.addDataSourceProperty("logger", "com.mysql.cj.log.Slf4JLogger");
 //        connectionPoolDataSource.addDataSourceProperty("profileSQL", true);

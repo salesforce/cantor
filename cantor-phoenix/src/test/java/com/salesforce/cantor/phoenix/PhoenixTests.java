@@ -21,6 +21,6 @@ public class PhoenixTests {
     }
 
     private static DataSource getDataSource() {
-        return PhoenixDataSourceProvider.getDatasource();
+        return PhoenixDataSourceProvider.getDatasource(new PhoenixDataSourceProperties());
     }
 }
