@@ -47,7 +47,6 @@ public class PhoenixDataSourceProvider {
         connectionPoolDataSource.addDataSourceProperty("continueBatchOnError", false);
         connectionPoolDataSource.addDataSourceProperty("maintainTimeStats", false);
         connectionPoolDataSource.addDataSourceProperty("maxRows", 100_000);  // max of 100,000 rows to be returned
-        connectionPoolDataSource.addDataSourceProperty(HConstants.HBASE_CLIENT_SCANNER_TIMEOUT_PERIOD, "800000");
 //        TODO allow users to override this by a flag
 //        connectionPoolDataSource.addDataSourceProperty("logger", "com.mysql.cj.log.Slf4JLogger");
 //        connectionPoolDataSource.addDataSourceProperty("profileSQL", true);

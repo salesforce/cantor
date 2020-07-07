@@ -37,6 +37,6 @@ public class PhoenixDataSourceProperties {
 
     @Override
     public String toString() {
-        return "MysqlDataSourceProperties(" + getHostname() + ":" + getPort() + ")";
+        return "PhoenixDataSourceProperties(" + getHostname() + ":" + getPort() + ")";
     }
 }

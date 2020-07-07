@@ -125,7 +125,7 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                         long timestamp = mainResultSet.getLong("e.timestampMillis");
                         long id = mainResultSet.getLong("e.id");
                         timeIdPairString.add("(" + timestamp + ", " + id + ")");
-                        mainResultMap.add(new Object[]{timestamp, id, (includePayloads) ? mainResultSet.getBytes("payload") : null});
+                        mainResultMap.add(new Object[]{timestamp, id, (includePayloads) ? mainResultSet.getBytes("e.payload") : null});
                     }
 
                     if (isEmpty) {
@@ -228,11 +228,15 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                     parameterList.add(q.getValue().substring(2));
                 }
             } else if (q.getValue().startsWith("!")) { // exact not
-                subqueries.add("when m_key = ? then REGEXP_SUBSTR(m_value, ?) = m_value");
+                subqueries.add("when m_key = ? then m_value = ?");
                 parameterList.add(q.getValue().substring(1));
             } else { // exact match
-                subqueries.add("when m_key = ? then not REGEXP_SUBSTR(m_value, ?) = m_value");
-                parameterList.add(q.getValue());
+                subqueries.add("when m_key = ? then m_value != ?");
+                if (q.getValue().startsWith("=")) {
+                    parameterList.add(q.getValue().substring(1));
+                } else {
+                    parameterList.add(q.getValue());
+                }
             }
         }
         query.append(subqueries.toString()).append(" end)) as m on e.timestampMillis = m.timestampMillis and e.id = m.id ");
@@ -325,14 +329,6 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
     }
 
     @Override
-    public Map<Long, Double> aggregate(String namespace, String dimension, long startTimestampMillis,
-                                       long endTimestampMillis, Map<String, String> metadataQuery,
-                                       Map<String, String> dimensionsQuery, int aggregateIntervalMillis,
-                                       AggregationFunction aggregationFunction) throws IOException {
-        return Collections.emptyMap();
-    }
-
-    @Override
     public Set<String> metadata(String namespace, String metadataKey, long startTimestampMillis,
                                 long endTimestampMillis, Map<String, String> metadataQuery,
                                 Map<String, String> dimensionsQuery) throws IOException {
@@ -358,10 +354,6 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
             throw new IOException(e);
         }
         return results;
-    }
-
-    @Override
-    public void expire(String namespace, long endTimestampMillis) throws IOException {
     }
 
     @Override
@@ -433,6 +425,18 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
             }
         }
     } //TODO: find a long term patch. If import from jdbc.utils right now it complains "cannot find symbol"
+
+    @Override
+    public Map<Long, Double> aggregate(String namespace, String dimension, long startTimestampMillis,
+                                       long endTimestampMillis, Map<String, String> metadataQuery,
+                                       Map<String, String> dimensionsQuery, int aggregateIntervalMillis,
+                                       AggregationFunction aggregationFunction) throws IOException {
+        return Collections.emptyMap();
+    }
+
+    @Override
+    public void expire(String namespace, long endTimestampMillis) throws IOException {
+    }
 
     @Override
     protected String getCreateChunkLookupTableSql(String namespace) {

@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  ~ Copyright (c) 2020, Salesforce.com, Inc.
+  ~ All rights reserved.
+  ~ SPDX-License-Identifier: BSD-3-Clause
+  ~ For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
+  -->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>cantor-archive</artifactId>
+    <packaging>jar</packaging>
+    <name>cantor-archive</name>
+    <description>Cantor Archive Utilities</description>
+
+    <parent>
+        <artifactId>cantor-parent</artifactId>
+        <groupId>com.salesforce.cantor</groupId>
+        <version>0.2.4-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <properties>
+        <maven.plugin.os.version>1.6.0</maven.plugin.os.version>
+        <maven.plugin.protobuf.version>0.6.1</maven.plugin.protobuf.version>
+        <protobuf.version>3.4.0</protobuf.version>
+        <commons-compress.version>1.19</commons-compress.version>
+    </properties>
+
+    <dependencies>
+        <!--CANTOR BASE-->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-base</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!--CANTOR COMMON-->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!--PROTOBUF-->
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>${protobuf.version}</version>
+        </dependency>
+        <!--APACHE COMMONS COMPRESS-->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>${commons-compress.version}</version>
+        </dependency>
+
+        <!-- TEST DEPENDENCIES -->
+        <!--TESTNG-->
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${testng.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!--CANTOR H2-->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-h2</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- LOGBACK-->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <extensions>
+            <!--OS EXTENSION-->
+            <extension>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>${maven.plugin.os.version}</version>
+            </extension>
+        </extensions>
+        <plugins>
+            <!--PROTOBUF COMPILER-->
+            <plugin>
+                <groupId>org.xolstice.maven.plugins</groupId>
+                <artifactId>protobuf-maven-plugin</artifactId>
+                <version>${maven.plugin.protobuf.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                            <goal>test-compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -11,11 +11,9 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>cantor-grpc-client</artifactId>
-    <packaging>jar</packaging>
-    <name>cantor-grpc-client</name>
+    <artifactId>cantor-grpc-service</artifactId>
 
-    <description>Cantor gRPC client</description>
+    <description>Service layer for gRPC Cantor</description>
 
     <parent>
         <groupId>com.salesforce.cantor</groupId>
@@ -24,40 +22,43 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <properties>
-        <grpc.version>1.8.0</grpc.version>
-    </properties>
-
     <dependencies>
-        <!-- CANTOR PHOENIX -->
-        <dependency>
-            <groupId>com.salesforce.cantor</groupId>
-            <artifactId>cantor-phoenix</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <!--CANTOR BASE-->
+        <!--CANTOR GRPC COMMON-->
         <dependency>
             <groupId>com.salesforce.cantor</groupId>
             <artifactId>cantor-grpc-protos</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <!--GRPC-->
         <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-netty</artifactId>
-            <version>${grpc.version}</version>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-grpc-client</artifactId>
+            <version>${project.version}</version>
         </dependency>
+        <!--LOGBACK-->
         <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-protobuf</artifactId>
-            <version>${grpc.version}</version>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
         </dependency>
+
         <!--TEST SCOPE-->
         <!--TESTNG -->
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
             <version>${testng.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- CANTOR COMMON TEST JAR -->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-common</artifactId>
+            <type>test-jar</type>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-h2</artifactId>
+            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
