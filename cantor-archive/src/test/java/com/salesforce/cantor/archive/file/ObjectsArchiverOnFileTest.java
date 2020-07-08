@@ -5,7 +5,7 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.archive;
+package com.salesforce.cantor.archive.file;
 
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Objects;
@@ -21,11 +21,13 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static org.testng.Assert.*;
 
-public class ObjectsArchiverTest {
+public class ObjectsArchiverOnFileTest {
 
     @Test
     public void testArchiveRestoreObjects() throws IOException {
         final String basePath = Paths.get(System.getProperty("java.io.tmpdir"), "cantor-archive-objects-test", UUID.randomUUID().toString()).toString();
+        final ArchiverOnFile archiver = new ArchiverOnFile(basePath);
+        final ObjectsArchiverOnFile objectsArchiver = (ObjectsArchiverOnFile) archiver.objects();
         final Cantor cantor = getCantor(Paths.get(basePath, "input").toString());
         final String namespace = UUID.randomUUID().toString();
         final Map<String, byte[]> stored = populateObjects(cantor.objects(), namespace, ThreadLocalRandom.current().nextInt(1_000, 5_000));
@@ -33,7 +35,7 @@ public class ObjectsArchiverTest {
 
         Files.createDirectories(Paths.get(basePath, "output"));
         final Path outputPath = Paths.get(basePath, "output",  "test-archive.tar.gz");
-        ObjectsArchiver.archive(cantor.objects(), namespace, outputPath, ObjectsArchiver.MAX_CHUNK_SIZE);
+        objectsArchiver.doArchive(cantor.objects(), namespace, outputPath);
 
         assertTrue(Files.exists(outputPath), "archive file missing");
         assertNotEquals(Files.size(outputPath), 0, "empty archive file shouldn't exist");
@@ -41,7 +43,7 @@ public class ObjectsArchiverTest {
         final String vNamespace = UUID.randomUUID().toString();
         final Cantor vCantor = getCantor(Paths.get(basePath, "verify").toString());
         assertThrows(IOException.class, () -> vCantor.objects().size(vNamespace));
-        ObjectsArchiver.restore(vCantor.objects(), vNamespace, outputPath);
+        objectsArchiver.doRestore(vCantor.objects(), vNamespace, outputPath);
 
         assertEquals(vCantor.objects().size(vNamespace), stored.size(), "didn't restore expected number of objects");
         final Collection<String> vKeys = vCantor.objects().keys(vNamespace, 0, -1);
@@ -53,16 +55,18 @@ public class ObjectsArchiverTest {
     @Test
     public void testArchiveZeroObjectsNamespace() throws IOException {
         final String basePath = Paths.get(System.getProperty("java.io.tmpdir"), "cantor-archive-zero-objects-test", UUID.randomUUID().toString()).toString();
+        final ArchiverOnFile archiver = new ArchiverOnFile(basePath);
+        final ObjectsArchiverOnFile objectsArchiver = (ObjectsArchiverOnFile) archiver.objects();
         final Cantor cantor = getCantor(Paths.get(basePath, "input").toString());
         final String namespace = UUID.randomUUID().toString();
         cantor.objects().create(namespace);
 
         Files.createDirectories(Paths.get(basePath, "output"));
         final Path outputPath = Paths.get(basePath, "output", "test-archive.tar.gz");
-        ObjectsArchiver.archive(cantor.objects(), namespace, outputPath, ObjectsArchiver.MAX_CHUNK_SIZE);
+        objectsArchiver.doArchive(cantor.objects(), namespace, outputPath);
         assertTrue(Files.exists(outputPath), "archiving zero objects should still produce file");
 
-        ObjectsArchiver.restore(cantor.objects(), namespace, outputPath);
+        objectsArchiver.doRestore(cantor.objects(), namespace, outputPath);
         assertEquals(cantor.objects().size(namespace), 0,  "shouldn't have restored any objects");
     }
 

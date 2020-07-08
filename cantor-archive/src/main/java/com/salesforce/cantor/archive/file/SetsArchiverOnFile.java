@@ -5,9 +5,11 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.archive;
+package com.salesforce.cantor.archive.file;
 
 import com.salesforce.cantor.Sets;
+import com.salesforce.cantor.archive.SetsChunk;
+import com.salesforce.cantor.misc.archivable.SetsArchiver;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveOutputStream;
@@ -19,16 +21,31 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Map;
 
-import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
+public class SetsArchiverOnFile extends AbstractBaseArchiverOnFile implements SetsArchiver {
+    private static final Logger logger = LoggerFactory.getLogger(SetsArchiverOnFile.class);
+    private static final String archivePathFormat = "/archive-sets-%s";
 
-public class SetsArchiver extends AbstractBaseArchiver {
-    private static final Logger logger = LoggerFactory.getLogger(SetsArchiver.class);
+    public static final int chunkSize = 1_000;
 
-    public static final int MAX_CHUNK_SIZE = 1_000;
+    public SetsArchiverOnFile(final String baseDirectory) {
+        super(baseDirectory);
+    }
 
-    public static void archive(final Sets sets, final String namespace, final Path destination, final int chunkSize) throws IOException {
+    @Override
+    public void archive(final Sets sets, final String namespace) throws IOException {
+        final Path destination = getFileArchive(namespace);
         checkArchiveArguments(sets, namespace, destination);
-        checkArgument(chunkSize <= MAX_CHUNK_SIZE, "chunk size must be <=" + MAX_CHUNK_SIZE);
+        doArchive(sets, namespace, destination);
+    }
+
+    @Override
+    public void restore(final Sets sets, final String namespace) throws IOException {
+        final Path archiveFile = getFileArchive(namespace);
+        checkRestoreArguments(sets, namespace, archiveFile);
+        doRestore(sets, namespace, archiveFile);
+    }
+
+    protected void doArchive(final Sets sets, final String namespace, final Path destination) throws IOException {
         // get all sets for the namespace, any sets added after won't be archived
         final Collection<String> setNames = sets.sets(namespace);
         try (final ArchiveOutputStream archive = getArchiveOutputStream(destination)) {
@@ -51,8 +68,7 @@ public class SetsArchiver extends AbstractBaseArchiver {
         }
     }
 
-    public static void restore(final Sets sets, final String namespace, final Path archiveFile) throws IOException {
-        checkRestoreArguments(sets, namespace, archiveFile);
+    protected void doRestore(final Sets sets, final String namespace, final Path archiveFile) throws IOException {
         // create the namespace, in case the user hasn't already
         sets.create(namespace);
         try (final ArchiveInputStream archive = getArchiveInputStream(archiveFile)) {
@@ -66,5 +82,9 @@ public class SetsArchiver extends AbstractBaseArchiver {
             }
             logger.info("restored {} entries int namespace '{}' from archive file {}", total, namespace, archiveFile);
         }
+    }
+
+    protected Path getFileArchive(final String namespace) {
+        return getFile(archivePathFormat, namespace);
     }
 }

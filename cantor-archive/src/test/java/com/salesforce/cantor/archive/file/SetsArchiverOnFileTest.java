@@ -5,7 +5,7 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.archive;
+package com.salesforce.cantor.archive.file;
 
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Sets;
@@ -21,11 +21,13 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static org.testng.Assert.*;
 
-public class SetsArchiverTest {
+public class SetsArchiverOnFileTest {
 
     @Test
     public void testArchiveSets() throws IOException {
         final String basePath = Paths.get(System.getProperty("java.io.tmpdir"), "cantor-archive-sets-test", UUID.randomUUID().toString()).toString();
+        final ArchiverOnFile archiver = new ArchiverOnFile(basePath);
+        final SetsArchiverOnFile fileSetsArchiver = (SetsArchiverOnFile) archiver.sets();
         final Cantor cantor = getCantor(Paths.get(basePath, "input").toString());
         final String namespace = UUID.randomUUID().toString();
 
@@ -41,7 +43,7 @@ public class SetsArchiverTest {
 
         Files.createDirectories(Paths.get(basePath, "output"));
         final Path outputPath = Paths.get(basePath, "output",  "test-archive.tar.gz");
-        SetsArchiver.archive(cantor.sets(), namespace, outputPath, SetsArchiver.MAX_CHUNK_SIZE);
+        fileSetsArchiver.doArchive(cantor.sets(), namespace, outputPath);
 
         assertTrue(Files.exists(outputPath), "archive file missing");
         assertNotEquals(Files.size(outputPath), 0, "empty archive file shouldn't exist");
@@ -53,7 +55,7 @@ public class SetsArchiverTest {
             assertThrows(IOException.class, () -> vCantor.sets().size(vNamespace, set));
         }
 
-        SetsArchiver.restore(vCantor.sets(), vNamespace, outputPath);
+        fileSetsArchiver.doRestore(vCantor.sets(), vNamespace, outputPath);
         for (final String set : allSets.keySet()) {
             final Map<String, Long> expectedEntries = allSets.get(set);
             assertEquals(vCantor.sets().size(vNamespace, set), expectedEntries.size(), "didn't restore expected number of entries");
