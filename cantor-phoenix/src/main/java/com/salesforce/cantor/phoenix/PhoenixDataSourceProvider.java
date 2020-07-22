@@ -1,6 +1,5 @@
 package com.salesforce.cantor.phoenix;
 
-import org.apache.hadoop.hbase.HConstants;
 import com.zaxxer.hikari.HikariDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,9 +14,9 @@ public class PhoenixDataSourceProvider {
     }
 
     private static DataSource doGetDataSource() {
-        final String jdbcUrl = "jdbc:phoenix:localhost";
+        final String jdbcUrl = "jdbc:phoenix:akouthoofd-wsl";
         try {
-            // force loading Phoenix driver
+            // force loading Phoenix drivers
             Class.forName("org.apache.phoenix.jdbc.PhoenixDriver");
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
