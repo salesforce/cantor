@@ -240,14 +240,16 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         for (Map.Entry<String, String> q : queryMap.entrySet()) {
             parameterList.add(q.getKey());
             if (q.getValue().startsWith("~")) {
-                subqueries.add("when m_key = ? then not (REGEXP_SUBSTR(m_value, ?) = m_value)");
+                subqueries.add("when m_key = ? then (LENGTH(REGEXP_SUBSTR(m_value, ?)) is null or LENGTH(REGEXP_SUBSTR(m_value, ?)) != LENGTH(m_value))");
                 if (!q.getValue().contains(".*")) {
+                    parameterList.add(q.getValue().substring(1).replace("*", ".*"));
                     parameterList.add(q.getValue().substring(1).replace("*", ".*"));
                 } else {
                     parameterList.add(q.getValue().substring(1));
+                    parameterList.add(q.getValue().substring(1));
                 }
             } else if (q.getValue().startsWith("!~")) {
-                subqueries.add("when m_key = ? then REGEXP_SUBSTR(m_value, ?) = m_value");
+                subqueries.add("when m_key = ? then LENGTH(REGEXP_SUBSTR(m_value, ?)) = LENGTH(m_value)");
                 if (!q.getValue().contains(".*")) {
                     parameterList.add(q.getValue().substring(2).replace("*", ".*"));
                 } else {
