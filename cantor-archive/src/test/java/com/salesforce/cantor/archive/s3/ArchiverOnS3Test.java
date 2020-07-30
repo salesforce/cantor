@@ -68,6 +68,17 @@ public class ArchiverOnS3Test {
             this.cantorOnS3.objects().drop(namespace);
         }
         createS3Client().deleteBucket(String.format("%s-all-namespaces", "cantor-archive-test"));
+
+        // delete test archive
+        final File baseDirectory = new File("cantor-s3-archive-data");
+        final String[] entries = baseDirectory.list();
+        if (entries != null) {
+            for(final String file : entries) {
+                final File currentFile = new File(baseDirectory.getPath(), file);
+                currentFile.delete();
+            }
+        }
+        baseDirectory.delete();
     }
 
     /**
