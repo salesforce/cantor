@@ -1,6 +1,14 @@
+/*
+ * Copyright (c) 2020, Salesforce.com, Inc.
+ * All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
+ * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
+ */
+
 package com.salesforce.cantor.misc.archivable;
 
 import com.salesforce.cantor.Events;
+import com.salesforce.cantor.Namespaceable;
 import com.salesforce.cantor.misc.archivable.impl.ArchivableEvents;
 
 import java.io.IOException;
@@ -9,7 +17,7 @@ import java.util.Map;
 /**
  * EventsArchiver is the contract used by {@link ArchivableEvents} when handling the archiving of events
  */
-public interface EventsArchiver {
+public interface EventsArchiver extends Namespaceable {
     /**
      * Will retrieve and archive all events before the provided timestamp.
      * <br><br>

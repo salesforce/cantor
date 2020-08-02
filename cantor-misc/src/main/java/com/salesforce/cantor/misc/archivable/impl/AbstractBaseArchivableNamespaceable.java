@@ -8,12 +8,11 @@
 package com.salesforce.cantor.misc.archivable.impl;
 
 import com.salesforce.cantor.Namespaceable;
-import com.salesforce.cantor.misc.archivable.CantorArchiver;
 
 import java.io.IOException;
 import java.util.Collection;
 
-abstract class AbstractBaseArchivableNamespaceable<T extends Namespaceable, A extends CantorArchiver>
+abstract class AbstractBaseArchivableNamespaceable<T extends Namespaceable, A extends Namespaceable>
                 implements Namespaceable {
     private final T delegate;
     private final A archiveDelegate;
@@ -24,17 +23,17 @@ abstract class AbstractBaseArchivableNamespaceable<T extends Namespaceable, A ex
     }
 
     @Override
-    public final Collection<String> namespaces() throws IOException {
+    public Collection<String> namespaces() throws IOException {
         return getDelegate().namespaces();
     }
 
     @Override
-    public final void create(final String namespace) throws IOException {
+    public void create(final String namespace) throws IOException {
         getDelegate().create(namespace);
     }
 
     @Override
-    public final void drop(final String namespace) throws IOException {
+    public void drop(final String namespace) throws IOException {
         getDelegate().drop(namespace);
     }
 

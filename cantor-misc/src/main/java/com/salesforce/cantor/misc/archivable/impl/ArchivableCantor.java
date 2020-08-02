@@ -18,12 +18,10 @@ import org.slf4j.LoggerFactory;
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 
 /**
- * The ArchivableCantor implementation is a wrapper around a delegate Cantor instance and an {@link CantorArchiver} reference.
- * The {@code delegate} is the main data-store with direct implementations of {@link Sets} and {@link Objects}.
- * The {@code archiveDelegate} is used to archive any events removed when calling {@link Events#expire} or
- * {@link Events#delete} for longer term storage.
- * <br/>
- * Future Work: Calls to retrieve data that has been archived will be loaded back into the {@code delegate} Cantor.
+ * The ArchivableCantor implementation is a wrapper around a delegate Cantor instance and a {@link CantorArchiver} reference.
+ * The {@code delegate} is the main data-store which is used directly for {@link Sets} and {@link Objects}.
+ * The {@code archiveDelegate} is used to archive any events removed when calling {@link Events#expire} for
+ * longer term storage.
  * <br/>
  * Use it like this:
  * <pre>
@@ -48,7 +46,7 @@ public class ArchivableCantor implements Cantor {
         //TODO: add support for ArchivableObjects and ArchivableSets
         this.objects = delegate.objects();
         this.sets = delegate.sets();
-        this.events = new ArchivableEvents(delegate.events(), archiver);
+        this.events = new ArchivableEvents(delegate.events(), archiver.events());
     }
 
     @Override

@@ -20,8 +20,8 @@ import java.util.Set;
 /**
  * Wrapper class around a delegate Events instance, adding logging and time spent.
  */
-public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events, CantorArchiver> implements Events {
-    public ArchivableEvents(final Events delegate, final CantorArchiver archiver) {
+public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events, EventsArchiver> implements Events {
+    public ArchivableEvents(final Events delegate, final EventsArchiver archiver) {
         super(delegate, archiver);
     }
 
@@ -40,7 +40,7 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
                            final boolean includePayloads,
                            final boolean ascending,
                            final int limit) throws IOException {
-        getArchiver().events().restore(getDelegate(), namespace, startTimestampMillis, endTimestampMillis);
+        getArchiver().restore(getDelegate(), namespace, startTimestampMillis, endTimestampMillis);
         return getDelegate().get(namespace,
                         startTimestampMillis,
                         endTimestampMillis,
@@ -76,7 +76,7 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
                                              final Map<String, String> dimensionsQuery,
                                              final int aggregateIntervalMillis,
                                              final AggregationFunction aggregationFunction) throws IOException {
-        getArchiver().events().restore(getDelegate(), namespace, startTimestampMillis, endTimestampMillis);
+        getArchiver().restore(getDelegate(), namespace, startTimestampMillis, endTimestampMillis);
         return getDelegate().aggregate(namespace,
                         dimension,
                         startTimestampMillis,
@@ -95,7 +95,7 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
                                 final long endTimestampMillis,
                                 final Map<String, String> metadataQuery,
                                 final Map<String, String> dimensionsQuery) throws IOException {
-        getArchiver().events().restore(getDelegate(), namespace, startTimestampMillis, endTimestampMillis);
+        getArchiver().restore(getDelegate(), namespace, startTimestampMillis, endTimestampMillis);
         return getDelegate().metadata(namespace,
                         metadataKey,
                         startTimestampMillis,
@@ -108,7 +108,7 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
     @Override
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
         // archiving all before deletion
-        getArchiver().events().archive(getDelegate(),namespace, endTimestampMillis);
+        getArchiver().archive(getDelegate(), namespace, endTimestampMillis);
         getDelegate().delete(namespace, 0, endTimestampMillis, null, null);
     }
 }
