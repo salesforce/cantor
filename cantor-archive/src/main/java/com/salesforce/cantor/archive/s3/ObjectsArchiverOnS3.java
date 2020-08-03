@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collection;
 
 public class ObjectsArchiverOnS3 extends AbstractBaseArchiverOnFile implements ObjectsArchiver {
     private static final Logger logger = LoggerFactory.getLogger(ObjectsArchiverOnS3.class);
@@ -33,6 +34,22 @@ public class ObjectsArchiverOnS3 extends AbstractBaseArchiverOnFile implements O
 
     @Override
     public void restore(final Objects objects, final String namespace) throws IOException {
+        // not implemented yet
+    }
+
+    @Override
+    public Collection<String> namespaces() throws IOException {
+        // not implemented yet
+        return null;
+    }
+
+    @Override
+    public void create(final String namespace) throws IOException {
+        // not implemented yet
+    }
+
+    @Override
+    public void drop(final String namespace) throws IOException {
         // not implemented yet
     }
 }

@@ -24,16 +24,23 @@ abstract class AbstractBaseArchivableNamespaceable<T extends Namespaceable, A ex
 
     @Override
     public Collection<String> namespaces() throws IOException {
-        return getDelegate().namespaces();
+        final Collection<String> namespaces = getDelegate().namespaces();
+        final Collection<String> archivedNamespaces = getArchiver().namespaces();
+        if (namespaces != null && archivedNamespaces != null) {
+            namespaces.addAll(archivedNamespaces);
+        }
+        return (namespaces != null) ? namespaces : archivedNamespaces;
     }
 
     @Override
     public void create(final String namespace) throws IOException {
+        getArchiver().create(namespace);
         getDelegate().create(namespace);
     }
 
     @Override
     public void drop(final String namespace) throws IOException {
+        getArchiver().drop(namespace);
         getDelegate().drop(namespace);
     }
 
