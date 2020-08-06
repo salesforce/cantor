@@ -29,12 +29,6 @@
     </properties>
 
     <dependencies>
-        <!-- CANTOR PHOENIX -->
-        <dependency>
-            <groupId>com.salesforce.cantor</groupId>
-            <artifactId>cantor-phoenix</artifactId>
-            <version>${project.version}</version>
-        </dependency>
         <!--CANTOR BASE-->
         <dependency>
             <groupId>com.salesforce.cantor</groupId>

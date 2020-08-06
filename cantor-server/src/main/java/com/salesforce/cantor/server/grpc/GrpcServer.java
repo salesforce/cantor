@@ -9,15 +9,9 @@ package com.salesforce.cantor.server.grpc;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.salesforce.cantor.Cantor;
-import com.salesforce.cantor.Events;
-import com.salesforce.cantor.Objects;
-import com.salesforce.cantor.Sets;
 import com.salesforce.cantor.grpc.EventsGrpcService;
 import com.salesforce.cantor.grpc.ObjectsGrpcService;
 import com.salesforce.cantor.grpc.SetsGrpcService;
-import com.salesforce.cantor.h2.ObjectsOnH2;
-import com.salesforce.cantor.h2.SetsOnH2;
-import com.salesforce.cantor.phoenix.EventsOnPhoenix;
 import com.salesforce.cantor.server.CantorEnvironment;
 import com.salesforce.cantor.server.Constants;
 import com.salesforce.cantor.server.utils.CantorFactory;
@@ -45,9 +39,7 @@ public class GrpcServer {
                 cantorEnvironment.getStorageType()
         );
 
-//        final Cantor cantor = cantorProvider.getCantor();
-        final Cantor cantor = new CantorOnPhoenixPlusH2();
-
+        final Cantor cantor = cantorProvider.getCantor();
         this.server = NettyServerBuilder.forPort(port)
                 .workerEventLoopGroup(new NioEventLoopGroup(
                         8,  // max of exactly 8 event loop threads
@@ -100,36 +92,5 @@ public class GrpcServer {
         }
     }
 
-    public class CantorOnPhoenixPlusH2 implements Cantor{
-        @Override
-        public Objects objects() {
-            try {
-                return new ObjectsOnH2("/tmp/test/");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return null;
-        }
-
-        @Override
-        public Sets sets() {
-            try {
-                return new SetsOnH2("/tmp/test/");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return null;
-        }
-
-        @Override
-        public Events events() {
-            try {
-                return new EventsOnPhoenix("/tmp/test/");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return null;
-        }
-    }
 }
 
