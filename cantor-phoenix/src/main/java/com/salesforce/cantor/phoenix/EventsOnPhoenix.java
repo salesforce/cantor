@@ -232,6 +232,9 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         return events;
     }
 
+    /**
+     * Get all the metadata for events selected, indexed by timestamp and id.
+     */
     private MultiKeyMap<Long, Map<String, String>> populateMetadataResultMap(Connection connection,
                                                                              StringBuilder metadataSql,
                                                                              MultiKeyMap<Long, Map<String,
@@ -256,6 +259,9 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         return metadataResultMap;
     }
 
+    /**
+     * Get all the dimensions for events selected, indexed by timestamp and id.
+     */
     private MultiKeyMap<Long, Map<String, Double>> populateDimensionsResultMap(Connection connection,
                                                                                StringBuilder dimensionsSql,
                                                                                MultiKeyMap<Long, Map<String, Double>>
@@ -279,6 +285,9 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         return dimensionsResultMap;
     }
 
+    /**
+     * Build the full SQL query for selecting required events and return corresponding parameters that go with the query
+     */
     private Object[] buildSelectQuery(StringBuilder query, List<Object> parameterList, String namespace,
                                       long startTimestampMillis, long endTimestampMillis,
                                       Map<String, String> metadataQuery, Map<String, String> dimensionsQuery,
@@ -433,6 +442,10 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                 getTimestampColumnName(), getTimestampColumnName(), getIdColumnName(), getIdColumnName()));
     }
 
+    /**
+     * This part of the query is necessary to make sure all keys in metadata and dimension queries actually exist
+     * in metadata/dimensions of events selected.
+     */
     private void addConditionsForKeyExisting(StringBuilder query, List<Object> parameterList,
                                              Map<String, String> queryMap, boolean isMetadataQeury) {
         if (queryMap != null) {
