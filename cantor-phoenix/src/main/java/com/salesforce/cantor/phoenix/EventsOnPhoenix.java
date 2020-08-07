@@ -2,7 +2,6 @@ package com.salesforce.cantor.phoenix;
 
 import com.salesforce.cantor.Events;
 import com.salesforce.cantor.jdbc.AbstractBaseEventsOnJdbc;
-
 import javax.sql.DataSource;
 import java.io.IOException;
 import java.sql.*;
@@ -38,7 +37,7 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         this(PhoenixDataSourceProvider.getDatasource(new PhoenixDataSourceProperties().setPath(path)));
     }
 
-    //TODO: how to batchUpdate multiple statements w/ parameters
+    //TODO: batchUpdate multiple statements w/ parameters
     //TODO: if one event failed, are other events rolled back?
     //TODO: if inserting into metadata/dimensions failed, how to roll back inserting into previous table(s)?
     @Override
@@ -46,13 +45,13 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         String upsertMainSql = "upsert into cantor_events values (?, next value for cantor_events_id, ?, ?)";
         String upsertMetadataSql = "upsert into cantor_events_m values (?, current value for cantor_events_id, ?, ?, next value for cantor_events_m_id)";
         String upsertDimensionsSql = "upsert into cantor_events_d values (?, current value for cantor_events_id, ?, ?, next value for cantor_events_d_id)";
-        Connection connection = null;
         List<Object[]> metadataParameters;
         List<Object[]> dimensionsParameters;
+        Collection<Event> storedEvents = new ArrayList<>();
 
         // iterate through events and insert into table one by one
         for (Event e : batch) {
-            try {
+            try (final Connection connection = getConnection()) {
                 if (namespace == null) {
                     throw new IllegalArgumentException("Namespace should not be null");
                 } else if (e.getTimestampMillis() < 0) {
@@ -64,8 +63,6 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                 } else if (!namespaces().contains(namespace)) {
                     throw new IOException("Namespace does not exist");
                 }
-
-                connection = openTransaction(getConnection());
 
                 // insert event into main table
                 executeUpdate(connection, upsertMainSql, e.getTimestampMillis(), namespace, (e.getPayload() == null) ? new byte[0] : e.getPayload());
@@ -83,10 +80,61 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                     dimensionsParameters.add(new Object[]{e.getTimestampMillis(), d.getKey(), d.getValue()});
                 }
                 executeBatchUpdate(connection, upsertDimensionsSql, dimensionsParameters);
-            } finally {
-                closeConnection(connection);
+                storedEvents.add(e);
+            } catch (RuntimeException exception) {
+                // when one of the events does not get stored properly, from giving illegal arguments or otherwise
+                // other events from the batch already added must be removed
+                rollback(namespace, storedEvents);
+                throw exception;
+            } catch (SQLException exception) {
+                rollback(namespace, storedEvents);
+                exception.printStackTrace();
             }
         }
+    }
+
+    private void rollback(String namespace, Collection<Event> batch) throws IOException {
+        StringBuilder selectQuery;
+        List<Object> parameterList;
+        Object[] parameters;
+        for (Event e: batch) {
+            selectQuery = new StringBuilder("select e.timestampMillis, e.id from cantor_events as e ");
+            parameterList = new ArrayList<>();
+            parameters = buildQueryAndParamOnSubqueries(selectQuery, parameterList, e.getTimestampMillis(), e.getTimestampMillis() + 1, namespace, e.getMetadata(), getQuery(e.getDimensions()));
+            try (final Connection connection = getConnection()) {
+                // first find the timestamp and id of all entries that are to be deleted
+                try (final PreparedStatement preparedStatement = connection.prepareStatement(selectQuery.toString())) {
+                    addParameters(preparedStatement, parameters);
+                    try (final ResultSet mainResultSet = preparedStatement.executeQuery()) {
+                        StringBuilder deleteMainSql = new StringBuilder("delete from cantor_events where timestampMillis = ? and id = ?");
+                        StringBuilder deleteMetadataSql = new StringBuilder("delete from cantor_events_m where timestampMillis = ? and id = ?");
+                        StringBuilder deleteDimensionsSql = new StringBuilder("delete from cantor_events_d where timestampMillis = ? and id = ?");
+
+                        boolean isEmpty = true;
+                        while (mainResultSet.next()) { // store the timestamp and id of all to-be-deleted entries in mainResultSet
+                            isEmpty = false;
+                            parameters = new Object[]{e.getTimestampMillis(), mainResultSet.getLong("e.id")};
+                        }
+
+                        if (!isEmpty) {
+                            executeUpdate(deleteMetadataSql.toString(), parameters);
+                            executeUpdate(deleteDimensionsSql.toString(), parameters);
+                            executeUpdate(deleteMainSql.toString(), parameters);
+                        }
+                    }
+                }
+            } catch (SQLException exception) {
+                throw new IOException(exception);
+            }
+        }
+    }
+
+    private Map<String, String> getQuery(Map<String, Double> dimensions) {
+        Map<String, String> query = new HashMap<>();
+        for (Map.Entry<String, Double> d : dimensions.entrySet()) {
+            query.put(d.getKey(), "<=" + d.getValue()); // dimensionsQuery does not support exact match, so using <= instead
+        }
+        return query;
     }
 
     @Override

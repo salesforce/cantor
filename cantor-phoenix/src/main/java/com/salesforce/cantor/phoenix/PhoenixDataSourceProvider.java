@@ -14,7 +14,7 @@ public class PhoenixDataSourceProvider {
     }
 
     private static DataSource doGetDataSource(final PhoenixDataSourceProperties builder) {
-        final String jdbcUrl = "jdbc:phoenix:" + builder.getHostname() + ":" + builder.getPath();
+        final String jdbcUrl = "jdbc:phoenix:akouthoofd-wsl";
         try {
             // force loading Phoenix drivers
             Class.forName("org.apache.phoenix.jdbc.PhoenixDriver");
@@ -23,7 +23,9 @@ public class PhoenixDataSourceProvider {
         }
 
         final HikariDataSource connectionPoolDataSource = new HikariDataSource();
+
         connectionPoolDataSource.setJdbcUrl(jdbcUrl);
+
         logger.info("jdbc url for datasource is: {} data source properties are: {}",
                 jdbcUrl, connectionPoolDataSource.getDataSourceProperties()
         );
