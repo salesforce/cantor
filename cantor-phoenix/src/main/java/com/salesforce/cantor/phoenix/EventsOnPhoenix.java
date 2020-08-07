@@ -11,7 +11,7 @@ import org.apache.commons.collections4.map.MultiKeyMap;
 
 public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events {
 
-    //TODO: in the future create tables and sequences in one batch
+    //TODO: create tables and sequences in one batch
     public EventsOnPhoenix(final DataSource dataSource) throws IOException {
         super(dataSource);
         String createMainTableSql = "create table if not exists cantor_events (timestampMillis BIGINT not null, " +
@@ -38,13 +38,14 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
     }
 
     //TODO: batchUpdate multiple statements w/ parameters
-    //TODO: if one event failed, are other events rolled back?
-    //TODO: if inserting into metadata/dimensions failed, how to roll back inserting into previous table(s)?
     @Override
     public void store(String namespace, Collection<Event> batch) throws IOException {
-        String upsertMainSql = "upsert into cantor_events values (?, next value for cantor_events_id, ?, ?)";
-        String upsertMetadataSql = "upsert into cantor_events_m values (?, current value for cantor_events_id, ?, ?, next value for cantor_events_m_id)";
-        String upsertDimensionsSql = "upsert into cantor_events_d values (?, current value for cantor_events_id, ?, ?, next value for cantor_events_d_id)";
+        String upsertMainSql = String.format("upsert into %s values (?, next value for %s, ?, ?)",
+                getMainTableName(), getMainIdSequence());
+        String upsertMetadataSql = String.format("upsert into %s values (?, current value for %s, ?, ?, next value for %s)",
+                getMetadataTableName(), getMainIdSequence(), getMetadataIdSequence());
+        String upsertDimensionsSql = String.format("upsert into %s values (?, current value for %s, ?, ?, next value for %s)",
+                getDimensionsTableName(), getMainIdSequence(), getDimensionsIdSequence());
         List<Object[]> metadataParameters;
         List<Object[]> dimensionsParameters;
         Collection<Event> storedEvents = new ArrayList<>();
@@ -88,7 +89,7 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                 throw exception;
             } catch (SQLException exception) {
                 rollback(namespace, storedEvents);
-                exception.printStackTrace();
+                throw new IOException(exception);
             }
         }
     }
@@ -98,7 +99,7 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         List<Object> parameterList;
         Object[] parameters;
         for (Event e: batch) {
-            selectQuery = new StringBuilder("select e.timestampMillis, e.id from cantor_events as e ");
+            selectQuery = new StringBuilder(String.format("select e.%s, e.%s from %s as e ", getTimestampColumnName(), getIdColumnName(), getMainTableName()));
             parameterList = new ArrayList<>();
             parameters = buildQueryAndParamOnSubqueries(selectQuery, parameterList, e.getTimestampMillis(), e.getTimestampMillis() + 1, namespace, e.getMetadata(), getQuery(e.getDimensions()));
             try (final Connection connection = getConnection()) {
@@ -106,17 +107,19 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                 try (final PreparedStatement preparedStatement = connection.prepareStatement(selectQuery.toString())) {
                     addParameters(preparedStatement, parameters);
                     try (final ResultSet mainResultSet = preparedStatement.executeQuery()) {
-                        StringBuilder deleteMainSql = new StringBuilder("delete from cantor_events where timestampMillis = ? and id = ?");
-                        StringBuilder deleteMetadataSql = new StringBuilder("delete from cantor_events_m where timestampMillis = ? and id = ?");
-                        StringBuilder deleteDimensionsSql = new StringBuilder("delete from cantor_events_d where timestampMillis = ? and id = ?");
+                        StringBuilder deleteMainSql = new StringBuilder(String.format("delete from %s where %s = ? and %s = ?",
+                                getMainTableName(), getTimestampColumnName(), getIdColumnName()));
+                        StringBuilder deleteMetadataSql = new StringBuilder(String.format("delete from %s where %s = ? and %s = ?",
+                                getMetadataTableName(), getTimestampColumnName(), getIdColumnName()));
+                        StringBuilder deleteDimensionsSql = new StringBuilder(String.format("delete from %s where %s = ? and %s = ?",
+                                getDimensionsTableName(), getTimestampColumnName(), getIdColumnName()));
 
-                        boolean isEmpty = true;
+                        parameters = null;
                         while (mainResultSet.next()) { // store the timestamp and id of all to-be-deleted entries in mainResultSet
-                            isEmpty = false;
-                            parameters = new Object[]{e.getTimestampMillis(), mainResultSet.getLong("e.id")};
+                            parameters = new Object[]{e.getTimestampMillis(), mainResultSet.getLong(String.format("e.%s", getIdColumnName()))};
                         }
 
-                        if (!isEmpty) {
+                        if (parameters != null) {
                             executeUpdate(deleteMetadataSql.toString(), parameters);
                             executeUpdate(deleteDimensionsSql.toString(), parameters);
                             executeUpdate(deleteMainSql.toString(), parameters);
@@ -150,18 +153,18 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         Object[] parameters;
 
         if (includePayloads) {
-            query.append("select /*+ USE_SORT_MERGE_JOIN*/ e.timestampMillis, e.id, e.payload from cantor_events as e ");
+            query.append(String.format("select e.%s, e.%s, e.%s from %s as e ", getTimestampColumnName(), getIdColumnName(), getPayloadColumnName(), getMainTableName()));
         } else {
-            query.append("select /*+ USE_SORT_MERGE_JOIN*/ e.timestampMillis, e.id from cantor_events as e ");
+            query.append(String.format("select e.%s, e.%s from %s as e ", getTimestampColumnName(), getIdColumnName(), getMainTableName()));
         }
 
         // build up the query and parameterList from metadataQuery, dimensionsQuery, timestamps and namespace
         parameters = buildQueryAndParamOnSubqueries(query, parameterList, startTimestampMillis, endTimestampMillis, namespace, metadataQuery, dimensionsQuery);
 
         if (ascending) {
-            query.append("order by e.timestampMillis asc");
+            query.append(String.format("order by e.%s asc", getTimestampColumnName()));
         } else {
-            query.append("order by e.timestampMillis desc");
+            query.append(String.format("order by e.%s desc", getTimestampColumnName()));
         }
         if (limit > 0) {
             query.append(" limit ").append(limit);
@@ -173,18 +176,22 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                 try (final ResultSet mainResultSet = preparedStatement.executeQuery()) {
                     // select from metadata and dimensions table entries associated with eligible timestamp + id
                     // returned by selection from main table
-                    StringBuilder metadataSql = new StringBuilder("select timestampMillis, id, m_key, m_value from cantor_events_m where (timestampMillis, id) in (");
-                    StringBuilder dimensionsSql = new StringBuilder("select timestampMillis, id, d_key, d_value from cantor_events_d where (timestampMillis, id) in (");
+                    StringBuilder metadataSql = new StringBuilder(String.format("select %s, %s, %s, %s from %s where (%s, %s) in (",
+                            getTimestampColumnName(), getIdColumnName(), getMetadataKeyColumnName(),
+                            getMetadataValueColumnName(), getMetadataTableName(), getTimestampColumnName(), getIdColumnName()));
+                    StringBuilder dimensionsSql = new StringBuilder(String.format("select %s, %s, %s, %s from %s where (%s, %s) in (",
+                            getTimestampColumnName(), getIdColumnName(), getDimensionsKeyColumnName(),
+                            getDimensionsValueColumnName(), getDimensionsTableName(), getTimestampColumnName(), getIdColumnName()));
                     StringJoiner timeIdPairString = new StringJoiner(", ");
                     List<Object[]> mainResultMap = new ArrayList<>();
 
                     boolean isEmpty = true;
                     while (mainResultSet.next()) { // building metadataSql and dimensionsSql with eligible timestamp + id entries
                         isEmpty = false;
-                        long timestamp = mainResultSet.getLong("e.timestampMillis");
-                        long id = mainResultSet.getLong("e.id");
+                        long timestamp = mainResultSet.getLong(String.format("e.%s", getTimestampColumnName()));
+                        long id = mainResultSet.getLong(String.format("e.%s", getIdColumnName()));
                         timeIdPairString.add("(" + timestamp + ", " + id + ")");
-                        mainResultMap.add(new Object[]{timestamp, id, (includePayloads) ? mainResultSet.getBytes("e.payload") : null});
+                        mainResultMap.add(new Object[]{timestamp, id, (includePayloads) ? mainResultSet.getBytes(String.format("e.%s", getPayloadColumnName())) : null});
                     }
                     // if nothing is selected from main table, do not need to further look into metadata/dimensions table
                     if (isEmpty) {
@@ -201,14 +208,15 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                     try(final PreparedStatement preparedStatementM = connection.prepareStatement(metadataSql.toString())) {
                         try (final ResultSet metadataResultSet = preparedStatementM.executeQuery()) {
                             while (metadataResultSet.next()) {
-                                long timestamp = metadataResultSet.getLong("timestampMillis");
-                                long id = metadataResultSet.getLong("id");
+                                long timestamp = metadataResultSet.getLong(getTimestampColumnName());
+                                long id = metadataResultSet.getLong(getIdColumnName());
                                 if (metadataResultMap.containsKey(timestamp, id)) {
-                                    metadataResultMap.get(timestamp, id).put(metadataResultSet.getString("m_key"),
-                                            metadataResultSet.getString("m_value"));
+                                    metadataResultMap.get(timestamp, id).put(metadataResultSet.getString(getMetadataKeyColumnName()),
+                                            metadataResultSet.getString(getMetadataValueColumnName()));
                                 } else {
                                     metadataResultMap.put(timestamp, id, new HashMap<String, String>() {{
-                                        put(metadataResultSet.getString("m_key"), metadataResultSet.getString("m_value")); }});
+                                        put(metadataResultSet.getString(getMetadataKeyColumnName()),
+                                                metadataResultSet.getString(getMetadataValueColumnName())); }});
                                 }
                             }
                         }
@@ -218,14 +226,15 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                     try(final PreparedStatement preparedStatementD = connection.prepareStatement(dimensionsSql.toString())) {
                         try (final ResultSet dimensionsResultSet = preparedStatementD.executeQuery()) {
                             while (dimensionsResultSet.next()) {
-                                long timestamp = dimensionsResultSet.getLong("timestampMillis");
-                                long id = dimensionsResultSet.getLong("id");
+                                long timestamp = dimensionsResultSet.getLong(getTimestampColumnName());
+                                long id = dimensionsResultSet.getLong(getIdColumnName());
                                 if (dimensionsResultMap.containsKey(timestamp, id)) {
-                                    dimensionsResultMap.get(timestamp, id).put(dimensionsResultSet.getString("d_key"),
-                                            dimensionsResultSet.getDouble("d_value"));
+                                    dimensionsResultMap.get(timestamp, id).put(dimensionsResultSet.getString(getDimensionsKeyColumnName()),
+                                            dimensionsResultSet.getDouble(getDimensionsValueColumnName()));
                                 } else {
                                     dimensionsResultMap.put(timestamp, id, new HashMap<String, Double>() {{
-                                        put(dimensionsResultSet.getString("d_key"), dimensionsResultSet.getDouble("d_value")); }});
+                                        put(dimensionsResultSet.getString(getDimensionsKeyColumnName()),
+                                                dimensionsResultSet.getDouble(getDimensionsValueColumnName())); }});
                                 }
                             }
                         }
@@ -248,21 +257,24 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
      * Build query and populate parameterList based on timestamps, namespace and queries for metadata and/or dimensions if applicable.
      * Returned is an array converted from ParameterList.
      */
-    private Object[] buildQueryAndParamOnSubqueries(StringBuilder query, List<Object> parameterList, long startTimestampMillis, long endTimestampMillis, String namespace, Map<String, String> metadataQuery, Map<String, String> dimensionsQuery) {
+    private Object[] buildQueryAndParamOnSubqueries(StringBuilder query, List<Object> parameterList, long startTimestampMillis,
+                                                    long endTimestampMillis, String namespace, Map<String, String> metadataQuery,
+                                                    Map<String, String> dimensionsQuery) {
         if ((metadataQuery == null || metadataQuery.isEmpty()) && (dimensionsQuery == null || dimensionsQuery.isEmpty())) {
             parameterList.addAll(Arrays.asList(startTimestampMillis, endTimestampMillis, namespace));
-            query.append("where timestampMillis between ? and ? and namespace = ? ");
+            query.append(String.format("where %s between ? and ? and %s = ? ", getTimestampColumnName(), getNamespaceColumnName()));
         } else {
             if (metadataQuery == null || metadataQuery.isEmpty()) {
                 addDimQueriesToQueryAndParam(query, parameterList, dimensionsQuery);
-                query.append("where d.timestampMillis is null and d.id is null ");
+                query.append(String.format("where d.%s is null and d.%s is null ", getTimestampColumnName(), getIdColumnName()));
             } else if (dimensionsQuery == null || dimensionsQuery.isEmpty()) {
                 addMetaQueriesToQueryAndParam(query, parameterList, metadataQuery);
-                query.append("where m.timestampMillis is null and m.id is null ");
+                query.append(String.format("where m.%s is null and m.%s is null ", getTimestampColumnName(), getIdColumnName()));
             } else {
                 addDimQueriesToQueryAndParam(query, parameterList, dimensionsQuery);
                 addMetaQueriesToQueryAndParam(query, parameterList, metadataQuery);
-                query.append("where d.timestampMillis is null and d.id is null and m.timestampMillis is null and m.id is null ");
+                query.append(String.format("where d.%s is null and d.%s is null and m.%s is null and m.%s is null ",
+                        getTimestampColumnName(), getIdColumnName(), getTimestampColumnName(), getIdColumnName()));
             }
 
             // add conditions in select query to ensure all keys appeared in metadataQuery and dimensionsQuery
@@ -270,7 +282,7 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
             addConditionsForKeyExisting(query, parameterList, metadataQuery, true);
             addConditionsForKeyExisting(query, parameterList, dimensionsQuery, false);
 
-            query.append("and e.timestampMillis between ? and ? and namespace = ? ");
+            query.append(String.format("and e.%s between ? and ? and %s = ? ", getTimestampColumnName(), getNamespaceColumnName()));
             parameterList.add(startTimestampMillis);
             parameterList.add(endTimestampMillis);
             parameterList.add(namespace);
@@ -283,12 +295,13 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
      */
     private void addMetaQueriesToQueryAndParam(StringBuilder query, List<Object> parameterList, Map<String, String> queryMap) {
         StringJoiner subqueries = new StringJoiner(" ");
-        query.append("left join (select timestampMillis, id from cantor_events_m where (case ");
+        query.append(String.format("left join (select %s, %s from %s where (case ", getTimestampColumnName(), getIdColumnName(), getMetadataTableName()));
 
         for (Map.Entry<String, String> q : queryMap.entrySet()) {
             parameterList.add(q.getKey());
             if (q.getValue().startsWith("~")) {
-                subqueries.add("when m_key = ? then (LENGTH(REGEXP_SUBSTR(m_value, ?)) is null or LENGTH(REGEXP_SUBSTR(m_value, ?)) != LENGTH(m_value))");
+                subqueries.add(String.format("when %s = ? then (LENGTH(REGEXP_SUBSTR(%s, ?)) is null or LENGTH(REGEXP_SUBSTR(%s, ?)) != LENGTH(%s))",
+                        getMetadataKeyColumnName(), getMetadataValueColumnName(), getMetadataValueColumnName(), getMetadataValueColumnName()));
                 if (!q.getValue().contains(".*")) {
                     parameterList.add(q.getValue().substring(1).replace("*", ".*"));
                     parameterList.add(q.getValue().substring(1).replace("*", ".*"));
@@ -297,17 +310,18 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                     parameterList.add(q.getValue().substring(1));
                 }
             } else if (q.getValue().startsWith("!~")) {
-                subqueries.add("when m_key = ? then LENGTH(REGEXP_SUBSTR(m_value, ?)) = LENGTH(m_value)");
+                subqueries.add(String.format("when %s = ? then LENGTH(REGEXP_SUBSTR(%s, ?)) = LENGTH(%s)",
+                        getMetadataKeyColumnName(), getMetadataValueColumnName(), getMetadataValueColumnName()));
                 if (!q.getValue().contains(".*")) {
                     parameterList.add(q.getValue().substring(2).replace("*", ".*"));
                 } else {
                     parameterList.add(q.getValue().substring(2));
                 }
             } else if (q.getValue().startsWith("!")) { // exact not
-                subqueries.add("when m_key = ? then m_value = ?");
+                subqueries.add(String.format("when %s = ? then %s = ?", getMetadataKeyColumnName(), getMetadataValueColumnName()));
                 parameterList.add(q.getValue().substring(1));
             } else { // exact match
-                subqueries.add("when m_key = ? then m_value != ?");
+                subqueries.add(String.format("when %s = ? then %s != ?", getMetadataKeyColumnName(), getMetadataValueColumnName()));
                 if (q.getValue().startsWith("=")) {
                     parameterList.add(q.getValue().substring(1));
                 } else {
@@ -315,7 +329,8 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                 }
             }
         }
-        query.append(subqueries.toString()).append(" end)) as m on e.timestampMillis = m.timestampMillis and e.id = m.id ");
+        query.append(subqueries.toString()).append(String.format(" end)) as m on e.%s = m.%s and e.%s = m.%s ",
+                getTimestampColumnName(), getTimestampColumnName(), getIdColumnName(), getIdColumnName()));
     }
 
     /**
@@ -323,38 +338,41 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
      */
     private void addDimQueriesToQueryAndParam(StringBuilder query, List<Object> parameterList, Map<String, String> queryMap) {
         StringJoiner subqueries = new StringJoiner(" ");
-        query.append("left join (select timestampMillis, id from cantor_events_d where (case ");
+        query.append(String.format("left join (select %s, %s from %s where (case ", getTimestampColumnName(), getIdColumnName(), getDimensionsTableName()));
 
         for (Map.Entry<String, String> q : queryMap.entrySet()) {
             parameterList.add(q.getKey());
             if (q.getValue().startsWith("<=")) {
-                subqueries.add("when d_key = ? then d_value > ?");
+                subqueries.add(String.format("when %s = ? then %s > ?", getDimensionsKeyColumnName(), getDimensionsValueColumnName()));
                 parameterList.add(Double.parseDouble(q.getValue().substring(2)));
             } else if (q.getValue().startsWith(">=")) {
-                subqueries.add("when d_key = ? then d_value < ?");
+                subqueries.add(String.format("when %s = ? then %s < ?", getDimensionsKeyColumnName(), getDimensionsValueColumnName()));
                 parameterList.add(Double.parseDouble(q.getValue().substring(2)));
             } else if (q.getValue().startsWith("<")) {
-                subqueries.add("when d_key = ? then d_value >= ?");
+                subqueries.add(String.format("when %s = ? then %s >= ?", getDimensionsKeyColumnName(), getDimensionsValueColumnName()));
                 parameterList.add(Double.parseDouble(q.getValue().substring(1)));
             } else if (q.getValue().startsWith(">")) {
-                subqueries.add("when d_key = ? then d_value <= ?");
+                subqueries.add(String.format("when %s = ? then %s <= ?", getDimensionsKeyColumnName(), getDimensionsValueColumnName()));
                 parameterList.add(Double.parseDouble(q.getValue().substring(1)));
             } else { // between and
-                subqueries.add("when d_key = ? then d_value not between ? and ?");
+                subqueries.add(String.format("when %s = ? then %s not between ? and ?", getDimensionsKeyColumnName(), getDimensionsValueColumnName()));
                 parameterList.add(Double.parseDouble(q.getValue().split("\\.\\.")[0]));
                 parameterList.add(Double.parseDouble(q.getValue().split("\\.\\.")[1]));
             }
         }
-        query.append(subqueries.toString()).append(" end)) as d on e.timestampMillis = d.timestampMillis and e.id = d.id ");
+        query.append(subqueries.toString()).append(String.format(" end)) as d on e.%s = d.%s and e.%s = d.%s ",
+                getTimestampColumnName(), getTimestampColumnName(), getIdColumnName(), getIdColumnName()));
     }
 
     private void addConditionsForKeyExisting(StringBuilder query, List<Object> parameterList, Map<String, String> queryMap, boolean isMetadataQeury) {
         if (queryMap != null) {
             for (String key : queryMap.keySet()) {
                 if (isMetadataQeury){
-                    query.append("and exists (select 1 from cantor_events_m as m where m_key = ? and m.timestampMillis = e.timestampMillis and m.id = e.id) ");
+                    query.append(String.format("and exists (select 1 from %s as m where %s = ? and m.%s = e.%s and m.%s = e.%s) ",
+                            getMetadataTableName(), getMetadataKeyColumnName(), getTimestampColumnName(), getTimestampColumnName(), getIdColumnName(), getIdColumnName()));
                 } else {
-                    query.append("and exists (select 1 from cantor_events_d as d where d_key = ? and d.timestampMillis = e.timestampMillis and d.id = e.id) ");
+                    query.append(String.format("and exists (select 1 from %s as d where %s = ? and d.%s = e.%s and d.%s = e.%s) ",
+                            getDimensionsTableName(), getDimensionsKeyColumnName(), getTimestampColumnName(), getTimestampColumnName(), getIdColumnName(), getIdColumnName()));
                 }
                 parameterList.add(key);
             }
@@ -364,7 +382,7 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
     @Override
     public int delete(String namespace, long startTimestampMillis, long endTimestampMillis,
                       Map<String, String> metadataQuery, Map<String, String> dimensionsQuery) throws IOException {
-        StringBuilder selectQuery = new StringBuilder("select e.timestampMillis, e.id from cantor_events as e ");
+        StringBuilder selectQuery = new StringBuilder(String.format("select e.%s, e.%s from %s as e ", getTimestampColumnName(), getIdColumnName(), getMainTableName()));
         List<Object> parameterList = new ArrayList<>();
         Object[] parameters = buildQueryAndParamOnSubqueries(selectQuery, parameterList, startTimestampMillis, endTimestampMillis, namespace, metadataQuery, dimensionsQuery);
         int deletedRows;
@@ -374,19 +392,20 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
             try (final PreparedStatement preparedStatement = connection.prepareStatement(selectQuery.toString())) {
                 addParameters(preparedStatement, parameters);
                 try (final ResultSet mainResultSet = preparedStatement.executeQuery()) {
-                    StringBuilder deleteMainSql = new StringBuilder("delete from cantor_events where (timestampMillis, id) in (");
-                    StringBuilder deleteMetadataSql = new StringBuilder("delete from cantor_events_m where (timestampMillis, id) in (");
-                    StringBuilder deleteDimensionsSql = new StringBuilder("delete from cantor_events_d where (timestampMillis, id) in (");
+                    StringBuilder deleteMainSql = new StringBuilder(String.format("delete from %s where (%s, %s) in (",
+                            getMainTableName(), getTimestampColumnName(), getIdColumnName()));
+                    StringBuilder deleteMetadataSql = new StringBuilder(String.format("delete from %s where (%s, %s) in (",
+                            getMetadataTableName(), getTimestampColumnName(), getIdColumnName()));
+                    StringBuilder deleteDimensionsSql = new StringBuilder(String.format("delete from %s where (%s, %s) in (",
+                            getDimensionsTableName(), getTimestampColumnName(), getIdColumnName()));
                     StringJoiner timeIdPairString = new StringJoiner(", ");
-                    List<Object[]> mainResultMap = new ArrayList<>();
 
                     boolean isEmpty = true;
                     while (mainResultSet.next()) { // store the timestamp and id of all to-be-deleted entries in mainResultSet
                         isEmpty = false;
-                        long timestamp = mainResultSet.getLong("e.timestampMillis");
-                        long id = mainResultSet.getLong("e.id");
+                        long timestamp = mainResultSet.getLong(String.format("e.%s", getTimestampColumnName()));
+                        long id = mainResultSet.getLong(String.format("e.%s", getIdColumnName()));
                         timeIdPairString.add("(" + timestamp + ", " + id + ")");
-                        mainResultMap.add(new Object[]{timestamp, id});
                     }
 
                     if (isEmpty) {
@@ -413,11 +432,12 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                                 long endTimestampMillis, Map<String, String> metadataQuery,
                                 Map<String, String> dimensionsQuery) throws IOException {
         Set<String> results = new HashSet<>();
-        StringBuilder query = new StringBuilder("select distinct m_value from cantor_events_m where m_key = ? and (timestampMillis, id) in (");
+        StringBuilder query = new StringBuilder(String.format("select distinct %s from %s where %s = ? and (%s, %s) in (",
+                getMetadataValueColumnName(), getMetadataTableName(), getMetadataKeyColumnName(), getTimestampColumnName(), getIdColumnName()));
         List<Object> parameterList = new ArrayList<>();
         Object[] parameters;
         parameterList.add(metadataKey);
-        query.append("select e.timestampMillis, e.id from cantor_events as e ");
+        query.append(String.format("select e.%s, e.%s from %s as e ", getTimestampColumnName(), getIdColumnName(), getMainTableName()));
         parameters = buildQueryAndParamOnSubqueries(query, parameterList, startTimestampMillis, endTimestampMillis, namespace, metadataQuery, dimensionsQuery);
         query.append(")");
 
@@ -426,7 +446,7 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
                 addParameters(preparedStatement, parameters);
                 try (final ResultSet resultSet = preparedStatement.executeQuery()) {
                     while (resultSet.next()) {
-                        results.add(resultSet.getString("m_value"));
+                        results.add(resultSet.getString(getMetadataValueColumnName()));
                     }
                 }
             }
@@ -439,12 +459,12 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
     @Override
     public Collection<String> namespaces() throws IOException {
         Collection<String> result = new HashSet<>();
-        String query = "select * from cantor_events_namespace";
+        String query = String.format("select * from %s", getNamespaceTableName());
         try (final Connection connection = getConnection()) {
             try (final PreparedStatement preparedStatement = connection.prepareStatement(query.toString())) {
                 try (final ResultSet resultSet = preparedStatement.executeQuery()) {
                     while (resultSet.next()) {
-                        result.add(resultSet.getString("namespace"));
+                        result.add(resultSet.getString(getNamespaceColumnName()));
                     }
                 }
             }
@@ -456,7 +476,7 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
 
     @Override
     public void create(String namespace) throws IOException {
-        String query = String.format("upsert into cantor_events_namespace values ('%s')", namespace);
+        String query = String.format("upsert into %s values (%s)", getNamespaceTableName(), quote(namespace));
         executeUpdate(query);
     }
 
@@ -464,10 +484,14 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
     public void drop(String namespace) throws IOException {
         Connection connection = null;
         try {
-            String query = String.format("delete from cantor_events_namespace where namespace = '%s'", namespace);
-            String deleteFromMetadataSql = String.format("delete from cantor_events_m where (timestampMillis, id) in (select timestampMillis, id from cantor_events where namespace = '%s')", namespace);
-            String deleteFromDimensionsSql = String.format("delete from cantor_events_d where (timestampMillis, id) in (select timestampMillis, id from cantor_events where namespace = '%s')", namespace);
-            String deleteFromMainSql = String.format("delete from cantor_events where namespace = '%s'", namespace);
+            String query = String.format("delete from %s where %s = %s", getNamespaceTableName(), getNamespaceColumnName(), quote(namespace));
+            String deleteFromMetadataSql = String.format("delete from %s where (%s, %s) in (select %s, %s from %s where %s = %s)",
+                    getMetadataTableName(), getTimestampColumnName(), getIdColumnName(), getTimestampColumnName(),
+                    getIdColumnName(), getMainTableName(), getNamespaceColumnName(), quote(namespace));
+            String deleteFromDimensionsSql = String.format("delete from %s where (%s, %s) in (select %s, %s from %s where %s = %s)",
+                    getDimensionsTableName(), getTimestampColumnName(), getIdColumnName(), getTimestampColumnName(),
+                    getIdColumnName(), getMainTableName(), getNamespaceColumnName(), quote(namespace));
+            String deleteFromMainSql = String.format("delete from %s where %s = %s", getMainTableName(), getNamespaceColumnName(), quote(namespace));
             connection = openTransaction(getConnection());
             executeUpdate(connection, query);
             executeUpdate(connection, deleteFromMetadataSql);
@@ -476,6 +500,72 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
         } finally {
             closeConnection(connection);
         }
+    }
+
+    private String quote(String in) {
+        return String.format("'%s'", in);
+    }
+
+    @Override
+    protected String getPayloadColumnName() {
+        return "PAYLOAD";
+    }
+
+    @Override
+    protected String getNamespaceColumnName() {
+        return "NAMESPACE";
+    }
+
+    private String getTimestampColumnName() {
+        return "TIMESTAMPMILLIS";
+    }
+
+    private String getIdColumnName() {
+        return "ID";
+    }
+
+    private String getMetadataKeyColumnName() {
+        return "M_KEY";
+    }
+
+    private String getMetadataValueColumnName() {
+        return "M_VALUE";
+    }
+
+    private String getDimensionsKeyColumnName() {
+        return "D_KEY";
+    }
+
+    private String getDimensionsValueColumnName() {
+        return "D_VALUE";
+    }
+
+    private String getMainTableName() {
+        return "CANTOR_EVENTS";
+    }
+
+    private String getMetadataTableName() {
+        return "CANTOR_EVENTS_M";
+    }
+
+    private String getDimensionsTableName() {
+        return "CANTOR_EVENTS_D";
+    }
+
+    private String getNamespaceTableName() {
+        return "CANTOR_EVENTS_NAMESPACE";
+    }
+
+    private String getMainIdSequence() {
+        return "CANTOR_EVENTS_ID";
+    }
+
+    private String getMetadataIdSequence() {
+        return "CANTOR_EVENTS_M_ID";
+    }
+
+    private String getDimensionsIdSequence() {
+        return "CANTOR_EVENTS_D_ID";
     }
 
     public static void addParameters(final PreparedStatement preparedStatement, final Object... parameters)
