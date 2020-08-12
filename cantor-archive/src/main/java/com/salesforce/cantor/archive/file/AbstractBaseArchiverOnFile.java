@@ -16,13 +16,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
-import static com.salesforce.cantor.common.CommonPreconditions.checkString;
 
 public abstract class AbstractBaseArchiverOnFile {
     protected final String baseDirectory;
     protected final long chunkMillis;
 
-    // default to nothing for no sub directory
+    // nothing for no sub directory
     protected String subDirectory = "";
 
     protected AbstractBaseArchiverOnFile(final String baseDirectory) {
@@ -44,6 +43,10 @@ public abstract class AbstractBaseArchiverOnFile {
 
     protected void setSubDirectory(final String subDirectory) {
         this.subDirectory = (subDirectory != null) ? subDirectory : "";
+        final Path createDirectory = getArchiveLocation();
+        if (!createDirectory.toFile().exists() && !createDirectory.toFile().mkdirs()) {
+            throw new IllegalStateException("Failed to create sub directory for file archive: " + createDirectory);
+        }
     }
 
     protected void writeArchiveEntry(final ArchiveOutputStream archive, final String name, final byte[] bytes) throws IOException {
@@ -68,14 +71,12 @@ public abstract class AbstractBaseArchiverOnFile {
 
     protected boolean checkArchiveArguments(final Object instance, final String namespace, final Path destination) {
         checkArgument(instance != null, "null cantor instance, can't archive");
-        checkString(namespace, "null/empty namespace, can't archive");
         checkArgument(destination != null, "null destination, can't archive");
         return Files.notExists(destination) || destination.toFile().length() == 0;
     }
 
     protected void checkRestoreArguments(final Object instance, final String namespace, final Path archiveFile) {
         checkArgument(instance != null, "null objects, can't restore");
-        checkString(namespace, "null/empty namespace, can't restore");
         checkArgument(Files.exists(archiveFile), "can't locate archive file, can't restore: " + archiveFile);
     }
 

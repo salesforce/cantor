@@ -21,8 +21,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 import static com.salesforce.cantor.common.CommonPreconditions.checkNamespace;
+import static com.salesforce.cantor.common.CommonPreconditions.checkString;
 
 public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements EventsArchiver {
     private static final Logger logger = LoggerFactory.getLogger(EventsArchiverOnFile.class);
@@ -47,6 +48,29 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
         super(baseDirectory, chunkMillis);
         checkArgument(this.chunkMillis >= minChunkMillis, "archive chunk millis must be greater than " + minChunkMillis);
         checkArgument(this.chunkMillis <= maxChunkMillis, "archive chunk millis must be less than " + maxChunkMillis);
+        setSubDirectory("events");
+    }
+
+    @Override
+    public Collection<String> namespaces() throws IOException {
+        return Files.list(getArchiveLocation())
+                .map(EventsArchiverOnFile::getNamespace)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public void create(final String namespace) throws IOException {
+        // no-op; creating an archive only happens during deletion of hot data
+    }
+
+    @Override
+    public void drop(final String namespace) throws IOException {
+        final List<Path> fileArchiveList = getFileArchiveList(namespace, Long.MIN_VALUE, Long.MAX_VALUE);
+        for (final Path path : fileArchiveList) {
+            if (!path.toFile().delete()) {
+                logger.warn("failed to delete file: {}", path);
+            }
+        }
     }
 
     // partitioning and file naming logic is done here followed by the actual archiving logic in doArchive
@@ -120,12 +144,12 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
 
     // real archiving logic which will archive the entire timeframe matching the query into the provided file
     protected long doArchive(final Events events,
-                          final String namespace,
-                          final long startTimestampMillis,
-                          final long endTimestampMillis,
-                          final Map<String, String> metadataQuery,
-                          final Map<String, String> dimensionsQuery,
-                          final Path destination) throws IOException {
+                             final String namespace,
+                             final long startTimestampMillis,
+                             final long endTimestampMillis,
+                             final Map<String, String> metadataQuery,
+                             final Map<String, String> dimensionsQuery,
+                             final Path destination) throws IOException {
         EventsPreconditions.checkGet(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
         long startNanos = System.nanoTime();
         long eventsArchived = 0;
@@ -176,8 +200,8 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
 
     // real restoration logic which takes any archive file provided and loads the entire contents into events under the given namespace
     protected long doRestore(final Events events,
-                          final String namespace,
-                          final Path archiveFile) throws IOException {
+                             final String namespace,
+                             final Path archiveFile) throws IOException {
         checkRestoreArguments(events, namespace, archiveFile);
         // create the namespace, in case the user hasn't already
         // TODO: potential bug here; seeing data deletion when creating a namespace that already exists
@@ -220,8 +244,8 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
 
     // remove all restored events in this chunk to prevent duplicates
     protected void cleanRestoredEvents(final Events events,
-                                     final String namespace,
-                                     final Path archiveFile) throws IOException {
+                                       final String namespace,
+                                       final Path archiveFile) throws IOException {
         final String filename = archiveFile.getFileName().toString();
         final Matcher matcher = archiveRegexPattern.matcher(filename);
         if (matcher.matches()) {
@@ -235,13 +259,13 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
 
     // retrieves all archive files that overlap with the timeframe
     protected List<Path> getFileArchiveList(final String namespace,
-                                         final long startTimestampMillis,
-                                         final long endTimestampMillis) throws IOException {
+                                            final long startTimestampMillis,
+                                            final long endTimestampMillis) throws IOException {
         final long windowStart = getFloorForChunk(startTimestampMillis);
         final long windowEnd = (endTimestampMillis <= Long.MAX_VALUE - this.chunkMillis)
                 ? getCeilingForChunk(endTimestampMillis)
                 : endTimestampMillis;
-        return Files.list(Paths.get(this.baseDirectory, this.subDirectory))
+        return Files.list(getArchiveLocation())
             .filter(path -> {
                 // filter to archive files that overlap with the timeframe
                 final String filename = path.getFileName().toString();
@@ -261,9 +285,17 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
 
     // resolve archive filename
     protected Path getFileArchive(final String namespace, final long chunkStartMillis) {
+        checkString(namespace, "null/empty namespace");
         return getFile(archivePathFormat,
                 namespace,
                 chunkStartMillis,
                 chunkStartMillis + chunkMillis - 1);
+    }
+
+    // extracts namespace from a filename
+    protected static String getNamespace(final Path path) {
+        final String fileName = path.getFileName().toString();
+        final Matcher matcher = archiveRegexPattern.matcher(fileName);
+        return (matcher.matches()) ? matcher.group("namespace") : null;
     }
 }

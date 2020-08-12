@@ -18,18 +18,48 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
+import static com.salesforce.cantor.common.CommonPreconditions.checkString;
 
 public class ObjectsArchiverOnFile extends AbstractBaseArchiverOnFile implements ObjectsArchiver {
     private static final Logger logger = LoggerFactory.getLogger(ObjectsArchiverOnFile.class);
     protected static final String archivePathFormat = "/archive-objects-%s";
+    private static final Pattern archiveRegexPattern = Pattern.compile("archive-objects-(?<namespace>.*)");
 
     public static final int chunkSize = 1_000;
 
     public ObjectsArchiverOnFile(final String baseDirectory) {
         super(baseDirectory);
+        setSubDirectory("objects");
+    }
+
+    @Override
+    public Collection<String> namespaces() throws IOException {
+        return Files.list(getArchiveLocation())
+                .map(ObjectsArchiverOnFile::getNamespace)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public void create(final String namespace) throws IOException {
+        // no-op; creating an archive only happens during deletion of hot data
+    }
+
+    @Override
+    public void drop(final String namespace) throws IOException {
+        final Path archiveFile = getFileArchive(namespace);
+        checkArgument(archiveFile.toFile().exists(), "file archive does not exist: " + archiveFile);
+        if (!archiveFile.toFile().delete()) {
+            throw new IOException("failed to delete namespace archive: " + archiveFile.toString());
+        }
     }
 
     @Override
@@ -92,6 +122,14 @@ public class ObjectsArchiverOnFile extends AbstractBaseArchiverOnFile implements
     }
 
     protected Path getFileArchive(final String namespace) {
+        checkString(namespace, "null/empty namespace");
         return getFile(archivePathFormat, namespace);
+    }
+
+    // extracts namespace from a filename
+    protected static String getNamespace(final Path path) {
+        final String fileName = path.getFileName().toString();
+        final Matcher matcher = archiveRegexPattern.matcher(fileName);
+        return (matcher.matches()) ? matcher.group("namespace") : null;
     }
 }

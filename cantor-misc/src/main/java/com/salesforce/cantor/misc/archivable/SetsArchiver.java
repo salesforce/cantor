@@ -1,5 +1,13 @@
+/*
+ * Copyright (c) 2020, Salesforce.com, Inc.
+ * All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
+ * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
+ */
+
 package com.salesforce.cantor.misc.archivable;
 
+import com.salesforce.cantor.Namespaceable;
 import com.salesforce.cantor.Sets;
 import com.salesforce.cantor.misc.archivable.impl.ArchivableEvents;
 
@@ -8,7 +16,7 @@ import java.io.IOException;
 /**
  * SetsArchiver is the contract used by {@link ArchivableEvents} when handling archiving of {@link Sets}
  */
-public interface SetsArchiver {
+public interface SetsArchiver extends Namespaceable {
     /**
      * Will retrieve and archive the provided set in a namespace.
      */
