@@ -27,13 +27,8 @@ public class ArchiverOnS3 implements CantorArchiver {
     private final EventsArchiverOnS3 eventsArchive;
 
     public ArchiverOnS3(final Cantor cantor) throws IOException {
-        this(cantor, defaultChunkMillis);
-    }
-
-    public ArchiverOnS3(final Cantor cantor, final long eventsChunkMillis) throws IOException {
         checkArgument(cantor != null, "null/empty cantor");
-        checkArgument(eventsChunkMillis > 0, "eventsChunkMillis must be greater than zero");
-        logger.info("initializing s3 archiver with file archive '{}' in {}ms chunks", archivePath, eventsChunkMillis);
+        logger.info("initializing s3 archiver with file archive '{}'", archivePath);
 
         final File createDirectory = new File(archivePath);
         if (!createDirectory.mkdirs() && !createDirectory.exists()) {
@@ -42,7 +37,7 @@ public class ArchiverOnS3 implements CantorArchiver {
 
         this.setsArchive = new SetsArchiverOnS3(cantor, archivePath);
         this.objectsArchive = new ObjectsArchiverOnS3(cantor, archivePath);
-        this.eventsArchive = new EventsArchiverOnS3(cantor, archivePath, eventsChunkMillis);
+        this.eventsArchive = new EventsArchiverOnS3(cantor, archivePath);
     }
 
     @Override

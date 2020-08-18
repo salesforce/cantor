@@ -50,7 +50,7 @@ public class ArchiverOnS3Test {
     public void setUp() throws IOException {
         final AmazonS3 s3Client = createS3Client();
         this.cantorOnS3 = new CantorOnS3(s3Client, "cantor-archive-test");
-        this.archiver = new ArchiverOnS3(cantorOnS3, hourMillis);
+        this.archiver = new ArchiverOnS3(cantorOnS3);
 
         this.cantorLocal = new ArchivableCantor(new CantorOnH2(h2Directory), this.archiver);
         this.cantorH2Namespaces = new HashMap<>();
