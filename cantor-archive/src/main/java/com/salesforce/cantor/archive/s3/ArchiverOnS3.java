@@ -1,10 +1,10 @@
 package com.salesforce.cantor.archive.s3;
 
+import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.misc.archivable.CantorArchiver;
 import com.salesforce.cantor.misc.archivable.EventsArchiver;
 import com.salesforce.cantor.misc.archivable.ObjectsArchiver;
 import com.salesforce.cantor.misc.archivable.SetsArchiver;
-import com.salesforce.cantor.s3.CantorOnS3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,11 +26,11 @@ public class ArchiverOnS3 implements CantorArchiver {
     private final ObjectsArchiverOnS3 objectsArchive;
     private final EventsArchiverOnS3 eventsArchive;
 
-    public ArchiverOnS3(final CantorOnS3 cantor) throws IOException {
+    public ArchiverOnS3(final Cantor cantor) throws IOException {
         this(cantor, defaultChunkMillis);
     }
 
-    public ArchiverOnS3(final CantorOnS3 cantor, final long eventsChunkMillis) throws IOException {
+    public ArchiverOnS3(final Cantor cantor, final long eventsChunkMillis) throws IOException {
         checkArgument(cantor != null, "null/empty cantor");
         checkArgument(eventsChunkMillis > 0, "eventsChunkMillis must be greater than zero");
         logger.info("initializing s3 archiver with file archive '{}' in {}ms chunks", archivePath, eventsChunkMillis);
