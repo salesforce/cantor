@@ -22,11 +22,11 @@ public class CantorOnS3SingleBucket implements Cantor {
     private final Objects objects;
 
     public CantorOnS3SingleBucket(final AmazonS3 s3Client) throws IOException {
-        this(s3Client, "default");
+        this(s3Client, "warden-cantor");
     }
 
-    public CantorOnS3SingleBucket(final AmazonS3 s3Client, final String bucketPrefix) throws IOException {
-        this.objects = new ObjectsOnS3SingleBucket(s3Client, bucketPrefix);
+    public CantorOnS3SingleBucket(final AmazonS3 s3Client, final String bucketName) throws IOException {
+        this.objects = new ObjectsOnS3SingleBucket(s3Client, bucketName);
     }
 
     @Override

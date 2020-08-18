@@ -71,8 +71,8 @@ public class ObjectsOnS3 implements StreamingObjects {
         try {
             return doGetNamespaces();
         } catch (final AmazonS3Exception e) {
-            logger.warn("exception getting namespaces:", e);
-            throw new IOException("exception getting namespaces:", e);
+            logger.warn("exception getting namespaces", e);
+            throw new IOException("exception getting namespaces", e);
         }
     }
 
@@ -82,8 +82,8 @@ public class ObjectsOnS3 implements StreamingObjects {
         try {
             doCreate(namespace);
         } catch (final AmazonS3Exception e) {
-            logger.warn("exception creating namespace:", e);
-            throw new IOException("exception creating namespace: ", e);
+            logger.warn("exception creating namespace: " + namespace, e);
+            throw new IOException("exception creating namespace: " + namespace, e);
         }
     }
 
@@ -93,8 +93,8 @@ public class ObjectsOnS3 implements StreamingObjects {
         try {
             doDrop(namespace);
         } catch (final AmazonS3Exception e) {
-            logger.warn("exception dropping namespace:", e);
-            throw new IOException("exception dropping namespace: ", e);
+            logger.warn("exception dropping namespace: " + namespace, e);
+            throw new IOException("exception dropping namespace: " + namespace, e);
         }
     }
 
@@ -104,8 +104,8 @@ public class ObjectsOnS3 implements StreamingObjects {
         try {
             doStore(namespace, key, bytes);
         } catch (final AmazonS3Exception e) {
-            logger.warn("exception storing namespace:", e);
-            throw new IOException("exception storing namespace: ", e);
+            logger.warn("exception storing object: " + namespace + "." + key, e);
+            throw new IOException("exception storing object: " + namespace + "." + key, e);
         }
     }
 
@@ -115,8 +115,8 @@ public class ObjectsOnS3 implements StreamingObjects {
         try {
             return doGet(namespace, key);
         } catch (final AmazonS3Exception e) {
-            logger.warn("exception getting namespace:", e);
-            throw new IOException("exception getting namespace: ", e);
+            logger.warn("exception getting object: " + namespace + "." + key, e);
+            throw new IOException("exception getting object: " + namespace + "." + key, e);
         }
     }
 
@@ -126,8 +126,8 @@ public class ObjectsOnS3 implements StreamingObjects {
         try {
             return doDelete(namespace, key);
         } catch (final AmazonS3Exception e) {
-            logger.warn("exception deleting namespace:", e);
-            throw new IOException("exception deleting namespace: ", e);
+            logger.warn("exception deleting object: " + namespace + "." + key, e);
+            throw new IOException("exception deleting object: " + namespace + "." + key, e);
         }
     }
 
@@ -137,8 +137,8 @@ public class ObjectsOnS3 implements StreamingObjects {
         try {
             return doKeys(namespace, start, count);
         } catch (final AmazonS3Exception e) {
-            logger.warn("exception getting keys:", e);
-            throw new IOException("exception getting keys: ", e);
+            logger.warn("exception getting keys of namespace: " + namespace, e);
+            throw new IOException("exception getting keys of namespace: " + namespace, e);
         }
     }
 
@@ -148,8 +148,8 @@ public class ObjectsOnS3 implements StreamingObjects {
         try {
             return doSize(namespace);
         } catch (final AmazonS3Exception e) {
-            logger.warn("exception getting size:", e);
-            throw new IOException("exception getting size: ", e);
+            logger.warn("exception getting size of namespace: " + namespace, e);
+            throw new IOException("exception getting size of namespace: " + namespace, e);
         }
     }
 

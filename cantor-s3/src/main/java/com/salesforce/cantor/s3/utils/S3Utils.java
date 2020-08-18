@@ -142,12 +142,6 @@ public class S3Utils {
         }
 
         s3Client.deleteObject(bucketName, key);
-        final VersionListing versionList = s3Client.listVersions(bucketName, key);
-        for (final S3VersionSummary summary : versionList.getVersionSummaries()) {
-            logger.debug("deleting version {}", summary.getKey());
-            s3Client.deleteVersion(bucketName, summary.getKey(), summary.getVersionId());
-        }
-
         return true;
     }
 
@@ -168,19 +162,6 @@ public class S3Utils {
             }
             if (objectListing.isTruncated()) {
                 objectListing = s3Client.listNextBatchOfObjects(objectListing);
-            } else {
-                break;
-            }
-        }
-
-        // delete all versioned objects
-        VersionListing versionList = s3Client.listVersions(new ListVersionsRequest().withBucketName(bucketName));
-        while (true) {
-            for (final S3VersionSummary summary : versionList.getVersionSummaries()) {
-                s3Client.deleteVersion(bucketName, summary.getKey(), summary.getVersionId());
-            }
-            if (versionList.isTruncated()) {
-                versionList = s3Client.listNextBatchOfVersions(versionList);
             } else {
                 break;
             }
