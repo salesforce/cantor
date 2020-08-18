@@ -9,23 +9,15 @@ package com.salesforce.cantor.s3;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
-import com.amazonaws.services.s3.model.ListVersionsRequest;
-import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.S3Object;
-import com.amazonaws.services.s3.model.S3ObjectSummary;
-import com.amazonaws.services.s3.model.S3VersionSummary;
-import com.amazonaws.services.s3.model.VersionListing;
+import com.salesforce.cantor.s3.utils.S3Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 import static com.salesforce.cantor.common.CommonPreconditions.checkCreate;
@@ -36,14 +28,18 @@ import static com.salesforce.cantor.common.ObjectsPreconditions.checkGet;
 import static com.salesforce.cantor.common.ObjectsPreconditions.checkKeys;
 import static com.salesforce.cantor.common.ObjectsPreconditions.checkSize;
 import static com.salesforce.cantor.common.ObjectsPreconditions.checkStore;
+import static com.salesforce.cantor.s3.utils.S3Utils.createBucket;
+import static com.salesforce.cantor.s3.utils.S3Utils.deleteBucket;
+import static com.salesforce.cantor.s3.utils.S3Utils.deleteObject;
+import static com.salesforce.cantor.s3.utils.S3Utils.getKeys;
+import static com.salesforce.cantor.s3.utils.S3Utils.getObjectBytes;
+import static com.salesforce.cantor.s3.utils.S3Utils.getObjectStream;
+import static com.salesforce.cantor.s3.utils.S3Utils.putObject;
 
 public class ObjectsOnS3 implements StreamingObjects {
     private static final Logger logger = LoggerFactory.getLogger(ObjectsOnS3.class);
 
     private static final String bucketNameFormat = "%s-cantor-namespace-%d";
-
-    // read objects in 4MB chunks
-    private static final int streamingChunkSize = 4 * 1024 * 1024;
 
     private final AmazonS3 s3Client;
     private final String bucketPrefix;
@@ -184,198 +180,64 @@ public class ObjectsOnS3 implements StreamingObjects {
 
     private void doCreate(final String namespace) throws IOException {
         final String bucket = toBucketName(namespace);
-        if (this.s3Client.doesBucketExistV2(bucket)) {
-            logger.info("bucket '{}' already exists; ignoring create", bucket);
-            return;
-        }
-        logger.info("bucket '{}' for namespace '{}' doesn't exist; creating it", bucket, namespace);
-        this.s3Client.createBucket(bucket);
-
-        // check bucket created successfully
-        if (!this.s3Client.doesBucketExistV2(bucket)) {
-            throw new IOException("failed to create namespace on s3 with bucket name: " + bucket);
-        }
+        createBucket(this.s3Client, bucket);
         // keep a record of the namespace in the namespaces bucket
-        this.s3Client.putObject(bucketNameAllNamespaces, namespace, bucket);
+        putObject(this.s3Client, bucketNameAllNamespaces, namespace, new ByteArrayInputStream(bucket.getBytes()), new ObjectMetadata());
     }
 
     private void doDrop(final String namespace) throws IOException {
         final String bucket = toBucketName(namespace);
-        if (!this.s3Client.doesBucketExistV2(bucket)) {
-            logger.debug("bucket '{}' does not exist; ignoring drop", bucket);
-            return;
-        }
-
-        logger.info("bucket '{}' exists; dropping it", bucket);
-        // delete all objects
-        ObjectListing objectListing = this.s3Client.listObjects(bucket);
-        while (true) {
-            for (final S3ObjectSummary summary : objectListing.getObjectSummaries()) {
-                this.s3Client.deleteObject(bucket, summary.getKey());
-            }
-            if (objectListing.isTruncated()) {
-                objectListing = this.s3Client.listNextBatchOfObjects(objectListing);
-            } else {
-                break;
-            }
-        }
-
-        // delete all versioned objects
-        VersionListing versionList = this.s3Client.listVersions(new ListVersionsRequest().withBucketName(bucket));
-        while (true) {
-            for (final S3VersionSummary summary : versionList.getVersionSummaries()) {
-                this.s3Client.deleteVersion(bucket, summary.getKey(), summary.getVersionId());
-            }
-            if (versionList.isTruncated()) {
-                versionList = this.s3Client.listNextBatchOfVersions(versionList);
-            } else {
-                break;
-            }
-        }
-
-        // now delete the bucket
-        this.s3Client.deleteBucket(bucket);
-
-        // check bucket deleted successfully
-        if (this.s3Client.doesBucketExistV2(bucket)) {
-            throw new IOException("failed to drop namespace on s3 with bucket name: " + bucket);
-        }
-
+        deleteBucket(this.s3Client, bucket);
         // delete the record in the namespaces bucket
-        deleteObject(bucketNameAllNamespaces, namespace);
+        deleteObject(this.s3Client, bucketNameAllNamespaces, namespace);
     }
 
-    private void doStore(final String namespace, final String key, final byte[] bytes) {
-        final String bucket = toBucketName(namespace);
-        final ObjectMetadata metadata = new ObjectMetadata();
-        metadata.setContentLength(bytes.length);
-        logger.info("storing {} object bytes at '{}.{}'", bytes.length, bucket, key);
-        // if no exception is thrown, the object was put successfully - ignore response value
-        this.s3Client.putObject(bucket, key, new ByteArrayInputStream(bytes), metadata);
+    private void doStore(final String namespace, final String key, final byte[] bytes) throws IOException {
+        doStore(namespace, key, new ByteArrayInputStream(bytes), bytes.length);
     }
 
-    private void doStore(final String namespace, final String key, final InputStream stream, final long length) {
+    private void doStore(final String namespace, final String key, final InputStream stream, final long length) throws IOException {
         final String bucket = toBucketName(namespace);
         final ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentLength(length);
         logger.info("storing stream with length={} at '{}.{}'", length, bucket, key);
         // if no exception is thrown, the object was put successfully - ignore response value
-        this.s3Client.putObject(bucket, key, stream, metadata);
+        putObject(this.s3Client, bucket, key, stream, metadata);
     }
 
     private byte[] doGet(final String namespace, final String key) throws IOException {
         final String bucket = toBucketName(namespace);
         logger.debug("retrieving object at '{}.{}'", bucket, key);
-        if (!this.s3Client.doesObjectExist(bucket, key)) {
-            logger.debug("object '{}.{}' doesn't exist, returning null", bucket, key);
-            return null;
-        }
-        return getObjectBytes(bucket, key);
+        return getObjectBytes(this.s3Client, bucket, key);
     }
 
     private InputStream doStream(final String namespace, final String key) throws IOException {
         final String bucket = toBucketName(namespace);
-        if (!this.s3Client.doesBucketExistV2(bucket)) {
-            throw new IOException(String.format("couldn't find bucket '%s' for namespace '%s'", bucket, namespace));
-        }
-
-        final S3Object object = this.s3Client.getObject(bucket, key);
-        if (object == null) {
-            logger.warn("object '{}.{}' should exist, but got null, returning null", bucket, key);
-            throw new IOException(String.format("couldn't find S3 object with key '%s' in bucket '%s' for namespace '%s'", key, bucket, namespace));
-        }
-        return object.getObjectContent();
+        logger.debug("retrieving object as stream at '{}.{}'", bucket, key);
+        return getObjectStream(this.s3Client, bucket, key);
     }
 
-    private byte[] getObjectBytes(final String bucket, final String key) throws IOException {
-        final S3Object s3Object = this.s3Client.getObject(bucket, key);
-        if (s3Object == null) {
-            return null;
-        }
-        final ByteArrayOutputStream buffer;
-        try (final InputStream inputStream = s3Object.getObjectContent()) {
-            buffer = new ByteArrayOutputStream();
-            final byte[] data = new byte[streamingChunkSize];
-            int read;
-            while ((read = inputStream.read(data, 0, data.length)) != -1) {
-                buffer.write(data, 0, read);
-            }
-        }
-        buffer.flush();
-        return buffer.toByteArray();
-    }
-
-    private boolean doDelete(final String namespace, final String key) throws IOException {
+    private boolean doDelete(final String namespace, final String key) {
         final String bucket = toBucketName(namespace);
-        if (!this.s3Client.doesObjectExist(bucket, key)) {
-            return false;
-        }
-        return deleteObject(bucket, key);
+        logger.debug("deleting object at '{}.{}'", bucket, key);
+        return deleteObject(this.s3Client, bucket, key);
     }
 
     private int doSize(final String namespace) {
         final String bucket = toBucketName(namespace);
-        if (!this.s3Client.doesBucketExistV2(bucket)) {
-            return -1;
-        }
-
-        int totalSize = 0;
-        ObjectListing listing = this.s3Client.listObjects(bucket);
-        do {
-            totalSize += listing.getObjectSummaries().size();
-            logger.debug("got {} keys from {}", listing.getObjectSummaries().size(), listing);
-            listing = this.s3Client.listNextBatchOfObjects(listing);
-        } while (listing.isTruncated());
-
-        return totalSize;
+        logger.debug("getting size of bucket '{}'", bucket);
+        return S3Utils.getSize(this.s3Client, bucket, null);
     }
 
     private Collection<String> doKeys(final String namespace, final int start, final int count) throws IOException {
         final String bucket = toBucketName(namespace);
-        if (!this.s3Client.doesBucketExistV2(bucket)) {
-            throw new IOException(String.format("couldn't find bucket '%s' for namespace '%s'", bucket, namespace));
-        }
-        return getKeys(bucket, start, count);
+        logger.debug("getting {} keys for namespace '{}' starting at {}", count, bucket, start);
+        return getKeys(this.s3Client, bucket, null, start, count);
     }
 
-    private Collection<String> getKeys(final String bucket, final int start, final int count) {
-        final Set<String> keys = new HashSet<>();
-        int index = 0;
-        ObjectListing listing = this.s3Client.listObjects(bucket);
-        do {
-            for (final S3ObjectSummary summary : listing.getObjectSummaries()) {
-                if (index < start) {
-                    logger.debug("skipping {} at index={} start={}", summary.getKey(), index++, start);
-                    continue;
-                }
-                keys.add(summary.getKey());
-
-                if (keys.size() == count) {
-                    logger.debug("retrieved {}/{} keys, returning early", keys.size(), count);
-                    return keys;
-                }
-            }
-
-            logger.debug("got {} keys from {}", listing.getObjectSummaries().size(), listing);
-            listing = this.s3Client.listNextBatchOfObjects(listing);
-        } while (listing.isTruncated());
-
-        return keys;
-    }
-
-    private boolean deleteObject(final String bucket, final String key) {
-        this.s3Client.deleteObject(bucket, key);
-        final VersionListing versionList = this.s3Client.listVersions(bucket, key);
-        for (final S3VersionSummary summary : versionList.getVersionSummaries()) {
-            logger.debug("deleting version {}", summary.getKey());
-            this.s3Client.deleteVersion(bucket, summary.getKey(), summary.getVersionId());
-        }
-
-        return true;
-    }
-
-    private Collection<String> doGetNamespaces() {
-        return getKeys(this.bucketNameAllNamespaces, 0, -1);
+    private Collection<String> doGetNamespaces() throws IOException {
+        // get all objects in the bucket
+        return getKeys(this.s3Client, this.bucketNameAllNamespaces, null, 0, -1);
     }
 
     private String toBucketName(final String namespace) {
