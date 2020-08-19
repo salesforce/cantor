@@ -25,19 +25,25 @@ abstract class AbstractBaseAsyncNamespaceable<T extends Namespaceable> implement
         this.delegate = delegate;
     }
 
-    <R> R submitCall(final Callable<R> callable) throws IOException {
+    <R> ThrowableSupplier<R, IOException> submitCall(final Callable<R> callable) {
         // construct the name for this thread
         // the thread name reflects the method, namespace, and parameters
         final Future<R> future = this.executorService.submit(callable);
-        try {
-            return future.get();
-        } catch (InterruptedException | ExecutionException e) {
-            throw new IOException(e);
-        }
+        return () -> {
+            try {
+                return future.get();
+            } catch (final InterruptedException | ExecutionException e) {
+                throw new IOException(e);
+            }
+        };
     }
 
     protected T getDelegate() {
         return this.delegate;
+    }
+
+    protected interface ThrowableSupplier<R, T extends Throwable> {
+        R get() throws T;
     }
 }
 

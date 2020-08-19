@@ -14,7 +14,8 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
-import static com.salesforce.cantor.common.CommonPreconditions.*;
+import static com.salesforce.cantor.common.CommonPreconditions.checkCreate;
+import static com.salesforce.cantor.common.CommonPreconditions.checkDrop;
 import static com.salesforce.cantor.common.ObjectsPreconditions.*;
 
 public class AsyncObjects extends AbstractBaseAsyncNamespaceable<Objects> implements Objects {
@@ -24,7 +25,7 @@ public class AsyncObjects extends AbstractBaseAsyncNamespaceable<Objects> implem
 
     @Override
     public Collection<String> namespaces() throws IOException {
-        return submitCall(getDelegate()::namespaces);
+        return submitCall(getDelegate()::namespaces).get();
     }
 
     @Override
@@ -55,19 +56,19 @@ public class AsyncObjects extends AbstractBaseAsyncNamespaceable<Objects> implem
     @Override
     public byte[] get(final String namespace, final String key) throws IOException {
         checkGet(namespace, key);
-        return submitCall(() -> getDelegate().get(namespace, key));
+        return submitCall(() -> getDelegate().get(namespace, key)).get();
     }
 
     @Override
     public Map<String, byte[]> get(final String namespace, final Collection<String> keys) throws IOException {
         checkGet(namespace, keys);
-        return submitCall(() -> getDelegate().get(namespace, keys));
+        return submitCall(() -> getDelegate().get(namespace, keys)).get();
     }
 
     @Override
     public boolean delete(final String namespace, final String key) throws IOException {
         checkDelete(namespace, key);
-        return submitCall(() -> getDelegate().delete(namespace, key));
+        return submitCall(() -> getDelegate().delete(namespace, key)).get();
     }
 
     @Override
@@ -79,12 +80,12 @@ public class AsyncObjects extends AbstractBaseAsyncNamespaceable<Objects> implem
     @Override
     public Collection<String> keys(final String namespace, final int start, final int count) throws IOException {
         checkKeys(namespace, start, count);
-        return submitCall(() -> getDelegate().keys(namespace, start, count));
+        return submitCall(() -> getDelegate().keys(namespace, start, count)).get();
     }
 
     @Override
     public int size(final String namespace) throws IOException {
         checkSize(namespace);
-        return submitCall(() -> getDelegate().size(namespace));
+        return submitCall(() -> getDelegate().size(namespace)).get();
     }
 }

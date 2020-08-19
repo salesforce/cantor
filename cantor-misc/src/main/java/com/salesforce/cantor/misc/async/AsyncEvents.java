@@ -10,13 +10,11 @@ package com.salesforce.cantor.misc.async;
 import com.salesforce.cantor.Events;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 
-import static com.salesforce.cantor.common.CommonPreconditions.*;
+import static com.salesforce.cantor.common.CommonPreconditions.checkCreate;
+import static com.salesforce.cantor.common.CommonPreconditions.checkDrop;
 import static com.salesforce.cantor.common.EventsPreconditions.*;
 
 public class AsyncEvents extends AbstractBaseAsyncNamespaceable<Events> implements Events {
@@ -26,7 +24,7 @@ public class AsyncEvents extends AbstractBaseAsyncNamespaceable<Events> implemen
 
     @Override
     public Collection<String> namespaces() throws IOException {
-        return submitCall(getDelegate()::namespaces);
+        return submitCall(getDelegate()::namespaces).get();
     }
 
     @Override
@@ -66,7 +64,7 @@ public class AsyncEvents extends AbstractBaseAsyncNamespaceable<Events> implemen
                         includePayloads,
                         ascending,
                         limit)
-        );
+        ).get();
     }
 
     @Override
@@ -83,7 +81,7 @@ public class AsyncEvents extends AbstractBaseAsyncNamespaceable<Events> implemen
                         metadataQuery,
                         dimensionsQuery
                 )
-        );
+        ).get();
     }
 
     @Override
@@ -114,7 +112,7 @@ public class AsyncEvents extends AbstractBaseAsyncNamespaceable<Events> implemen
                         aggregateIntervalMillis,
                         aggregationFunction
                 )
-        );
+        ).get();
     }
 
     @Override
@@ -133,7 +131,7 @@ public class AsyncEvents extends AbstractBaseAsyncNamespaceable<Events> implemen
                         metadataQuery,
                         dimensionsQuery
                 )
-        );
+        ).get();
     }
 
     @Override

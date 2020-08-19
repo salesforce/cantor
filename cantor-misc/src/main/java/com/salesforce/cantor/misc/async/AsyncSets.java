@@ -14,7 +14,8 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
-import static com.salesforce.cantor.common.CommonPreconditions.*;
+import static com.salesforce.cantor.common.CommonPreconditions.checkCreate;
+import static com.salesforce.cantor.common.CommonPreconditions.checkDrop;
 import static com.salesforce.cantor.common.SetsPreconditions.*;
 
 public class AsyncSets extends AbstractBaseAsyncNamespaceable<Sets> implements Sets {
@@ -24,7 +25,7 @@ public class AsyncSets extends AbstractBaseAsyncNamespaceable<Sets> implements S
 
     @Override
     public Collection<String> namespaces() throws IOException {
-        return submitCall(getDelegate()::namespaces);
+        return submitCall(getDelegate()::namespaces).get();
     }
 
     @Override
@@ -60,7 +61,7 @@ public class AsyncSets extends AbstractBaseAsyncNamespaceable<Sets> implements S
                                       final int count,
                                       final boolean ascending) throws IOException {
         checkEntries(namespace, set, min, max, start, count, ascending);
-        return submitCall(() -> getDelegate().entries(namespace, set, min, max, start, count, ascending));
+        return submitCall(() -> getDelegate().entries(namespace, set, min, max, start, count, ascending)).get();
     }
 
     @Override
@@ -72,7 +73,7 @@ public class AsyncSets extends AbstractBaseAsyncNamespaceable<Sets> implements S
                                  final int count,
                                  final boolean ascending) throws IOException {
         checkGet(namespace, set, min, max, start, count, ascending);
-        return submitCall(() -> getDelegate().get(namespace, set, min, max, start, count, ascending));
+        return submitCall(() -> getDelegate().get(namespace, set, min, max, start, count, ascending)).get();
     }
 
     @Override
@@ -84,7 +85,7 @@ public class AsyncSets extends AbstractBaseAsyncNamespaceable<Sets> implements S
     @Override
     public final boolean delete(final String namespace, final String set, final String entry) throws IOException {
         checkDelete(namespace, set, entry);
-        return submitCall(() -> getDelegate().delete(namespace, set, entry));
+        return submitCall(() -> getDelegate().delete(namespace, set, entry)).get();
     }
 
     @Override
@@ -102,7 +103,7 @@ public class AsyncSets extends AbstractBaseAsyncNamespaceable<Sets> implements S
                                    final int count,
                                    final boolean ascending) throws IOException {
         checkUnion(namespace, sets, min, max, start, count, ascending);
-        return submitCall(() -> getDelegate().union(namespace, sets, min, max, start, count, ascending));
+        return submitCall(() -> getDelegate().union(namespace, sets, min, max, start, count, ascending)).get();
     }
 
     @Override
@@ -114,7 +115,7 @@ public class AsyncSets extends AbstractBaseAsyncNamespaceable<Sets> implements S
                                        final int count,
                                        final boolean ascending) throws IOException {
         checkIntersect(namespace, sets, min, max, start, count, ascending);
-        return submitCall(() -> getDelegate().intersect(namespace, sets, min, max, start, count, ascending));
+        return submitCall(() -> getDelegate().intersect(namespace, sets, min, max, start, count, ascending)).get();
     }
 
     @Override
@@ -126,30 +127,30 @@ public class AsyncSets extends AbstractBaseAsyncNamespaceable<Sets> implements S
                                  final int count,
                                  final boolean ascending) throws IOException {
         checkPop(namespace, set, min, max, start, count, ascending);
-        return submitCall(() -> getDelegate().pop(namespace, set, min, max, start, count, ascending));
+        return submitCall(() -> getDelegate().pop(namespace, set, min, max, start, count, ascending)).get();
     }
 
     @Override
     public Collection<String> sets(final String namespace) throws IOException {
         checkSets(namespace);
-        return submitCall(() -> getDelegate().sets(namespace));
+        return submitCall(() -> getDelegate().sets(namespace)).get();
     }
 
     @Override
     public final int size(final String namespace, final String set) throws IOException {
         checkSize(namespace, set);
-        return submitCall(() -> getDelegate().size(namespace, set));
+        return submitCall(() -> getDelegate().size(namespace, set)).get();
     }
 
     @Override
     public Long weight(final String namespace, final String set, final String entry) throws IOException {
         checkWeight(namespace, set, entry);
-        return submitCall(() -> getDelegate().weight(namespace, set, entry));
+        return submitCall(() -> getDelegate().weight(namespace, set, entry)).get();
     }
 
     @Override
     public long inc(final String namespace, final String set, final String entry, final long count) throws IOException {
         checkInc(namespace, set, entry, count);
-        return submitCall(() -> getDelegate().inc(namespace, set, entry, count));
+        return submitCall(() -> getDelegate().inc(namespace, set, entry, count)).get();
     }
 }
