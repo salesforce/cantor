@@ -32,16 +32,14 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 
 public class EventsArchiverOnS3 extends EventsArchiverOnFile implements EventsArchiver {
     private static final Logger logger = LoggerFactory.getLogger(EventsArchiverOnS3.class);
-    private static final Pattern archiveRegexPattern = Pattern.compile("archive-events-(?<namespace>.*)-(?<start>\\d+)-(?<end>\\d+)");
     private static final String archiveNamespace = "events-archive";
 
     private final Cantor cantorOnS3;
 
     public EventsArchiverOnS3(final Cantor cantorOnS3,
-                              final String baseDirectory,
-                              final long chunkMillis) throws IOException {
-        super(baseDirectory, chunkMillis);
-        logger.info("initializing events archiver chucking in {}ms chunks", chunkMillis);
+                              final String baseDirectory) throws IOException {
+        super(baseDirectory);
+        logger.info("initializing s3 events archiver");
         this.cantorOnS3 = cantorOnS3;
         this.cantorOnS3.objects().create(archiveNamespace);
         // upload any archive files that are sitting in local storage
@@ -134,28 +132,6 @@ public class EventsArchiverOnS3 extends EventsArchiverOnFile implements EventsAr
             logger.info("uploading file '{}' ({} bytes) took {}s",
                     archiveFile, byteSize, TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startNanos));
         }
-    }
-
-    // retrieves all archive files that overlap with the timeframe
-    public List<String> getMatchingArchives(final String namespace,
-                                            final Collection<String> archiveFilenames,
-                                            final long startTimestampMillis,
-                                            final long endTimestampMillis) {
-        final long windowStart = getFloorForChunk(startTimestampMillis);
-        final long windowEnd = (endTimestampMillis <= Long.MAX_VALUE - this.chunkMillis)
-                ? getCeilingForChunk(endTimestampMillis)
-                : endTimestampMillis;
-        return archiveFilenames.stream()
-                .filter(filename -> {
-                    // filter to archive files that overlap with the timeframe
-                    final Matcher matcher = archiveRegexPattern.matcher(filename);
-                    if (matcher.matches() && matcher.group("namespace").equals(namespace)) {
-                        final long fileStart = Long.parseLong(matcher.group("start"));
-                        final long fileEnd = Long.parseLong(matcher.group("end"));
-                        return fileStart <= windowEnd && fileEnd >= windowStart;
-                    }
-                    return false;
-                }).collect(Collectors.toList());
     }
 
     // the archive file could potential already be on disk, but if not we need to get it from S3

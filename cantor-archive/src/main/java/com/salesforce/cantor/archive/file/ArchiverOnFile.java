@@ -48,7 +48,7 @@ public class ArchiverOnFile implements CantorArchiver {
 
         this.setsArchive = new SetsArchiverOnFile(baseDirectory);
         this.objectsArchive = new ObjectsArchiverOnFile(baseDirectory);
-        this.eventsArchive = new EventsArchiverOnFile(baseDirectory, eventsChunkMillis);
+        this.eventsArchive = new EventsArchiverOnFile(baseDirectory);
     }
 
     @Override

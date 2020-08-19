@@ -38,16 +38,15 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkString;
 public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements EventsArchiver {
     private static final Logger logger = LoggerFactory.getLogger(EventsArchiverOnFile.class);
     private static final String archivePathFormat = "/archive-events-%s-%d-%d";
-    private static final Pattern archiveRegexPattern = Pattern.compile("archive-events-(?<namespace>.*)-(?<start>\\d+)-(?<end>\\d+)");
+    private static final Pattern archiveRegexPattern = Pattern.compile(".*archive-events-(?<namespace>.*)-(?<start>\\d+)-(?<end>\\d+)");
 
     private static final String isRestoredFlag = ".cantor-archive-restored";
+    private static final long chunkMillis = TimeUnit.HOURS.toMillis(1);
     private static final long minChunkMillis = TimeUnit.MINUTES.toMillis(1);
     private static final long maxChunkMillis = TimeUnit.DAYS.toMillis(1);
 
-    public EventsArchiverOnFile(final String baseDirectory, final long chunkMillis) {
-        super(baseDirectory, chunkMillis);
-        checkArgument(this.chunkMillis >= minChunkMillis, "archive chunk millis must be greater than " + minChunkMillis);
-        checkArgument(this.chunkMillis <= maxChunkMillis, "archive chunk millis must be less than " + maxChunkMillis);
+    public EventsArchiverOnFile(final String baseDirectory) {
+        super(baseDirectory);
         setSubDirectory("events");
     }
 
@@ -86,7 +85,7 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
         try {
             for (long start = getFloorForChunk(endTimestampMillis), end = endTimestampMillis;
                  end > startTimestampMillis;
-                 end -= this.chunkMillis, start -= this.chunkMillis) {
+                 end -= chunkMillis, start -= chunkMillis) {
                 final long archivedEvents = doArchive(
                         events, namespace,
                         Math.max(start, startTimestampMillis), end,
@@ -96,12 +95,12 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
                 // evaluate whether to continue iterator or jump to the end
                 final long floorForStart = getFloorForChunk(startTimestampMillis);
                 if (archivedEvents == 0
-                        && start > floorForStart + this.chunkMillis
-                        && events.first(namespace, floorForStart + this.chunkMillis, start) == null) {
+                        && start > floorForStart + chunkMillis
+                        && events.first(namespace, floorForStart + chunkMillis, start) == null) {
                     // TODO: build a heuristic to jump to the next chunk with events to archive instead of this hack to handle events with zero for a timestamp
-                    if (events.first(namespace, floorForStart, floorForStart + this.chunkMillis - 1) != null) {
-                        start = floorForStart + this.chunkMillis;
-                        end = floorForStart + (this.chunkMillis * 2) - 1;
+                    if (events.first(namespace, floorForStart, floorForStart + chunkMillis - 1) != null) {
+                        start = floorForStart + chunkMillis;
+                        end = floorForStart + (chunkMillis * 2) - 1;
                         continue;
                     }
                     // no more events left to archive
@@ -261,26 +260,36 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
     protected List<Path> getFileArchiveList(final String namespace,
                                             final long startTimestampMillis,
                                             final long endTimestampMillis) throws IOException {
+        return getMatchingArchives(namespace,
+                Files.list(getArchiveLocation()).collect(Collectors.toList()),
+                startTimestampMillis,
+                endTimestampMillis);
+    }
+
+    // retrieves all archive files that overlap with the timeframe
+    public <R> List<R> getMatchingArchives(final String namespace,
+                                           final Collection<R> archiveFilenames,
+                                           final long startTimestampMillis,
+                                           final long endTimestampMillis) {
         final long windowStart = getFloorForChunk(startTimestampMillis);
-        final long windowEnd = (endTimestampMillis <= Long.MAX_VALUE - this.chunkMillis)
+        final long windowEnd = (endTimestampMillis <= Long.MAX_VALUE - chunkMillis)
                 ? getCeilingForChunk(endTimestampMillis)
                 : endTimestampMillis;
-        return Files.list(getArchiveLocation())
-            .filter(path -> {
-                // filter to archive files that overlap with the timeframe
-                final String filename = path.getFileName().toString();
-                final Matcher matcher = archiveRegexPattern.matcher(filename);
-                if (matcher.matches() && matcher.group("namespace").equals(namespace)) {
-                    final long fileStart = Long.parseLong(matcher.group("start"));
-                    final long fileEnd = Long.parseLong(matcher.group("end"));
-                    // -------s-------------e---------  <- start and end parameters
-                    // ssssssssssssssssssssss           <- first check
-                    //        eeeeeeeeeeeeeeeeeeeeeeee  <- second check
-                    // any combination of s and e the file overlaps the timeframe
-                    return fileStart <= windowEnd && fileEnd >= windowStart;
-                }
-                return false;
-            }).collect(Collectors.toList());
+        return archiveFilenames.stream()
+                .filter(filename -> {
+                    // filter to archive files that overlap with the timeframe
+                    final Matcher matcher = archiveRegexPattern.matcher(filename.toString());
+                    if (matcher.matches() && matcher.group("namespace").equals(namespace)) {
+                        final long fileStart = Long.parseLong(matcher.group("start"));
+                        final long fileEnd = Long.parseLong(matcher.group("end"));
+                        // -------s-------------e---------  <- start and end parameters
+                        // ssssssssssssssssssssss           <- first check
+                        //        eeeeeeeeeeeeeeeeeeeeeeee  <- second check
+                        // any combination of s and e the file overlaps the timeframe
+                        return fileStart <= windowEnd && fileEnd >= windowStart;
+                    }
+                    return false;
+                }).collect(Collectors.toList());
     }
 
     // resolve archive filename
@@ -297,5 +306,16 @@ public class EventsArchiverOnFile extends AbstractBaseArchiverOnFile implements 
         final String fileName = path.getFileName().toString();
         final Matcher matcher = archiveRegexPattern.matcher(fileName);
         return (matcher.matches()) ? matcher.group("namespace") : null;
+    }
+
+    protected long getFloorForChunk(final long timestampMillis) {
+        return (timestampMillis / chunkMillis) * chunkMillis;
+    }
+
+    protected long getCeilingForChunk(final long timestampMillis) {
+        if (timestampMillis >= Long.MAX_VALUE - chunkMillis) {
+            return Long.MAX_VALUE;
+        }
+        return getFloorForChunk(timestampMillis) + chunkMillis - 1;
     }
 }

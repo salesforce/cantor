@@ -19,18 +19,12 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 
 public abstract class AbstractBaseArchiverOnFile {
     protected final String baseDirectory;
-    protected final long chunkMillis;
 
     // nothing for no sub directory
     protected String subDirectory = "";
 
     protected AbstractBaseArchiverOnFile(final String baseDirectory) {
-        this(baseDirectory, 0);
-    }
-
-    protected AbstractBaseArchiverOnFile(final String baseDirectory, final long chunkMillis) {
         this.baseDirectory = baseDirectory;
-        this.chunkMillis = chunkMillis;
     }
 
     protected Path getFile(final String fileNameFormat, final Object... args) {
@@ -78,16 +72,5 @@ public abstract class AbstractBaseArchiverOnFile {
     protected void checkRestoreArguments(final Object instance, final String namespace, final Path archiveFile) {
         checkArgument(instance != null, "null objects, can't restore");
         checkArgument(Files.exists(archiveFile), "can't locate archive file, can't restore: " + archiveFile);
-    }
-
-    protected long getFloorForChunk(final long timestampMillis) {
-        return (timestampMillis / this.chunkMillis) * this.chunkMillis;
-    }
-
-    protected long getCeilingForChunk(final long timestampMillis) {
-        if (timestampMillis >= Long.MAX_VALUE - this.chunkMillis) {
-            return Long.MAX_VALUE;
-        }
-        return getFloorForChunk(timestampMillis) + this.chunkMillis - 1;
     }
 }
