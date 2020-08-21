@@ -15,15 +15,18 @@ import com.salesforce.cantor.Sets;
 
 import java.io.IOException;
 
+/**
+ * This implementation is designed to only use a single s3 bucket.
+ */
 public class CantorOnS3 implements Cantor {
     private final Objects objects;
 
     public CantorOnS3(final AmazonS3 s3Client) throws IOException {
-        this(s3Client, "default");
+        this(s3Client, "warden-cantor");
     }
 
-    public CantorOnS3(final AmazonS3 s3Client, final String bucketPrefix) throws IOException {
-        this.objects = new ObjectsOnS3(s3Client, bucketPrefix);
+    public CantorOnS3(final AmazonS3 s3Client, final String bucketName) throws IOException {
+        this.objects = new ObjectsOnS3(s3Client, bucketName);
     }
 
     @Override

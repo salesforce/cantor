@@ -1,14 +1,11 @@
 package com.salesforce.cantor.s3.utils;
 
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.ListVersionsRequest;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
-import com.amazonaws.services.s3.model.S3VersionSummary;
-import com.amazonaws.services.s3.model.VersionListing;
-import com.salesforce.cantor.s3.single.bucket.ObjectsOnS3SingleBucket;
+import com.salesforce.cantor.s3.ObjectsOnS3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +17,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class S3Utils {
-    private static final Logger logger = LoggerFactory.getLogger(ObjectsOnS3SingleBucket.class);
+    private static final Logger logger = LoggerFactory.getLogger(ObjectsOnS3.class);
 
     // read objects in 4MB chunks
     private static final int streamingChunkSize = 4 * 1024 * 1024;
