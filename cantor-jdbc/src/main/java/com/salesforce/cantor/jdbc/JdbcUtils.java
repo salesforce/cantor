@@ -15,7 +15,7 @@ public class JdbcUtils {
         return String.format("`%s`", s);
     }
 
-    static void addParameters(final PreparedStatement preparedStatement, final Object... parameters)
+    public static void addParameters(final PreparedStatement preparedStatement, final Object... parameters)
             throws SQLException {
         if (parameters == null) {
             return;

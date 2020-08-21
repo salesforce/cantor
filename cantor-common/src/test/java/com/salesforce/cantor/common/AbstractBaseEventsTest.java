@@ -210,7 +210,7 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         // check dimension query between two values
         final double start = ThreadLocalRandom.current().nextDouble();
         final double end = start + ThreadLocalRandom.current().nextDouble();
-        final String dimension = "dimension-0";
+        final String dimension = (String) (storedEvents.get(0).getDimensions().keySet().toArray()[0]);
         final Map<String, String> dimensionBetweenQuery = new HashMap<>();
         dimensionBetweenQuery.put(dimension, start + ".." + end);
         final List<Events.Event> resultsBetween = getEvents().get(
@@ -276,7 +276,7 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
             assertTrue(e.getDimensions().get(dimension) <= end);
         }
 
-        final String metadata = "metadata-0";
+        final String metadata = (String) (storedEvents.get(0).getMetadata().keySet().toArray()[0]);
         // check metadata query like a value with prefix
         final Map<String, String> metadataLikePrefixQuery = new HashMap<>();
         final String prefix = "a";
@@ -288,6 +288,7 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
                 null
         );
         for (final Events.Event e : resultsLikePrefix) {
+            System.out.println(e.getMetadata().get(metadata));
             assertTrue(e.getMetadata().get(metadata).startsWith(prefix));
         }
         final Map<String, String> metadataNotLikePrefixQuery = new HashMap<>();

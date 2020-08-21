@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>cantor-phoenix</artifactId>
+    <packaging>jar</packaging>
+    <name>cantor-phoenix</name>
+
+    <description>Cantor on top of Phoenix</description>
+
+    <parent>
+        <artifactId>cantor-parent</artifactId>
+        <groupId>com.salesforce.cantor</groupId>
+        <version>0.2.4-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.phoenix</groupId>
+            <artifactId>phoenix-client</artifactId>
+            <version>4.14.3-hbase-1.3-sfdc-1.0.16</version>
+        </dependency>
+        <!--CANTOR JDBC-->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-jdbc</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!--CANTOR BASE -->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-base</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- MULTIKEY MAP -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-collections4</artifactId>
+            <version>4.1</version>
+        </dependency>
+
+        <!--TEST SCOPE-->
+        <!--LOGBACK-->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!--TESTNG-->
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${testng.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!--CANTOR COMMON TEST JAR-->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-common</artifactId>
+            <type>test-jar</type>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+
+</project>
