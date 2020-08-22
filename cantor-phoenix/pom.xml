@@ -29,6 +29,7 @@
             <groupId>org.apache.phoenix</groupId>
             <artifactId>phoenix-client</artifactId>
             <version>${phoenix-client.version}</version>
+            <!--TODO exclude logger implementation-->
         </dependency>
         <!--CANTOR JDBC-->
         <dependency>
@@ -58,15 +59,9 @@
             <scope>test</scope>
         </dependency>
         <!--LOGBACK-->
-        <!--<dependency>-->
-            <!--<groupId>ch.qos.logback</groupId>-->
-            <!--<artifactId>logback-classic</artifactId>-->
-            <!--<scope>test</scope>-->
-        <!--</dependency>-->
         <dependency>
-            <groupId>log4j</groupId>
-            <artifactId>log4j</artifactId>
-            <version>1.2.16</version>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
             <scope>test</scope>
         </dependency>
         <!--CANTOR COMMON TEST JAR-->
