@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 
-import com.sun.org.apache.xpath.internal.operations.Mult;
 import org.apache.commons.collections4.map.MultiKeyMap;
 
 public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events {

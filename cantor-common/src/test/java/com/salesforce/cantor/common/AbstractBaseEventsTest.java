@@ -280,7 +280,7 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         // check metadata query like a value with prefix
         final Map<String, String> metadataLikePrefixQuery = new HashMap<>();
         final String prefix = "a";
-        metadataLikePrefixQuery.put(metadata, "~" + prefix + "*");
+        metadataLikePrefixQuery.put(metadata, "~^" + prefix + ".*");
         final List<Events.Event> resultsLikePrefix = getEvents().get(
                 this.namespace,
                 startTimestamp, timestamp + 1,
@@ -288,7 +288,6 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
                 null
         );
         for (final Events.Event e : resultsLikePrefix) {
-            System.out.println(e.getMetadata().get(metadata));
             assertTrue(e.getMetadata().get(metadata).startsWith(prefix));
         }
         final Map<String, String> metadataNotLikePrefixQuery = new HashMap<>();

@@ -9,7 +9,7 @@ import javax.sql.DataSource;
 public class PhoenixDataSourceProvider {
     private static final Logger logger = LoggerFactory.getLogger(PhoenixDataSourceProvider.class);
 
-    public static synchronized DataSource getDatasource(final PhoenixDataSourceProperties builder) {
+    static synchronized DataSource getDatasource(final PhoenixDataSourceProperties builder) {
         return doGetDataSource(builder);
     }
 
@@ -23,9 +23,7 @@ public class PhoenixDataSourceProvider {
         }
 
         final HikariDataSource connectionPoolDataSource = new HikariDataSource();
-
         connectionPoolDataSource.setJdbcUrl(jdbcUrl);
-
         logger.info("jdbc url for datasource is: {} data source properties are: {}",
                 jdbcUrl, connectionPoolDataSource.getDataSourceProperties()
         );

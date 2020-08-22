@@ -18,11 +18,17 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
+    <properties>
+        <commons-collections.version>4.1</commons-collections.version>
+        <phoenix-client.version>4.14.3-hbase-1.3-sfdc-1.0.16</phoenix-client.version>
+    </properties>
+
     <dependencies>
+        <!--PHOENIX CLIENT-->
         <dependency>
             <groupId>org.apache.phoenix</groupId>
             <artifactId>phoenix-client</artifactId>
-            <version>4.14.3-hbase-1.3-sfdc-1.0.16</version>
+            <version>${phoenix-client.version}</version>
         </dependency>
         <!--CANTOR JDBC-->
         <dependency>
@@ -36,25 +42,31 @@
             <artifactId>cantor-base</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <!-- MULTIKEY MAP -->
+        <!--COMMONS COLLECTIONS-->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-collections4</artifactId>
-            <version>4.1</version>
+            <version>${commons-collections.version}</version>
         </dependency>
 
         <!--TEST SCOPE-->
-        <!--LOGBACK-->
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <scope>test</scope>
-        </dependency>
         <!--TESTNG-->
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
             <version>${testng.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!--LOGBACK-->
+        <!--<dependency>-->
+            <!--<groupId>ch.qos.logback</groupId>-->
+            <!--<artifactId>logback-classic</artifactId>-->
+            <!--<scope>test</scope>-->
+        <!--</dependency>-->
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>1.2.16</version>
             <scope>test</scope>
         </dependency>
         <!--CANTOR COMMON TEST JAR-->

@@ -5,7 +5,7 @@ import com.salesforce.cantor.Cantor;
 import javax.sql.DataSource;
 import java.io.IOException;
 
-public class PhoenixTests {
+class PhoenixTests {
     private static final Cantor cantor;
 
     static {
@@ -16,7 +16,7 @@ public class PhoenixTests {
         }
     }
 
-    static Cantor getCantor() throws IOException {
+    static Cantor getCantor() {
         return cantor;
     }
 
