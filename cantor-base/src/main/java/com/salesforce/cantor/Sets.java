@@ -396,7 +396,7 @@ public interface Sets extends Namespaceable {
      *
      * @param namespace the namespace
      * @param set name of the sorted set
-     * @param count maximum number of entries to return
+     * @param count count to increment the weight by; use negative values to decrement
      * @throws IOException exception thrown from the underlying storage implementation
      * @return final weight of the entry after incrementing
      */
