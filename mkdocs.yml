@@ -14,8 +14,8 @@ theme:
 # Navigations
 nav:
   - "Introduction": "index.md"
+  - "Motivation": "motivation.md"
   - "Overview":
-    - "Motivation": "motivation.md"
     - "Components": "components.md"
     - "Namespaces": "namespaces.md"
     - "Objects": "objects.md"
