@@ -20,9 +20,11 @@ import java.io.IOException;
  */
 public class CantorOnS3 implements Cantor {
     private final Objects objects;
+    private final Events events;
 
     public CantorOnS3(final AmazonS3 s3Client, final String bucketName) throws IOException {
         this.objects = new ObjectsOnS3(s3Client, bucketName);
+        this.events = new EventsOnS3(s3Client, bucketName);
     }
 
     @Override
@@ -37,6 +39,6 @@ public class CantorOnS3 implements Cantor {
 
     @Override
     public Events events() {
-        throw new UnsupportedOperationException("Events not implemented on S3");
+        return this.events;
     }
 }
