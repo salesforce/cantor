@@ -100,12 +100,15 @@ public class S3Utils {
             throw new IOException(String.format("couldn't find bucket '%s'", bucketName));
         }
 
+        if (!s3Client.doesObjectExist(bucketName, key)) {
+            return null;
+        }
+
         final S3Object object = s3Client.getObject(bucketName, key);
         if (object == null) {
             logger.warn("object '{}.{}' should exist, but got null, returning null", bucketName, key);
             throw new IOException(String.format("couldn't find S3 object with key '%s' in bucket '%s'", key, bucketName));
         }
-
         return object.getObjectContent();
     }
 

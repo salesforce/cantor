@@ -130,10 +130,8 @@ public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements Streamin
     }
 
     private void doStore(final String namespace, final String key, final InputStream stream, final long length) throws IOException {
+        super.namespaceExists(namespace);
         final String objectName = getObjectKey(namespace, key);
-        if (!this.s3Client.doesObjectExist(this.bucketName, getNamespaceKey(namespace))) {
-            throw new IOException(String.format("namespace '%s' doesn't exist; can't store object with key '%s'", namespace, key));
-        }
 
         final ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentLength(length);
@@ -153,6 +151,7 @@ public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements Streamin
         if (!this.s3Client.doesObjectExist(this.bucketName, objectName)) {
             throw new IOException(String.format("couldn't find objectName '%s' for namespace '%s'", objectName, namespace));
         }
+
         return S3Utils.getObjectStream(this.s3Client, this.bucketName, objectName);
     }
 

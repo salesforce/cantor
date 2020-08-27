@@ -4,6 +4,7 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.salesforce.cantor.Namespaceable;
+import com.salesforce.cantor.common.CommonPreconditions;
 import com.salesforce.cantor.s3.utils.S3Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,6 +79,11 @@ public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
      */
     protected abstract String getObjectKeyPrefix(final String namespace);
 
+    protected boolean namespaceExists(final String namespace) {
+        CommonPreconditions.checkNamespace(namespace);
+        return this.s3Client.doesObjectExist(this.bucketName, getNamespaceKey(namespace));
+    }
+
     private Collection<String> doGetNamespaces() throws IOException {
         final String namespacePrefix = getNamespaceKey("");
         return S3Utils.getKeys(this.s3Client, this.bucketName, namespacePrefix)
@@ -88,8 +94,9 @@ public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
 
     private void doCreate(final String namespace) throws IOException {
         final String key = getNamespaceKey(namespace);
-        if (this.s3Client.doesObjectExist(this.bucketName, key)) {
+        if (namespaceExists(namespace)) {
             logger.debug("namespace '{}' already exists; no need to recreate", namespace);
+            return;
         }
 
         logger.info("creating namespace '{}' at '{}.{}'", namespace, this.bucketName, key);
@@ -104,6 +111,12 @@ public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
         final String objectKeyPrefix = getObjectKeyPrefix(namespace);
         logger.debug("deleting all objects with prefix '{}.{}'", this.bucketName, objectKeyPrefix);
         S3Utils.deleteObjects(this.s3Client, this.bucketName, objectKeyPrefix);
+
+        // TODO: down the line this method should only drop the namespace object and a background thread will delete the data async
+        if (!namespaceExists(namespace)) {
+            logger.debug("namespace '{}' doesn't exists; no need to delete", namespace);
+            return;
+        }
 
         final String namespaceKey = getNamespaceKey(namespace);
         logger.debug("deleting namespace record object '{}.{}'", this.bucketName, namespaceKey);
