@@ -18,8 +18,7 @@ import java.util.regex.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.salesforce.cantor.common.EventsPreconditions.checkGet;
-import static com.salesforce.cantor.common.EventsPreconditions.checkStore;
+import static com.salesforce.cantor.common.EventsPreconditions.*;
 
 public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private static final Logger logger = LoggerFactory.getLogger(EventsOnS3.class);
@@ -46,11 +45,14 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     @Override
     public void store(final String namespace, final Collection<Event> batch) throws IOException {
         checkStore(namespace, batch);
+        if (!super.namespaceExists(namespace)) {
+            throw new IOException(String.format("namespace '%s' doesn't exist; can't store object with key '%s'", namespace, getNamespaceKey(namespace)));
+        }
         try {
             doStore(namespace, batch);
         } catch (final AmazonS3Exception e) {
             logger.warn("exception storing events to namespace: " + namespace, e);
-            throw new IOException("exception storing {} events to namespace: " + namespace, e);
+            throw new IOException("exception storing events to namespace: " + namespace, e);
         }
     }
 
@@ -64,6 +66,9 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                            final boolean ascending,
                            final int limit) throws IOException {
         checkGet(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
+        if (!super.namespaceExists(namespace)) {
+            throw new IOException(String.format("namespace '%s' doesn't exist; can't retrieve object with key '%s'", namespace, getNamespaceKey(namespace)));
+        }
         try {
             return doGet(namespace,
                          startTimestampMillis,
@@ -75,7 +80,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                          limit);
         } catch (final AmazonS3Exception e) {
             logger.warn("exception getting events from namespace: " + namespace, e);
-            throw new IOException("exception storing {} events to namespace: " + namespace, e);
+            throw new IOException("exception getting events from namespace: " + namespace, e);
         }
     }
 
@@ -85,8 +90,20 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                       final long endTimestampMillis,
                       final Map<String, String> metadataQuery,
                       final Map<String, String> dimensionsQuery) throws IOException {
-        // not implemented yet
-        return 0;
+        checkDelete(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
+        if (!super.namespaceExists(namespace)) {
+            throw new IOException(String.format("namespace '%s' doesn't exist; can't delete events", namespace));
+        }
+        try {
+            return doDelete(namespace,
+                    startTimestampMillis,
+                    endTimestampMillis,
+                    (metadataQuery != null) ? metadataQuery : Collections.emptyMap(),
+                    (dimensionsQuery != null) ? dimensionsQuery : Collections.emptyMap());
+        } catch (final AmazonS3Exception e) {
+            logger.warn("exception deleting events from namespace: " + namespace, e);
+            throw new IOException("exception deleting events from namespace: " + namespace, e);
+        }
     }
 
     @Override
@@ -115,7 +132,16 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
     @Override
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
-        // not implemented yet
+        checkExpire(namespace, endTimestampMillis);
+        if (!super.namespaceExists(namespace)) {
+            throw new IOException(String.format("namespace '%s' doesn't exist; can't expire objects", namespace));
+        }
+        try {
+            doExpire(namespace, endTimestampMillis);
+        } catch (final AmazonS3Exception e) {
+            logger.warn("exception expiring events from namespace: " + namespace, e);
+            throw new IOException("exception expiring events from namespace: " + namespace, e);
+        }
     }
 
     @Override
@@ -130,27 +156,16 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
     // storing each event in json lines format to conform to s3 selects preferred format; see https://docs.aws.amazon.com/AmazonS3/latest/dev/selecting-content-from-objects.html
     private void doStore(final String namespace, final Collection<Event> batch) throws IOException {
-        if (!super.namespaceExists(namespace)) {
-            throw new IOException(String.format("namespace '%s' doesn't exist; can't store object with key '%s'", namespace, getNamespaceKey(namespace)));
-        }
-
         final Map<String, ByteArrayOutputStream> keyToObject = new HashMap<>();
-        final Collection<String> eventsFiles = S3Utils.getKeys(this.s3Client, this.bucketName, getObjectKeyPrefix(namespace));
+        final Collection<String> eventsObjectKeys = S3Utils.getKeys(this.s3Client, this.bucketName, getObjectKeyPrefix(namespace));
         for (final Event event : batch) {
-            final String key = getObjectKey(eventsFiles, namespace, event.getTimestampMillis());
+            final String key = getObjectKey(eventsObjectKeys, namespace, event.getTimestampMillis());
             try (final OutputStream objectStream = getOutputStream(this.bucketName, key, keyToObject)) {
                 objectStream.write((parser.toJson(event) + "\n").getBytes());
             }
         }
 
-        for (final Map.Entry<String, ByteArrayOutputStream> entry : keyToObject.entrySet()) {
-            final ByteArrayInputStream content = new ByteArrayInputStream(entry.getValue().toByteArray());
-            logger.info("storing stream with length={} at '{}.{}'", content.available(), this.bucketName, entry.getKey());
-            final ObjectMetadata metadata = new ObjectMetadata();
-            metadata.setContentLength(content.available());
-            // if no exception is thrown, the object was put successfully - ignore response value
-            S3Utils.putObject(this.s3Client, this.bucketName, entry.getKey(), content, metadata);
-        }
+        flushStreamsToS3(keyToObject);
     }
 
     private List<Event> doGet(final String namespace,
@@ -161,19 +176,15 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                               final boolean includePayloads,
                               final boolean ascending,
                               final int limit) throws IOException {
-        if (!super.namespaceExists(namespace)) {
-            throw new IOException(String.format("namespace '%s' doesn't exist; can't retrieve object with key '%s'", namespace, getNamespaceKey(namespace)));
-        }
-
-        final Collection<String> eventsFiles = S3Utils.getKeys(this.s3Client, this.bucketName, getObjectKeyPrefix(namespace));
-        final List<String> matchingKeys = getMatchingKeys(eventsFiles, startTimestampMillis, endTimestampMillis, ascending);
+        final Collection<String> eventsObjectKeys = S3Utils.getKeys(this.s3Client, this.bucketName, getObjectKeyPrefix(namespace));
+        final List<String> matchingKeys = getMatchingKeys(eventsObjectKeys, startTimestampMillis, endTimestampMillis, ascending);
 
         // using tree map for convenient sorting
         final Map<Long, Event> events = (ascending) ? new TreeMap<>() : new TreeMap<>(Collections.reverseOrder());
         final Map<String, Pattern> metadataPatterns = generateRegex(metadataQuery);
-        for (final String matchingKey : matchingKeys) {
+        for (final String objectKey : matchingKeys) {
             final String query = generateQuery(startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, limit);
-            final InputStream jsonLines = S3Utils.S3Select.queryObject(this.s3Client, this.bucketName, matchingKey, query);
+            final InputStream jsonLines = S3Utils.S3Select.queryObject(this.s3Client, this.bucketName, objectKey, query);
             final Scanner lineReader = new Scanner(jsonLines);
             // json events are stored in json lines format, so one json object per line
             while (lineReader.hasNext()) {
@@ -199,38 +210,54 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         return (limit <= 0) ? orderedEvents : orderedEvents.subList(0, limit);
     }
 
-    // creates an s3 select compatible query; see https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-glacier-select-sql-reference-select.html
-    private String generateQuery(final long startTimestampMillis,
-                                 final long endTimestampMillis,
-                                 final Map<String, String> metadataQuery,
-                                 final Map<String, String> dimensionsQuery,
-                                 final int limit) {
-        final String timestampClause = String.format("s.timestampMillis BETWEEN %d AND %d", startTimestampMillis, endTimestampMillis);
-        return String.format("SELECT * FROM s3object[*] s WHERE %s %s %s %s",
-                timestampClause,
-                getMetadataQuerySql(metadataQuery),
-                getDimensionQuerySql(dimensionsQuery),
-                // omitting limit since we cannot control order of return
-                "" // (limit <= 0) ? "" : "LIMIT " + limit
-        );
-    }
+    // delete can also be seen as only keeping the events that don't match the query
+    private int doDelete(final String namespace,
+                         final long startTimestampMillis,
+                         final long endTimestampMillis,
+                         final Map<String, String> metadataQuery,
+                         final Map<String, String> dimensionsQuery) throws IOException {
+        final Map<String, ByteArrayOutputStream> keyToObject = new HashMap<>();
+        final Collection<String> eventsObjectKeys = S3Utils.getKeys(this.s3Client, this.bucketName, getObjectKeyPrefix(namespace));
+        final List<String> matchingKeys = getMatchingKeys(eventsObjectKeys, startTimestampMillis, endTimestampMillis, true);
 
-    // do full regex evaluation server side as s3 select only supports limited regex
-    private boolean validEvent(final Event event, final Map<String, Pattern> metadataPatterns) {
-        for (final Map.Entry<String, Pattern> metaRegex : metadataPatterns.entrySet()) {
-            final String metadataValue = event.getMetadata().get(metaRegex.getKey().substring(2));
-            if (metadataValue == null) {
-                return false;
-            }
+        final Map<String, Pattern> metadataPatterns = generateRegex(metadataQuery);
+        int deleteCount = 0;
+        for (final String objectKey : matchingKeys) {
+            keyToObject.put(objectKey, new ByteArrayOutputStream());
 
-            final Matcher regex = metaRegex.getValue().matcher(metadataValue);
-            if (metaRegex.getKey().startsWith("_~") && !regex.matches()) {
-                return false;
-            } else if (metaRegex.getKey().startsWith("!~") && regex.matches()) {
-                return false;
+            final String query = generateQueryNegative(metadataQuery, dimensionsQuery);
+            final InputStream jsonLines = S3Utils.S3Select.queryObject(this.s3Client, this.bucketName, objectKey, query);
+            final Scanner lineReader = new Scanner(jsonLines);
+            // json events are stored in json lines format, so one json object per line
+            while (lineReader.hasNext()) {
+                final Event event = parser.fromJson(lineReader.nextLine(), Event.class);
+                if (event.getTimestampMillis() < startTimestampMillis || // event must be within timerange
+                    event.getTimestampMillis() > endTimestampMillis || // else should not be deleted
+                    !validEvent(event, metadataPatterns)) { // event matching query should be deleted
+                    keyToObject.get(objectKey).write((parser.toJson(event) + "\n").getBytes());
+                } else {
+                    deleteCount++;
+                }
             }
         }
-        return true;
+
+        flushStreamsToS3(keyToObject);
+        // TODO: this is an inaccurate count; events simply not returned due to the s3 select query won't be counted
+        return deleteCount;
+    }
+
+    private void doExpire(final String namespace, final long endTimestampMillis) throws IOException {
+        final Collection<String> eventsObjectKeys = S3Utils.getKeys(this.s3Client, this.bucketName, getObjectKeyPrefix(namespace));
+        final List<String> matchingKeys = getMatchingKeys(eventsObjectKeys, 0, endTimestampMillis, true);
+        final Iterator<String> objectToExpire = matchingKeys.iterator();
+        while (objectToExpire.hasNext()) {
+            final String objectKey = objectToExpire.next();
+            if (objectToExpire.hasNext()) {
+                S3Utils.deleteObject(this.s3Client, this.bucketName, objectKey);
+            } else { // delete the matching events from the last object instead
+                doDelete(namespace, 0, endTimestampMillis, Collections.emptyMap(), Collections.emptyMap());
+            }
+        }
     }
 
     // simple caching logic to prevent numerous copies of the object that events will be added to
@@ -247,6 +274,22 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                 IOUtils.copy(objectStream, localCache.get(key));
             }
             return localCache.get(key);
+        }
+    }
+
+    private void flushStreamsToS3(final Map<String, ByteArrayOutputStream> keyToObject) throws IOException {
+        for (final Map.Entry<String, ByteArrayOutputStream> entry : keyToObject.entrySet()) {
+            final ByteArrayInputStream content = new ByteArrayInputStream(entry.getValue().toByteArray());
+            if (content.available() != 0) {
+                logger.info("storing stream with length={} at '{}.{}'", content.available(), this.bucketName, entry.getKey());
+                final ObjectMetadata metadata = new ObjectMetadata();
+                metadata.setContentLength(content.available());
+                // if no exception is thrown, the object was put successfully - ignore response value
+                S3Utils.putObject(this.s3Client, this.bucketName, entry.getKey(), content, metadata);
+            } else {
+                logger.info("deleting object with no more events at '{}.{}'", this.bucketName, entry.getKey());
+                S3Utils.deleteObject(this.s3Client, this.bucketName, entry.getKey());
+            }
         }
     }
 
@@ -328,6 +371,49 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         return 0;
     }
 
+    // creates an s3 select compatible query; see https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-glacier-select-sql-reference-select.html
+    private String generateQuery(final long startTimestampMillis,
+                                 final long endTimestampMillis,
+                                 final Map<String, String> metadataQuery,
+                                 final Map<String, String> dimensionsQuery,
+                                 final int limit) {
+        final String timestampClause = String.format("s.timestampMillis BETWEEN %d AND %d", startTimestampMillis, endTimestampMillis);
+        return String.format("SELECT * FROM s3object[*] s WHERE %s %s %s %s",
+                timestampClause,
+                getMetadataQuerySql(metadataQuery, false),
+                getDimensionQuerySql(dimensionsQuery, false),
+                // omitting limit since we cannot control order of return
+                "" // (limit <= 0) ? "" : "LIMIT " + limit
+        );
+    }
+
+    // creates an s3 select query that is the negation of the two queries provided
+    private String generateQueryNegative(final Map<String, String> metadataQuery,
+                                         final Map<String, String> dimensionsQuery) {
+        return String.format("SELECT * FROM s3object[*] s WHERE %s %s",
+                getMetadataQuerySql(metadataQuery, true),
+                getDimensionQuerySql(dimensionsQuery, true))
+                .replaceFirst("AND", "");
+    }
+
+    // do full regex evaluation server side as s3 select only supports limited regex
+    private boolean validEvent(final Event event, final Map<String, Pattern> metadataPatterns) {
+        for (final Map.Entry<String, Pattern> metaRegex : metadataPatterns.entrySet()) {
+            final String metadataValue = event.getMetadata().get(metaRegex.getKey().substring(2));
+            if (metadataValue == null) {
+                return false;
+            }
+
+            final Matcher regex = metaRegex.getValue().matcher(metadataValue);
+            if (metaRegex.getKey().startsWith("_~") && !regex.matches()) {
+                return false;
+            } else if (metaRegex.getKey().startsWith("!~") && regex.matches()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     // full regex is not supported by s3 select, so some evaluation must be done server side
     private Map<String, Pattern> generateRegex(final Map<String, String> metadataQuery) {
         final Map<String, Pattern> regexes = new HashMap<>();
@@ -356,7 +442,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     // '!=': not equals - 'user-id' => '!=user-1'
     // '~': limited regex like - 'user-id' => '~user-*'
     // '!~': inverted limited  regex like - 'user-id' => '!~user-*'
-    private String getMetadataQuerySql(final Map<String, String> metadataQuery) {
+    private String getMetadataQuerySql(final Map<String, String> metadataQuery, final boolean invert) {
         if (metadataQuery.isEmpty()) {
             return "";
         }
@@ -368,11 +454,14 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             if (query.startsWith("~") || query.startsWith("!~")) {
                 sql.append(" AND ").append(String.format(" %s LIKE %s", metadataName, quote("%")));
             } else if (query.startsWith("=")) {
-                sql.append(" AND ").append(metadataName).append(" = ").append(quote(query.substring(1)));
+                final String operation = (invert) ? " != " : " = ";
+                sql.append(" AND ").append(metadataName).append(operation).append(quote(query.substring(1)));
             } else if (query.startsWith("!=")) {
-                sql.append(" AND ").append(metadataName).append(" != ").append(quote(query.substring(2)));
+                final String operation = (invert) ? " = " : " != ";
+                sql.append(" AND ").append(metadataName).append(operation).append(quote(query.substring(2)));
             } else {
-                sql.append(" AND ").append(metadataName).append(" = ").append(quote(query));
+                final String operation = (invert) ? " != " : " = ";
+                sql.append(" AND ").append(metadataName).append(operation).append(quote(query));
             }
         }
         return sql.toString();
@@ -387,7 +476,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     // '>=': greater than or equals - 'cpu' => '>=90'
     // '<': less than - 'cpu' => '<90'
     // '<=': less than or equals - 'cpu' => '<=90'
-    private String getDimensionQuerySql(final Map<String, String> dimensionsQuery) {
+    private String getDimensionQuerySql(final Map<String, String> dimensionsQuery, final boolean invert) {
         if (dimensionsQuery.isEmpty()) {
             return "";
         }
@@ -403,19 +492,26 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                     .append(" AND ")
                     .append(Double.valueOf(query.substring(query.indexOf("..") + 2)));
             } else if (query.startsWith(">=")) {
-                sql.append(" AND ").append(dimensionName).append(" >= ").append(query.substring(2));
+                final String operation = (invert) ? " < " : " >= ";
+                sql.append(" AND ").append(dimensionName).append(operation).append(query.substring(2));
             } else if (query.startsWith("<=")) {
-                sql.append(" AND ").append(dimensionName).append(" <= ").append(query.substring(2));
+                final String operation = (invert) ? " > " : " <= ";
+                sql.append(" AND ").append(dimensionName).append(operation).append(query.substring(2));
             } else if (query.startsWith(">")) {
-                sql.append(" AND ").append(dimensionName).append(" > ").append(query.substring(1));
+                final String operation = (invert) ? " <= " : " > ";
+                sql.append(" AND ").append(dimensionName).append(operation).append(query.substring(1));
             } else if (query.startsWith("<")) {
-                sql.append(" AND ").append(dimensionName).append(" < ").append(query.substring(1));
+                final String operation = (invert) ? " >= " : " < ";
+                sql.append(" AND ").append(dimensionName).append(operation).append(query.substring(1));
             } else if (query.startsWith("!=")) {
-                sql.append(" AND ").append(dimensionName).append(" != ").append(query.substring(2));
+                final String operation = (invert) ? " = " : " != ";
+                sql.append(" AND ").append(dimensionName).append(operation).append(query.substring(2));
             } else if (query.startsWith("=")) {
-                sql.append(" AND ").append(dimensionName).append(" = ").append(query.substring(1));
+                final String operation = (invert) ? " != " : " = ";
+                sql.append(" AND ").append(dimensionName).append(operation).append(query.substring(1));
             } else {
-                sql.append(" AND ").append(dimensionName).append(" = ").append(query);
+                final String operation = (invert) ? " != " : " = ";
+                sql.append(" AND ").append(dimensionName).append(operation).append(query);
             }
         }
         return sql.toString();
@@ -450,12 +546,16 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private static class ByteArrayHandler implements JsonSerializer<byte[]>, JsonDeserializer<byte[]> {
 
         @Override
-        public byte[] deserialize(final JsonElement jsonElement, final Type type, final JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
+        public byte[] deserialize(final JsonElement jsonElement,
+                                  final Type type,
+                                  final JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
             return Base64.getDecoder().decode(jsonElement.getAsString());
         }
 
         @Override
-        public JsonElement serialize(final byte[] bytes, final Type type, final JsonSerializationContext jsonSerializationContext) {
+        public JsonElement serialize(final byte[] bytes,
+                                     final Type type,
+                                     final JsonSerializationContext jsonSerializationContext) {
             final String encodedString = Base64.getEncoder().encodeToString(bytes);
             return new JsonPrimitive(encodedString);
         }

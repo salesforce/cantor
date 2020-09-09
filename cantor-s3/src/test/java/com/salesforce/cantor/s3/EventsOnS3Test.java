@@ -29,4 +29,14 @@ public class EventsOnS3Test extends AbstractBaseEventsTest {
     public void testStore3kRandomEvents() throws Exception {
         super.testStore3kRandomEvents();
     }
+
+    @Override
+    public void testBadInput() throws Exception {
+        super.testBadInput();
+    }
+
+    @Override
+    public void testMetadataQueryRegex() throws Exception {
+        super.testMetadataQueryRegex();
+    }
 }
