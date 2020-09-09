@@ -1,13 +1,16 @@
 package com.salesforce.cantor.s3;
 
-import com.adobe.testing.s3mock.testng.S3Mock;
 import com.adobe.testing.s3mock.testng.S3MockListener;
+import com.amazonaws.auth.*;
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.common.AbstractBaseEventsTest;
 import org.testng.annotations.Listeners;
 
-import java.io.IOException;
+import java.io.*;
+import java.util.Scanner;
 
 @Listeners(value = { S3MockListener.class })
 public class EventsOnS3Test extends AbstractBaseEventsTest {
@@ -20,5 +23,10 @@ public class EventsOnS3Test extends AbstractBaseEventsTest {
     @Override
     public void testNamespaces() throws Exception {
         super.testNamespaces();
+    }
+
+    @Override
+    public void testStore3kRandomEvents() throws Exception {
+        super.testStore3kRandomEvents();
     }
 }

@@ -190,29 +190,28 @@ public class S3Utils {
 
         public static InputStream queryObject(final AmazonS3 s3Client,
                                               final SelectObjectContentRequest request) throws IOException {
-            try (final SelectObjectContentResult result = s3Client.selectObjectContent(request)) {
-                return result.getPayload().getRecordsInputStream(
-                    new SelectObjectContentEventVisitor() {
-                        @Override
-                        public void visit(final SelectObjectContentEvent.StatsEvent event) {
-                            logger.info("s3 select query stats: bucket={} key={} query={} bytes-scanned={} bytes-processed={}",
-                                    request.getBucketName(),
-                                    request.getKey(),
-                                    request.getExpression(),
-                                    event.getDetails().getBytesProcessed(),
-                                    event.getDetails().getBytesScanned());
-                        }
-
-                        @Override
-                        public void visit(final SelectObjectContentEvent.EndEvent event) {
-                            logger.info("s3 select query completed for bucket={} key={} query={}",
-                                    request.getBucketName(),
-                                    request.getKey(),
-                                    request.getExpression());
-                        }
+            final SelectObjectContentResult result = s3Client.selectObjectContent(request);
+            return result.getPayload().getRecordsInputStream(
+                new SelectObjectContentEventVisitor() {
+                    @Override
+                    public void visit(final SelectObjectContentEvent.StatsEvent event) {
+                        logger.info("s3 select query stats: bucket={} key={} query={} bytes-scanned={} bytes-processed={}",
+                                request.getBucketName(),
+                                request.getKey(),
+                                request.getExpression(),
+                                event.getDetails().getBytesProcessed(),
+                                event.getDetails().getBytesScanned());
                     }
-                );
-            }
+
+                    @Override
+                    public void visit(final SelectObjectContentEvent.EndEvent event) {
+                        logger.info("s3 select query completed for bucket={} key={} query={}",
+                                request.getBucketName(),
+                                request.getKey(),
+                                request.getExpression());
+                    }
+                }
+            );
         }
 
         /**
