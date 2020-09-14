@@ -5,7 +5,6 @@ import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.salesforce.cantor.Namespaceable;
 import com.salesforce.cantor.common.CommonPreconditions;
-import com.salesforce.cantor.s3.utils.S3Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

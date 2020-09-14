@@ -6,7 +6,6 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.util.IOUtils;
 import com.google.gson.*;
 import com.salesforce.cantor.Events;
-import com.salesforce.cantor.s3.utils.S3Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

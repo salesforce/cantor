@@ -10,7 +10,6 @@ package com.salesforce.cantor.s3;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.salesforce.cantor.s3.utils.S3Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -130,7 +129,9 @@ public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements Streamin
     }
 
     private void doStore(final String namespace, final String key, final InputStream stream, final long length) throws IOException {
-        super.namespaceExists(namespace);
+        if (!super.namespaceExists(namespace)) {
+            throw new IOException(String.format("namespace '%s' doesn't exist; can't store object with key '%s'", namespace, key));
+        }
         final String objectName = getObjectKey(namespace, key);
 
         final ObjectMetadata metadata = new ObjectMetadata();

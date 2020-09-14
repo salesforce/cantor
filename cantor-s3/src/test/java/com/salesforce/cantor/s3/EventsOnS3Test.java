@@ -18,7 +18,7 @@ public class EventsOnS3Test extends AbstractBaseEventsTest {
     @Override
     protected Cantor getCantor() throws IOException {
         final AmazonS3 s3Client = createS3Client();
-        return new CantorOnS3(s3Client);
+        return new CantorOnS3(s3Client, "default");
     }
 
     // insert real S3 client here to run integration testing
