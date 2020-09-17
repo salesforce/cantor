@@ -21,10 +21,6 @@ import java.io.IOException;
 public class CantorOnS3 implements Cantor {
     private final Objects objects;
 
-    public CantorOnS3(final AmazonS3 s3Client) throws IOException {
-        this(s3Client, "warden-cantor");
-    }
-
     public CantorOnS3(final AmazonS3 s3Client, final String bucketName) throws IOException {
         this.objects = new ObjectsOnS3(s3Client, bucketName);
     }
