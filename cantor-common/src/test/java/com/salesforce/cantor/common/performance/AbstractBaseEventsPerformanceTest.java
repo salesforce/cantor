@@ -39,7 +39,7 @@ public abstract class AbstractBaseEventsPerformanceTest extends AbstractBaseCant
         super.printStatsTable(result.getName(), this.percentiles);
     }
 
-    @Test
+    @Test(enabled = false)
     public void testManySmallEvents() throws IOException {
         final Events events = getEvents();
         final List<Events.Event> storedEvents = generateEvents(getManyCount(), 5, 10, 1024);
@@ -63,7 +63,7 @@ public abstract class AbstractBaseEventsPerformanceTest extends AbstractBaseCant
         }
     }
 
-    @Test
+    @Test(enabled = false)
     public void testFewLargeEvents() throws IOException {
         final Events events = getEvents();
         final List<Events.Event> storedEvents = generateEvents(getFewCount(), 25, 50, 1024 * 1024);
@@ -87,7 +87,7 @@ public abstract class AbstractBaseEventsPerformanceTest extends AbstractBaseCant
         }
     }
 
-    @Test
+    @Test(enabled = false)
     public void testFewSmallEvents() throws IOException {
         final Events events = getEvents();
         final List<Events.Event> storedEvents = generateEvents(getFewCount(), 5, 10, 1024);
@@ -111,7 +111,7 @@ public abstract class AbstractBaseEventsPerformanceTest extends AbstractBaseCant
         }
     }
 
-    @Test
+    @Test(enabled = false)
     public void testManyLargeEvents() throws IOException {
         final Events events = getEvents();
         final List<Events.Event> storedEvents = generateEvents(getManyCount(), 25, 50, 1024 * 1024);

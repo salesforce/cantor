@@ -9,6 +9,7 @@ package com.salesforce.cantor.h2.performance;
 
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.common.performance.AbstractBaseEventsPerformanceTest;
+import org.testng.annotations.Test;
 
 import java.io.IOException;
 

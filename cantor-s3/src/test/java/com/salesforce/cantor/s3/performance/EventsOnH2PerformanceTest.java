@@ -7,6 +7,8 @@
 
 package com.salesforce.cantor.s3.performance;
 
+import com.adobe.testing.s3mock.testng.S3Mock;
+import com.adobe.testing.s3mock.testng.S3MockListener;
 import com.amazonaws.auth.*;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
@@ -14,19 +16,20 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.common.performance.AbstractBaseEventsPerformanceTest;
 import com.salesforce.cantor.s3.CantorOnS3;
+import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
 
 import java.io.*;
 import java.util.Scanner;
 
-@Test(enabled = false)
+@Listeners(value = { S3MockListener.class })
 public class EventsOnH2PerformanceTest extends AbstractBaseEventsPerformanceTest {
     private static final String credentialsLocation = "/path/to/creds";
 
     @Override
     protected Cantor getCantor() throws IOException {
-        final AmazonS3 s3Client = createS3Client();
-        return new CantorOnS3(s3Client, "default");
+        final S3Mock s3Client = S3Mock.getInstance();
+        return new CantorOnS3(s3Client.createS3Client(), "default");
     }
 
     // insert real S3 client here to run integration testing
@@ -43,20 +46,5 @@ public class EventsOnH2PerformanceTest extends AbstractBaseEventsPerformanceTest
                     .withCredentials(new AWSStaticCredentialsProvider(sessionCredentials))
                     .build();
         }
-    }
-
-    @Override
-    public void testFewLargeEvents() throws IOException {
-//        super.testFewLargeEvents();
-    }
-
-    @Override
-    public void testFewSmallEvents() throws IOException {
-//        super.testFewSmallEvents();
-    }
-
-    @Override
-    public void testManyLargeEvents() throws IOException {
-//        super.testManyLargeEvents();
     }
 }
