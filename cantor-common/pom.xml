@@ -24,6 +24,10 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
+    <properties>
+        <apache.verison>3.6.1</apache.verison>
+    </properties>
+
     <dependencies>
         <!-- CANTOR BASE -->
         <dependency>
@@ -45,6 +49,12 @@
             <version>${testng.version}</version>
             <scope>test</scope>
         </dependency>
+        <!-- COMMONS MATH3 -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-math3</artifactId>
+            <version>${apache.verison}</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -52,7 +62,7 @@
             <extension>
                 <groupId>kr.motd.maven</groupId>
                 <artifactId>os-maven-plugin</artifactId>
-                <version>1.4.1.Final</version>
+                <version>1.6.0</version>
             </extension>
         </extensions>
 
