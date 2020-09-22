@@ -27,6 +27,7 @@ public class ObjectsOnS3Test extends AbstractBaseObjectsTest {
     @Override
     protected Cantor getCantor() throws IOException {
         final AmazonS3 s3Client = S3Mock.getInstance().createS3Client("us-west-1");
-        return new CantorOnS3(s3Client, "warden-cantor");
+        s3Client.createBucket("default");
+        return new CantorOnS3(s3Client, "default");
     }
 }

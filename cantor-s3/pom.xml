@@ -32,6 +32,7 @@
     </properties>
 
     <dependencies>
+        <!-- CANTOR COMMON -->
         <dependency>
             <groupId>com.salesforce.cantor</groupId>
             <artifactId>cantor-common</artifactId>

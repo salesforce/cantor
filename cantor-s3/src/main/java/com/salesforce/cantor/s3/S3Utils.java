@@ -1,52 +1,20 @@
-package com.salesforce.cantor.s3.utils;
+package com.salesforce.cantor.s3;
 
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.ObjectListing;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.S3Object;
-import com.amazonaws.services.s3.model.S3ObjectSummary;
-import com.salesforce.cantor.s3.ObjectsOnS3;
+import com.amazonaws.services.s3.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
-public class S3Utils {
-    private static final Logger logger = LoggerFactory.getLogger(ObjectsOnS3.class);
+class S3Utils {
+    private static final Logger logger = LoggerFactory.getLogger(S3Utils.class);
 
     // read objects in 4MB chunks
     private static final int streamingChunkSize = 4 * 1024 * 1024;
-
-    public static void createBucket(final AmazonS3 s3Client, final String bucketName) throws IOException {
-        if (s3Client.doesBucketExistV2(bucketName)) {
-            logger.info("bucket '{}' already exists; ignoring create", bucketName);
-            return;
-        }
-        logger.info("bucket '{}' doesn't exist; creating it", bucketName);
-        s3Client.createBucket(bucketName);
-
-        // check bucket created successfully
-        if (!s3Client.doesBucketExistV2(bucketName)) {
-            throw new IOException("failed to create namespace on s3 with bucket name: " + bucketName);
-        }
-    }
-
-    public static void deleteBucket(final AmazonS3 s3Client, final String bucketName) throws IOException {
-        deleteObjects(s3Client, bucketName, null);
-
-        // now delete the bucket
-        s3Client.deleteBucket(bucketName);
-
-        // check bucket deleted successfully
-        if (s3Client.doesBucketExistV2(bucketName)) {
-            throw new IOException("failed to drop namespace on s3 with bucket name: " + bucketName);
-        }
-    }
 
     public static Collection<String> getKeys(final AmazonS3 s3Client,
                                              final String key,
@@ -59,11 +27,25 @@ public class S3Utils {
 
         final Set<String> keys = new HashSet<>();
         int index = 0;
-        ObjectListing listing = s3Client.listObjects(key, prefix);
+        ObjectListing listing = null;
         do {
-            for (final S3ObjectSummary summary : listing.getObjectSummaries()) {
-                if (index < start) {
-                    logger.debug("skipping {} at index={} start={}", summary.getKey(), index++, start);
+            if (listing == null) {
+                listing = s3Client.listObjects(key, prefix);
+            } else {
+                listing = s3Client.listNextBatchOfObjects(listing);
+            }
+
+            final List<S3ObjectSummary> objectSummaries = listing.getObjectSummaries();
+            // skip sections that the start index wouldn't include
+            if ((objectSummaries.size() - 1) + index < start) {
+                index += objectSummaries.size();
+                logger.debug("skipping {} objects to index={}", objectSummaries.size(), index);
+                listing = s3Client.listNextBatchOfObjects(listing);
+                continue;
+            }
+
+            for (final S3ObjectSummary summary : objectSummaries) {
+                if (start > index++) {
                     continue;
                 }
                 keys.add(summary.getKey());
@@ -75,7 +57,6 @@ public class S3Utils {
             }
 
             logger.debug("got {} keys from {}", listing.getObjectSummaries().size(), listing);
-            listing = s3Client.listNextBatchOfObjects(listing);
         } while (listing.isTruncated());
 
         return keys;
@@ -90,9 +71,6 @@ public class S3Utils {
         }
 
         final S3Object s3Object = s3Client.getObject(bucketName, key);
-        if (s3Object == null) {
-            return null;
-        }
         final ByteArrayOutputStream buffer;
         try (final InputStream inputStream = s3Object.getObjectContent()) {
             buffer = new ByteArrayOutputStream();
@@ -171,11 +149,15 @@ public class S3Utils {
         }
 
         int totalSize = 0;
-        ObjectListing listing = s3Client.listObjects(bucket, bucketPrefix);
+        ObjectListing listing = null;
         do {
+            if (listing == null) {
+                listing = s3Client.listObjects(bucket, bucketPrefix);
+            } else {
+                listing = s3Client.listNextBatchOfObjects(listing);
+            }
             totalSize += listing.getObjectSummaries().size();
             logger.debug("got {} keys from {}", listing.getObjectSummaries().size(), listing);
-            listing = s3Client.listNextBatchOfObjects(listing);
         } while (listing.isTruncated());
 
         return totalSize;
