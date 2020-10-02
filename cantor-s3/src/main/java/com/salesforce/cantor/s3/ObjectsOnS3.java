@@ -19,23 +19,16 @@ import java.util.stream.Collectors;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 import static com.salesforce.cantor.common.CommonPreconditions.checkString;
-import static com.salesforce.cantor.common.ObjectsPreconditions.checkDelete;
-import static com.salesforce.cantor.common.ObjectsPreconditions.checkGet;
-import static com.salesforce.cantor.common.ObjectsPreconditions.checkKeys;
-import static com.salesforce.cantor.common.ObjectsPreconditions.checkSize;
-import static com.salesforce.cantor.common.ObjectsPreconditions.checkStore;
 import static com.salesforce.cantor.common.ObjectsPreconditions.*;
 
 public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements StreamingObjects {
     private static final Logger logger = LoggerFactory.getLogger(ObjectsOnS3.class);
 
-    // cantor-namespace-<namespace>
-    private static final String namespaceFileFormat = "cantor-objects-namespace-%s";
     // cantor-object-[<namespace>]-<key>
     private static final String objectKeyFormat = "cantor-object-[%s]-%s";
 
     public ObjectsOnS3(final AmazonS3 s3Client, final String bucketName) throws IOException {
-        super(s3Client, bucketName);
+        super(s3Client, bucketName, "objects");
     }
 
     @Override
@@ -119,19 +112,12 @@ public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements Streamin
     }
 
     @Override
-    protected String getNamespaceKey(final String namespace) {
-        return String.format(namespaceFileFormat, namespace);
-    }
-
-    @Override
     protected String getObjectKeyPrefix(final String namespace) {
         return getObjectKey(namespace, "");
     }
 
     private void doStore(final String namespace, final String key, final InputStream stream, final long length) throws IOException {
-        if (!super.namespaceExists(namespace)) {
-            throw new IOException(String.format("namespace '%s' doesn't exist; can't store object with key '%s'", namespace, key));
-        }
+        checkNamespace(namespace);
         final String objectName = getObjectKey(namespace, key);
 
         final ObjectMetadata metadata = new ObjectMetadata();

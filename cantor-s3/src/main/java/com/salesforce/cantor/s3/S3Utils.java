@@ -5,9 +5,7 @@ import com.amazonaws.services.s3.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -95,21 +93,13 @@ public class S3Utils {
 
     public static InputStream getObjectStream(final AmazonS3 s3Client,
                                               final String bucketName,
-                                              final String key) throws IOException {
-        if (!s3Client.doesBucketExistV2(bucketName)) {
-            throw new IOException(String.format("couldn't find bucket '%s'", bucketName));
-        }
-
+                                              final String key) {
         if (!s3Client.doesObjectExist(bucketName, key)) {
+            logger.warn(String.format("couldn't find S3 object with key '%s' in bucket '%s'", key, bucketName));
             return null;
         }
 
-        final S3Object object = s3Client.getObject(bucketName, key);
-        if (object == null) {
-            logger.warn("object '{}.{}' should exist, but got null, returning null", bucketName, key);
-            throw new IOException(String.format("couldn't find S3 object with key '%s' in bucket '%s'", key, bucketName));
-        }
-        return object.getObjectContent();
+        return s3Client.getObject(bucketName, key).getObjectContent();
     }
 
     public static void putObject(final AmazonS3 s3Client,
@@ -175,21 +165,42 @@ public class S3Utils {
         return totalSize;
     }
 
+    public static String getObjectNameForNamespace(final AmazonS3 s3Client, final String bucketName, final String namespace) throws IOException {
+        final String objectKey = getCleanKeyForNamespace(namespace);
+        if (!s3Client.doesObjectExist(bucketName, objectKey)) {
+            throw new IOException(String.format("namespace '%s' does not exist; formatted name: '%s'", namespace, objectKey));
+        }
+        return objectKey;
+    }
+
+    public static String getCleanKeyForNamespace(final String namespace) {
+        final String cleanName = namespace.replaceAll("[^A-Za-z0-9_\\-]", "").toLowerCase();
+        return String.format("cantor-%s-%s",
+                cleanName.substring(0, Math.min(32, cleanName.length())), Math.abs(namespace.hashCode()));
+    }
+
     /**
      * S3 Select is allows use of SQL queries on top of data stored in s3 that is in either JSON or CSV. This helper
      * class is a wrapper around the query requests. For more documentation refer to https://docs.aws.amazon.com/AmazonS3/latest/dev/selecting-content-from-objects.html
      */
     public static class S3Select {
 
-        public static InputStream queryObject(final AmazonS3 s3Client,
-                                              final String bucket,
-                                              final String key,
-                                              final String query) throws IOException {
+        public static InputStream queryObjectJson(final AmazonS3 s3Client,
+                                                  final String bucket,
+                                                  final String key,
+                                                  final String query) {
             return queryObject(s3Client, generateJsonRequest(bucket, key, query));
         }
 
+        public static InputStream queryObjectCsv(final AmazonS3 s3Client,
+                                                 final String bucket,
+                                                 final String key,
+                                                 final String query) {
+            return queryObject(s3Client, generateCsvRequest(bucket, key, query));
+        }
+
         public static InputStream queryObject(final AmazonS3 s3Client,
-                                              final SelectObjectContentRequest request) throws IOException {
+                                              final SelectObjectContentRequest request) {
             final SelectObjectContentResult result = s3Client.selectObjectContent(request);
             return result.getPayload().getRecordsInputStream(
                 new SelectObjectContentEventVisitor() {
@@ -239,5 +250,32 @@ public class S3Utils {
 
             return request;
         }
+
+        /**
+         * Generate an S3 Select query against a csv file
+         */
+        public static SelectObjectContentRequest generateCsvRequest(final String bucket,
+                                                                    final String key,
+                                                                    final String query) {
+            final SelectObjectContentRequest request = new SelectObjectContentRequest();
+            request.setBucketName(bucket);
+            request.setKey(key);
+            request.setExpression(query);
+            request.setExpressionType(ExpressionType.SQL);
+
+            // queries will be made against an array of json objects
+            final InputSerialization inputSerialization = new InputSerialization();
+            inputSerialization.setCsv(new CSVInput().withFileHeaderInfo(FileHeaderInfo.USE).withFieldDelimiter(","));
+            inputSerialization.setCompressionType(CompressionType.NONE);
+            request.setInputSerialization(inputSerialization);
+
+            // response will be a json object
+            final OutputSerialization outputSerialization = new OutputSerialization();
+            outputSerialization.setCsv(new CSVOutput());
+            request.setOutputSerialization(outputSerialization);
+
+            return request;
+        }
+
     }
 }
