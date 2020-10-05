@@ -168,7 +168,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         final Map<Long, Event> events = (ascending) ? new TreeMap<>() : new TreeMap<>(Collections.reverseOrder());
         final Map<String, Pattern> metadataPatterns = generateRegex(metadataQuery);
         for (final String objectKey : matchingKeys) {
-            final String query = generateQuery(startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, limit);
+            final String query = generateQuery(startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
             final InputStream jsonLines = S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query);
             final Scanner lineReader = new Scanner(jsonLines);
             // json events are stored in json lines format, so one json object per line
@@ -360,21 +360,22 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private String generateQuery(final long startTimestampMillis,
                                  final long endTimestampMillis,
                                  final Map<String, String> metadataQuery,
-                                 final Map<String, String> dimensionsQuery,
-                                 final int limit) {
+                                 final Map<String, String> dimensionsQuery) {
         final String timestampClause = String.format("s.timestampMillis BETWEEN %d AND %d", startTimestampMillis, endTimestampMillis);
-        return String.format("SELECT * FROM s3object[*] s WHERE %s %s %s %s",
+        return String.format("SELECT * FROM s3object[*] s WHERE %s %s %s",
                 timestampClause,
                 getMetadataQuerySql(metadataQuery, false),
-                getDimensionQuerySql(dimensionsQuery, false),
-                // omitting limit since we cannot control order of return
-                "" // (limit <= 0) ? "" : "LIMIT " + limit
+                getDimensionQuerySql(dimensionsQuery, false)
         );
     }
 
     // creates an s3 select query that is the negation of the two queries provided
     private String generateQueryNegative(final Map<String, String> metadataQuery,
                                          final Map<String, String> dimensionsQuery) {
+        if (metadataQuery.isEmpty() && dimensionsQuery.isEmpty()) {
+            return "SELECT * FROM s3object[*] s";
+        }
+
         return String.format("SELECT * FROM s3object[*] s WHERE %s %s",
                 getMetadataQuerySql(metadataQuery, true),
                 getDimensionQuerySql(dimensionsQuery, true))
