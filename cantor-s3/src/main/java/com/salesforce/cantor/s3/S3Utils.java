@@ -165,14 +165,6 @@ public class S3Utils {
         return totalSize;
     }
 
-    public static String getObjectNameForNamespace(final AmazonS3 s3Client, final String bucketName, final String namespace) throws IOException {
-        final String objectKey = getCleanKeyForNamespace(namespace);
-        if (!s3Client.doesObjectExist(bucketName, objectKey)) {
-            throw new IOException(String.format("namespace '%s' does not exist; formatted name: '%s'", namespace, objectKey));
-        }
-        return objectKey;
-    }
-
     public static String getCleanKeyForNamespace(final String namespace) {
         final String cleanName = namespace.replaceAll("[^A-Za-z0-9_\\-]", "").toLowerCase();
         return String.format("cantor-%s-%s",
