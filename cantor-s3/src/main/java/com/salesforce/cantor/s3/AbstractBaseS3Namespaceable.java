@@ -135,7 +135,7 @@ public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
         logger.info("creating namespace '{}' and adding to '{}.{}'", namespace, this.bucketName, this.namespaceLookupKey);
         final byte[] namespacesCsv = S3Utils.getObjectBytes(this.s3Client, this.bucketName, this.namespaceLookupKey);
         this.namespaceCache.put(namespace, Optional.ofNullable(S3Utils.getCleanKeyForNamespace(namespace)));
-        if (namespacesCsv.length == 0) {
+        if (namespacesCsv == null || namespacesCsv.length == 0) {
             final InputStream csvForNamespaces = new StringInputStream("namespace,key\n" + namespace + "," + S3Utils.getCleanKeyForNamespace(namespace));
             S3Utils.putObject(this.s3Client, this.bucketName, this.namespaceLookupKey, csvForNamespaces, new ObjectMetadata());
             return;
