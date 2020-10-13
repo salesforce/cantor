@@ -8,6 +8,8 @@
 package com.salesforce.cantor.misc.sharded;
 
 import com.salesforce.cantor.Namespaceable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
@@ -16,6 +18,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 
 abstract class AbstractBaseShardedNamespaceable<T extends Namespaceable> implements Namespaceable {
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final T[] delegates;
     private final AtomicReference<Map<String, List<T>>> namespaceLookupTable = new AtomicReference<>();
@@ -57,8 +60,8 @@ abstract class AbstractBaseShardedNamespaceable<T extends Namespaceable> impleme
         if (shards == null) {
             throw new IOException("shard not found for namespace " + namespace);
         }
-        if (shards.size() != 1) {
-            throw new IOException("more than one shard found for namespace " + namespace);
+        if (shards.size() > 1) {
+            logger.warn("more than one shard found for namespace '{}'", namespace);
         }
         return shards.get(0);
     }
