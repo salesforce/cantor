@@ -38,8 +38,8 @@ public class ArchiverOnS3Test {
     private static final long timeframeOrigin = timeframeBound - TimeUnit.DAYS.toMillis(2);
     private static final String h2Directory = "/tmp/cantor-local-test";
     private static final String archivePathBase = "cantor-s3-archive-data";
-    private static final long hourMillis = TimeUnit.HOURS.toMillis(1);
     private static final String archiveNamespace = "events-archive";
+    private static final String bucketName = "cantor-archive-test";
 
     private Map<String, Long> cantorH2Namespaces;
     private Cantor cantorLocal;
@@ -49,7 +49,8 @@ public class ArchiverOnS3Test {
     @BeforeMethod
     public void setUp() throws IOException {
         final AmazonS3 s3Client = createS3Client();
-        this.cantorOnS3 = new CantorOnS3(s3Client, "cantor-archive-test");
+        s3Client.createBucket(bucketName);
+        this.cantorOnS3 = new CantorOnS3(s3Client, bucketName);
         this.archiver = new ArchiverOnS3(cantorOnS3);
 
         this.cantorLocal = new ArchivableCantor(new CantorOnH2(h2Directory), this.archiver);
@@ -67,7 +68,6 @@ public class ArchiverOnS3Test {
         for (final String namespace : this.cantorOnS3.objects().namespaces()) {
             this.cantorOnS3.objects().drop(namespace);
         }
-        createS3Client().deleteBucket(String.format("%s-all-namespaces", "cantor-archive-test"));
 
         // delete test archive
         final File baseDirectory = new File("cantor-s3-archive-data");
