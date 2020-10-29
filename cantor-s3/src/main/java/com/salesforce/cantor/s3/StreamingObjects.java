@@ -30,7 +30,7 @@ public interface StreamingObjects extends Objects {
      * Gets the object corresponding to the given namespace/key as an {@link InputStream}
      * @param namespace the namespace of the object
      * @param key the key of the object
-     * @return an {@link InputStream} for the stored object
+     * @return an {@link InputStream} for the stored object/null if it doesn't exist
      */
     InputStream stream(String namespace, String key) throws IOException;
 }

@@ -28,3 +28,4 @@ default/
 
 # benchmark directories
 benchmark-results/
+secrets/

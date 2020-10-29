@@ -13,78 +13,22 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
-import static com.salesforce.cantor.common.CommonPreconditions.checkCreate;
-import static com.salesforce.cantor.common.CommonPreconditions.checkDrop;
 import static com.salesforce.cantor.common.CommonPreconditions.checkString;
-import static com.salesforce.cantor.common.ObjectsPreconditions.checkDelete;
-import static com.salesforce.cantor.common.ObjectsPreconditions.checkGet;
-import static com.salesforce.cantor.common.ObjectsPreconditions.checkKeys;
-import static com.salesforce.cantor.common.ObjectsPreconditions.checkSize;
-import static com.salesforce.cantor.common.ObjectsPreconditions.checkStore;
+import static com.salesforce.cantor.common.ObjectsPreconditions.*;
 
-public class ObjectsOnS3 implements StreamingObjects {
+public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements StreamingObjects {
     private static final Logger logger = LoggerFactory.getLogger(ObjectsOnS3.class);
 
-    // cantor-namespace-<namespace>
-    private static final String namespaceFileFormat = "cantor-namespace-%s";
     // cantor-object-[<namespace>]-<key>
-    private static final String objectFileFormat = "cantor-object-[%s]-%s";
-
-    private final AmazonS3 s3Client;
-    private final String bucketName;
+    private static final String objectKeyFormat = "cantor-object-[%s]-%s";
 
     public ObjectsOnS3(final AmazonS3 s3Client, final String bucketName) throws IOException {
-        checkArgument(s3Client != null, "null s3 client");
-        checkString(bucketName, "null/empty bucket name");
-        this.s3Client = s3Client;
-        this.bucketName = bucketName;
-        try {
-            if (!this.s3Client.doesBucketExistV2(this.bucketName)) {
-                throw new IllegalStateException("bucket does not exist: " + this.bucketName);
-            }
-        } catch (final AmazonS3Exception e) {
-            logger.warn("exception creating required buckets for objects on s3:", e);
-            throw new IOException("exception creating required buckets for objects on s3:", e);
-        }
-    }
-
-    @Override
-    public Collection<String> namespaces() throws IOException {
-        try {
-            return doGetNamespaces();
-        } catch (final AmazonS3Exception e) {
-            logger.warn("exception getting namespaces", e);
-            throw new IOException("exception getting namespaces", e);
-        }
-    }
-
-    @Override
-    public void create(final String namespace) throws IOException {
-        checkCreate(namespace);
-        try {
-            doCreate(namespace);
-        } catch (final AmazonS3Exception e) {
-            logger.warn("exception creating namespace: " + namespace, e);
-            throw new IOException("exception creating namespace: " + namespace, e);
-        }
-    }
-
-    @Override
-    public void drop(final String namespace) throws IOException {
-        checkDrop(namespace);
-        try {
-            doDrop(namespace);
-        } catch (final AmazonS3Exception e) {
-            logger.warn("exception dropping namespace: " + namespace, e);
-            throw new IOException("exception dropping namespace: " + namespace, e);
-        }
+        super(s3Client, bucketName, "objects");
     }
 
     @Override
@@ -113,7 +57,7 @@ public class ObjectsOnS3 implements StreamingObjects {
     public boolean delete(final String namespace, final String key) throws IOException {
         checkDelete(namespace, key);
         try {
-            return S3Utils.deleteObject(this.s3Client, this.bucketName, getObjectName(namespace, key));
+            return S3Utils.deleteObject(this.s3Client, this.bucketName, getObjectKey(namespace, key));
         } catch (final AmazonS3Exception e) {
             logger.warn("exception deleting object: " + namespace + "." + key, e);
             throw new IOException("exception deleting object: " + namespace + "." + key, e);
@@ -167,35 +111,14 @@ public class ObjectsOnS3 implements StreamingObjects {
         }
     }
 
-    // creating an empty marker object to signify the creation of the namespace
-    private void doCreate(final String namespace) throws IOException {
-        final String key = getNamespaceKey(namespace);
-        if (this.s3Client.doesObjectExist(this.bucketName, key)) {
-            logger.debug("namespace '{}' already exists; no need to recreate", namespace);
-        }
-
-        logger.info("creating namespace '{}' at '{}.{}'", namespace, this.bucketName, key);
-        // if no exception is thrown, the object was put successfully - ignore response value
-        // TODO: in the future we can use this file to keep track of useful namespace level information like encryption type
-        S3Utils.putObject(this.s3Client, this.bucketName, key, new ByteArrayInputStream(new byte[0]), new ObjectMetadata());
-    }
-
-    private void doDrop(final String namespace) throws IOException {
-        final String namespaceObjectPrefix = getObjectName(namespace, "");
-        logger.info("dropping namespace '{}'", namespace);
-        logger.debug("deleting all objects with prefix '{}.{}'", this.bucketName, namespaceObjectPrefix);
-        S3Utils.deleteObjects(this.s3Client, this.bucketName, namespaceObjectPrefix);
-
-        final String namespaceKey = getNamespaceKey(namespace);
-        logger.debug("deleting namespace record object '{}.{}'", this.bucketName, namespaceKey);
-        this.s3Client.deleteObject(this.bucketName, namespaceKey);
+    @Override
+    protected String getObjectKeyPrefix(final String namespace) {
+        return getObjectKey(namespace, "");
     }
 
     private void doStore(final String namespace, final String key, final InputStream stream, final long length) throws IOException {
-        final String objectName = getObjectName(namespace, key);
-        if (!this.s3Client.doesObjectExist(this.bucketName, getNamespaceKey(namespace))) {
-            throw new IOException(String.format("namespace '%s' doesn't exist; can't store object with key '%s'", namespace, key));
-        }
+        checkNamespace(namespace);
+        final String objectName = getObjectKey(namespace, key);
 
         final ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentLength(length);
@@ -205,44 +128,33 @@ public class ObjectsOnS3 implements StreamingObjects {
     }
 
     private byte[] doGet(final String namespace, final String key) throws IOException {
-        final String objectName = getObjectName(namespace, key);
+        final String objectName = getObjectKey(namespace, key);
         logger.debug("retrieving object at '{}.{}'", this.bucketName, objectName);
         return S3Utils.getObjectBytes(this.s3Client, this.bucketName, objectName);
     }
 
     private InputStream doStream(final String namespace, final String key) throws IOException {
-        final String objectName = getObjectName(namespace, key);
+        final String objectName = getObjectKey(namespace, key);
         if (!this.s3Client.doesObjectExist(this.bucketName, objectName)) {
             throw new IOException(String.format("couldn't find objectName '%s' for namespace '%s'", objectName, namespace));
         }
+
         return S3Utils.getObjectStream(this.s3Client, this.bucketName, objectName);
     }
 
-    private int doSize(final String namespace) throws IOException {
-        return S3Utils.getSize(this.s3Client, this.bucketName, getObjectName(namespace, ""));
+    private int doSize(final String namespace) {
+        return S3Utils.getSize(this.s3Client, this.bucketName, getObjectKey(namespace, ""));
     }
 
     private Collection<String> doKeys(final String namespace, final int start, final int count) throws IOException {
-        final String namespaceObjectPrefix = getObjectName(namespace, "");
+        final String namespaceObjectPrefix = getObjectKey(namespace, "");
         return S3Utils.getKeys(this.s3Client, this.bucketName, namespaceObjectPrefix, start, count)
                 .stream()
                 .map(objectFile -> objectFile.substring(namespaceObjectPrefix.length()))
                 .collect(Collectors.toList());
     }
 
-    private Collection<String> doGetNamespaces() throws IOException {
-        final String namespacePrefix = getNamespaceKey("");
-        return S3Utils.getKeys(this.s3Client, this.bucketName, namespacePrefix, 0, -1)
-                .stream()
-                .map(namespaceFile -> namespaceFile.substring(namespacePrefix.length()))
-                .collect(Collectors.toList());
-    }
-
-    private String getNamespaceKey(final String namespace) {
-        return String.format(namespaceFileFormat, namespace);
-    }
-
-    private String getObjectName(final String namespace, final String key) {
-        return String.format(objectFileFormat, namespace, key);
+    private String getObjectKey(final String namespace, final String key) {
+        return String.format(objectKeyFormat, namespace, key);
     }
 }

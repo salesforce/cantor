@@ -26,6 +26,8 @@
 
     <properties>
         <s3-sdk.version>1.11.538</s3-sdk.version>
+        <gson.version>2.8.5</gson.version>
+        <guava.version>19.0</guava.version>
         <mockito.version>2.21.0</mockito.version>
         <jackson.version>2.10.0</jackson.version>
         <s3mock.version>2.1.16</s3mock.version>
@@ -40,8 +42,21 @@
         <!--S3 SDK-->
         <dependency>
             <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk</artifactId>
+            <artifactId>aws-java-sdk-s3</artifactId>
             <version>${s3-sdk.version}</version>
+        </dependency>
+        <!-- GUAVA -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <!--JSON/GSON-->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>${gson.version}</version>
         </dependency>
 
         <!--TEST SCOPE BELOW-->
@@ -71,6 +86,28 @@
             <artifactId>s3mock-testng</artifactId>
             <version>${s3mock.version}</version>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-codec-http</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>apache-client</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>netty-nio-client</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-handler</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.fasterxml.woodstox</groupId>
+                    <artifactId>woodstox-core</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!--JACKSON CORE-->
         <dependency>
