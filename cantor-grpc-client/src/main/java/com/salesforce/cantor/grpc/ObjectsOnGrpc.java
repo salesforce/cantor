@@ -27,6 +27,10 @@ public class ObjectsOnGrpc extends AbstractBaseGrpcClient<ObjectsServiceBlocking
         super(ObjectsServiceGrpc::newBlockingStub, target);
     }
 
+    public ObjectsOnGrpc(final String target, final String jwtSigningKey) {
+        super(ObjectsServiceGrpc::newBlockingStub, target, jwtSigningKey);
+    }
+
     @Override
     public Collection<String> namespaces() throws IOException {
         return call(() -> {

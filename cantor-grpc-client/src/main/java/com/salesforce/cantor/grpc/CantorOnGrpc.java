@@ -20,6 +20,12 @@ public class CantorOnGrpc implements Cantor {
         this.events = new EventsOnGrpc(target);
     }
 
+    public CantorOnGrpc(final String target, final String jwtSigningKey) {
+        this.objects = new ObjectsOnGrpc(target, jwtSigningKey);
+        this.sets = new SetsOnGrpc(target);
+        this.events = new EventsOnGrpc(target);
+    }
+
     @Override
     public Objects objects() {
         return this.objects;
