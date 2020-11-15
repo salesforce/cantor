@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 
@@ -40,7 +41,7 @@ public class GrpcServer {
         );
 
         final Cantor cantor = cantorProvider.getCantor();
-        this.server = NettyServerBuilder.forPort(port)
+        final NettyServerBuilder serverBuilder = NettyServerBuilder.forPort(port)
                 .workerEventLoopGroup(new NioEventLoopGroup(
                         8,  // max of exactly 8 event loop threads
                         new ThreadFactoryBuilder().setNameFormat("cantor-grpc-event-loop-%d").build())
@@ -49,13 +50,22 @@ public class GrpcServer {
                 .addService(new ObjectsGrpcService(cantor))
                 .addService(new SetsGrpcService(cantor))
                 .addService(new EventsGrpcService(cantor))
+//                .intercept(new AuthorizationInterceptor(cantor))
                 .executor(
                         Executors.newFixedThreadPool(
                                 64, // exactly 64 concurrent worker threads
                                 new ThreadFactoryBuilder().setNameFormat("cantor-grpc-worker-%d").build())
-                )
-                .build();
+                );
 
+        final String certPath = cantorEnvironment.getEnvironmentVariable("CERT_PATH");
+        if (certPath != null) {
+            serverBuilder.useTransportSecurity(
+                Paths.get(certPath, "certificates/server.pem").toFile(),
+                Paths.get(certPath, "keys/server-key.pem").toFile()
+            );
+        }
+
+        this.server = serverBuilder.build();
         addShutdownHook();
     }
 

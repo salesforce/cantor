@@ -9,6 +9,7 @@ package com.salesforce.cantor.grpc;
 
 import com.google.protobuf.ByteString;
 import com.salesforce.cantor.Objects;
+import com.salesforce.cantor.common.credentials.CantorCredentials;
 import com.salesforce.cantor.grpc.objects.*;
 import com.salesforce.cantor.grpc.objects.ObjectsServiceGrpc.ObjectsServiceBlockingStub;
 
@@ -27,8 +28,8 @@ public class ObjectsOnGrpc extends AbstractBaseGrpcClient<ObjectsServiceBlocking
         super(ObjectsServiceGrpc::newBlockingStub, target);
     }
 
-    public ObjectsOnGrpc(final String target, final String jwtSigningKey) {
-        super(ObjectsServiceGrpc::newBlockingStub, target, jwtSigningKey);
+    public ObjectsOnGrpc(final String target, final CantorCredentials credentials) {
+        super(ObjectsServiceGrpc::newBlockingStub, target, credentials);
     }
 
     @Override

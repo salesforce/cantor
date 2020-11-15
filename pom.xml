@@ -30,6 +30,7 @@
         <!--VERSIONS-->
         <slf4j.version>1.7.25</slf4j.version>
         <logback.version>1.2.3</logback.version>
+        <jwt.version>0.9.1</jwt.version>
 
         <testng.version>7.0.0</testng.version>
 

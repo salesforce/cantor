@@ -8,6 +8,7 @@
 package com.salesforce.cantor.grpc;
 
 import com.salesforce.cantor.*;
+import com.salesforce.cantor.common.credentials.CantorCredentials;
 
 public class CantorOnGrpc implements Cantor {
     private final Objects objects;
@@ -20,10 +21,10 @@ public class CantorOnGrpc implements Cantor {
         this.events = new EventsOnGrpc(target);
     }
 
-    public CantorOnGrpc(final String target, final String jwtSigningKey) {
-        this.objects = new ObjectsOnGrpc(target, jwtSigningKey);
-        this.sets = new SetsOnGrpc(target);
-        this.events = new EventsOnGrpc(target);
+    public CantorOnGrpc(final String target, final CantorCredentials credentials) {
+        this.objects = new ObjectsOnGrpc(target, credentials);
+        this.sets = new SetsOnGrpc(target, credentials);
+        this.events = new EventsOnGrpc(target, credentials);
     }
 
     @Override

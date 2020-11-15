@@ -8,10 +8,10 @@
 package com.salesforce.cantor.grpc;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.salesforce.cantor.common.credentials.CantorCredentials;
+import com.salesforce.cantor.grpc.auth.CredentialsProviderInterceptor;
 import io.grpc.*;
 import io.grpc.stub.AbstractStub;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,10 +34,9 @@ abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
 
     AbstractBaseGrpcClient(final Function<Channel, StubType> stubConstructor,
                            final String target,
-                           final String jwtSigningKey) {
+                           final CantorCredentials credentials) {
         checkString(target, "null/empty target");
-        checkString(jwtSigningKey, "null/empty jwtSigningKey");
-        this.stub = makeSecureStubs(stubConstructor, target, jwtSigningKey);
+        this.stub = makeSecureStubs(stubConstructor, target, credentials);
     }
 
     StubType getStub() {
@@ -77,7 +76,7 @@ abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
 
     private StubType makeSecureStubs(final Function<Channel, StubType> stubConstructor,
                                      final String target,
-                                     final String jwtSigningKey) {
+                                     final CantorCredentials credentials) {
         logger.info("creating stub of {} for target '{}'", stubConstructor.getClass(), target);
         final ManagedChannel channel = ManagedChannelBuilder.forTarget(target)
                 .usePlaintext(true)
@@ -87,16 +86,9 @@ abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
                                 16, // exactly 16 concurrent worker threads
                                 new ThreadFactoryBuilder().setNameFormat("cantor-client-channel-%d").build())
                 )
+                .intercept(new CredentialsProviderInterceptor(credentials))
                 .build();
         return stubConstructor
-                .apply(channel)
-                .withCallCredentials(new BearerToken(getJwt(jwtSigningKey)));
-    }
-
-    protected String getJwt(final String jwtSigningKey) {
-        return Jwts.builder()
-                .setSubject("GreetingClient")
-                .signWith(SignatureAlgorithm.HS256, jwtSigningKey)
-                .compact();
+                .apply(channel);
     }
 }

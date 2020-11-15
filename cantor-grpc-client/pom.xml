@@ -47,12 +47,6 @@
             <artifactId>grpc-protobuf</artifactId>
             <version>${grpc.version}</version>
         </dependency>
-        <!--JWT-->
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt</artifactId>
-            <version>${jwt.version}</version>
-        </dependency>
         <!--TEST SCOPE-->
         <!--TESTNG -->
         <dependency>
