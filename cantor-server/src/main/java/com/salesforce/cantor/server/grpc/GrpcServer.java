@@ -9,9 +9,8 @@ package com.salesforce.cantor.server.grpc;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.salesforce.cantor.Cantor;
-import com.salesforce.cantor.grpc.EventsGrpcService;
-import com.salesforce.cantor.grpc.ObjectsGrpcService;
-import com.salesforce.cantor.grpc.SetsGrpcService;
+import com.salesforce.cantor.grpc.*;
+import com.salesforce.cantor.grpc.auth.AuthorizationInterceptor;
 import com.salesforce.cantor.server.CantorEnvironment;
 import com.salesforce.cantor.server.Constants;
 import com.salesforce.cantor.server.utils.CantorFactory;
@@ -50,18 +49,19 @@ public class GrpcServer {
                 .addService(new ObjectsGrpcService(cantor))
                 .addService(new SetsGrpcService(cantor))
                 .addService(new EventsGrpcService(cantor))
-//                .intercept(new AuthorizationInterceptor(cantor))
+                .addService(new AuthorizationGrpcService(cantor))
+                .intercept(new AuthorizationInterceptor(cantor))
                 .executor(
                         Executors.newFixedThreadPool(
                                 64, // exactly 64 concurrent worker threads
                                 new ThreadFactoryBuilder().setNameFormat("cantor-grpc-worker-%d").build())
                 );
 
-        final String certPath = cantorEnvironment.getEnvironmentVariable("CERT_PATH");
+        final String certPath = cantorEnvironment.getEnvironmentVariable("CERTS_PATH");
         if (certPath != null) {
             serverBuilder.useTransportSecurity(
-                Paths.get(certPath, "certificates/server.pem").toFile(),
-                Paths.get(certPath, "keys/server-key.pem").toFile()
+                Paths.get(certPath, "/certificates/server.pem").toFile(),
+                Paths.get(certPath, "/keys/server-key.pem").toFile()
             );
         }
 

@@ -1,13 +1,16 @@
-package com.salesforce.cantor.server.grpc;
+package com.salesforce.cantor.grpc.auth;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.salesforce.cantor.Cantor;
-import com.salesforce.cantor.grpc.auth.AuthorizationConstants;
 import io.grpc.*;
 import io.jsonwebtoken.*;
 
 import java.io.IOException;
+import java.util.HashMap;
 
 public class AuthorizationInterceptor implements ServerInterceptor {
+    public final static Context.Key<Roles> userRoles = Context.key("userRoles");
+    private final static ObjectMapper mapper = new ObjectMapper();
     private final Cantor cantor;
 
     public AuthorizationInterceptor(final Cantor cantor) throws IOException {
@@ -21,7 +24,10 @@ public class AuthorizationInterceptor implements ServerInterceptor {
                                                                  final ServerCallHandler<ReqT, RespT> serverCallHandler) {
         final String accessKey = metadata.get(AuthorizationConstants.ACCESS_KEY);
         if (accessKey == null) {
-            throw new StatusRuntimeException(Status.FAILED_PRECONDITION.withDescription("Invalid key or secret provided."), metadata);
+            // throw new StatusRuntimeException(Status.FAILED_PRECONDITION.withDescription("No key or secret provided."), metadata);
+            // temporarily allowing unauthenticated connections with full access
+            final Context ctx = Context.current().withValue(userRoles, new Roles(null));
+            return Contexts.interceptCall(ctx, serverCall, metadata, serverCallHandler);
         }
 
         try {
@@ -30,8 +36,13 @@ public class AuthorizationInterceptor implements ServerInterceptor {
                 throw new StatusRuntimeException(Status.FAILED_PRECONDITION.withDescription("Invalid key or secret provided."), metadata);
             }
 
-            final Jwt<Header, String> authorizationJwt = Jwts.parser().parsePlaintextJwt(new String(jwtBytes));
-            final Context ctx = Context.current().withValue(Context.key("authorizationJwt"), authorizationJwt.getBody());
+            final Jwt<Header, Claims> authorizationJwt = Jwts.parser().parseClaimsJwt(new String(jwtBytes));
+            final String secretKey = metadata.get(AuthorizationConstants.SECRET_KEY);
+            if (!authorizationJwt.getBody().get("passwordHash").equals(secretKey)) {
+                throw new StatusRuntimeException(Status.FAILED_PRECONDITION.withDescription("Invalid key or secret provided."), metadata);
+            }
+            final Roles roles = mapper.convertValue(authorizationJwt.getBody().get("roles", HashMap.class), Roles.class);
+            final Context ctx = Context.current().withValue(userRoles, roles);
             return Contexts.interceptCall(ctx, serverCall, metadata, serverCallHandler);
         } catch (final IOException e) {
             final Status status = Status.ABORTED.withDescription("Authentication failed with internal server error").withCause(e);

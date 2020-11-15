@@ -8,8 +8,9 @@
 package com.salesforce.cantor.grpc;
 
 import com.google.protobuf.Message;
-import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
+import com.salesforce.cantor.grpc.auth.AuthorizationInterceptor;
+import com.salesforce.cantor.grpc.auth.Roles;
+import io.grpc.*;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,5 +32,15 @@ class GrpcUtils {
     static <T extends Message> void sendResponse(final StreamObserver<T> observer, final T t) {
         observer.onNext(t);
         observer.onCompleted();
+    }
+
+    static boolean writeRequestValid(final String namespace) {
+        final Roles roles = AuthorizationInterceptor.userRoles.get(Context.current());
+        return roles != null && roles.hasWriteAccess(namespace);
+    }
+
+    static boolean readRequestValid(final String namespace) {
+        final Roles roles = AuthorizationInterceptor.userRoles.get(Context.current());
+        return roles != null && roles.hasReadAccess(namespace);
     }
 }

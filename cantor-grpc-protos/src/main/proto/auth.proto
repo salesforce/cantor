@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.salesforce.cantor.grpc.auth";
+option java_outer_classname = "Authorization";
+option objc_class_prefix = "AuthorizationProtos";
+
+package com.salesforce.cantor.grpc.auth;
+
+message GenerateAccessKeyRequest {
+    string username = 1;
+    string password = 2;
+}
+
+message GenerateAccessKeyResponse {
+    string accessKey = 1;
+    string secretKey = 2;
+}
+
+service AuthorizationService {
+    rpc requestAccess (GenerateAccessKeyRequest) returns (GenerateAccessKeyResponse) {}
+}

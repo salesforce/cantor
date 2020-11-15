@@ -9,6 +9,7 @@ package com.salesforce.cantor.grpc;
 
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Sets;
+import com.salesforce.cantor.grpc.auth.UnauthorizedException;
 import com.salesforce.cantor.grpc.sets.*;
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
@@ -51,6 +52,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
+        if (!writeRequestValid(request.getNamespace())) {
+            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            return;
+        }
         try {
             getSets().create(request.getNamespace());
             sendResponse(responseObserver, VoidResponse.getDefaultInstance());
@@ -65,6 +70,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
+        if (!writeRequestValid(request.getNamespace())) {
+            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            return;
+        }
         try {
             getSets().drop(request.getNamespace());
             sendResponse(responseObserver, VoidResponse.getDefaultInstance());
@@ -77,6 +86,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
     public void get(final GetRequest request, final StreamObserver<GetResponse> responseObserver) {
         if (Context.current().isCancelled()) {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
+        if (!readRequestValid(request.getNamespace())) {
+            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
         try {
@@ -105,6 +118,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
+        if (!readRequestValid(request.getNamespace())) {
+            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            return;
+        }
         try {
             final UnionResponse.Builder responseBuilder = UnionResponse.newBuilder();
             final Map<String, Long> results = getSets().union(
@@ -129,6 +146,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
     public void intersect(final IntersectRequest request, final StreamObserver<IntersectResponse> responseObserver) {
         if (Context.current().isCancelled()) {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
+        if (!readRequestValid(request.getNamespace())) {
+            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
         try {
@@ -157,6 +178,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
+        if (!writeRequestValid(request.getNamespace())) {
+            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            return;
+        }
         try {
             final PopResponse.Builder responseBuilder = PopResponse.newBuilder();
             final Map<String, Long> results = getSets().pop(
@@ -183,6 +208,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
+        if (!writeRequestValid(request.getNamespace())) {
+            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            return;
+        }
         try {
             getSets()
                     .add(request.getNamespace(), request.getSet(), request.getEntry(), request.getWeight());
@@ -198,6 +227,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
+        if (!writeRequestValid(request.getNamespace())) {
+            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            return;
+        }
         try {
             getSets().add(request.getNamespace(), request.getSet(), request.getEntriesMap());
             sendResponse(responseObserver, VoidResponse.getDefaultInstance());
@@ -210,6 +243,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
     public void deleteBetween(final DeleteBetweenRequest request, final StreamObserver<VoidResponse> responseObserver) {
         if (Context.current().isCancelled()) {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
+        if (!writeRequestValid(request.getNamespace())) {
+            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
         try {
@@ -227,6 +264,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
+        if (!writeRequestValid(request.getNamespace())) {
+            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            return;
+        }
         try {
             final boolean deleted = getSets()
                     .delete(request.getNamespace(), request.getSet(), request.getEntry());
@@ -242,6 +283,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
+        if (!writeRequestValid(request.getNamespace())) {
+            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            return;
+        }
         try {
             getSets().delete(request.getNamespace(), request.getSet(), request.getEntriesList());
             sendResponse(responseObserver, VoidResponse.getDefaultInstance());
@@ -254,6 +299,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
     public void keys(final KeysRequest request, final StreamObserver<KeysResponse> responseObserver) {
         if (Context.current().isCancelled()) {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
+        if (!readRequestValid(request.getNamespace())) {
+            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
         try {
@@ -282,6 +331,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
+        if (!readRequestValid(request.getNamespace())) {
+            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            return;
+        }
         try {
             final SetsResponse.Builder responseBuilder = SetsResponse.newBuilder();
             final Collection<String> sets = getSets().sets(request.getNamespace());
@@ -300,6 +353,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
+        if (!readRequestValid(request.getNamespace())) {
+            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            return;
+        }
         try {
             final int size = getSets().size(request.getNamespace(), request.getSet());
             sendResponse(responseObserver, SizeResponse.newBuilder().setSize(size).build());
@@ -312,6 +369,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
     public void weight(final WeightRequest request, final StreamObserver<WeightResponse> responseObserver) {
         if (Context.current().isCancelled()) {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
+        if (!readRequestValid(request.getNamespace())) {
+            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
         try {
@@ -333,6 +394,10 @@ public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
     public void inc(final IncRequest request, final StreamObserver<IncResponse> responseObserver) {
         if (Context.current().isCancelled()) {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
+        if (!writeRequestValid(request.getNamespace())) {
+            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
         try {
