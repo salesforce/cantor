@@ -9,8 +9,7 @@ package com.salesforce.cantor.server.grpc;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.salesforce.cantor.Cantor;
-import com.salesforce.cantor.grpc.*;
-import com.salesforce.cantor.grpc.auth.AuthorizationInterceptor;
+import com.salesforce.cantor.grpc.auth.*;
 import com.salesforce.cantor.server.CantorEnvironment;
 import com.salesforce.cantor.server.Constants;
 import com.salesforce.cantor.server.utils.CantorFactory;
@@ -46,9 +45,9 @@ public class GrpcServer {
                         new ThreadFactoryBuilder().setNameFormat("cantor-grpc-event-loop-%d").build())
                 )
                 .maxMessageSize(64 * 1024 * 1024) // 64MB
-                .addService(new ObjectsGrpcService(cantor))
-                .addService(new SetsGrpcService(cantor))
-                .addService(new EventsGrpcService(cantor))
+                .addService(new AuthorizedObjectsGrpcService(cantor))
+                .addService(new AuthorizedSetsGrpcService(cantor))
+                .addService(new AuthorizedEventsGrpcService(cantor))
                 .addService(new AuthorizationGrpcService(cantor))
                 .intercept(new AuthorizationInterceptor(cantor))
                 .executor(

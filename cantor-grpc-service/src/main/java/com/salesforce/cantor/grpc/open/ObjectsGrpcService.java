@@ -5,12 +5,11 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.grpc;
+package com.salesforce.cantor.grpc.open;
 
 import com.google.protobuf.ByteString;
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Objects;
-import com.salesforce.cantor.grpc.auth.*;
 import com.salesforce.cantor.grpc.objects.*;
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
@@ -19,7 +18,7 @@ import java.io.IOException;
 import java.util.Collection;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
-import static com.salesforce.cantor.grpc.GrpcUtils.*;
+import static com.salesforce.cantor.grpc.open.GrpcUtils.*;
 
 public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBase {
 
@@ -52,10 +51,6 @@ public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBas
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
-        if (!writeRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
-            return;
-        }
         try {
             getObjects().create(request.getNamespace());
             sendResponse(responseObserver, VoidResponse.getDefaultInstance());
@@ -70,10 +65,6 @@ public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBas
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
-        if (!writeRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
-            return;
-        }
         try {
             getObjects().drop(request.getNamespace());
             sendResponse(responseObserver, VoidResponse.getDefaultInstance());
@@ -86,10 +77,6 @@ public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBas
     public void keys(final KeysRequest request, final StreamObserver<KeysResponse> responseObserver) {
         if (Context.current().isCancelled()) {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
-            return;
-        }
-        if (!readRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
         try {
@@ -111,10 +98,6 @@ public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBas
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
-        if (!readRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
-            return;
-        }
         try {
             final GetResponse.Builder resultsBuilder = GetResponse.newBuilder();
             final byte[] value = getObjects()
@@ -134,10 +117,6 @@ public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBas
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
-        if (!writeRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
-            return;
-        }
         try {
             getObjects().store(request.getNamespace(), request.getKey(), request.getValue().toByteArray());
             sendResponse(responseObserver, VoidResponse.getDefaultInstance());
@@ -152,10 +131,6 @@ public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBas
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
-        if (!writeRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
-            return;
-        }
         try {
             final boolean result = getObjects().delete(request.getNamespace(), request.getKey());
             sendResponse(responseObserver, DeleteResponse.newBuilder().setResult(result).build());
@@ -168,10 +143,6 @@ public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBas
     public void size(final SizeRequest request, final StreamObserver<SizeResponse> responseObserver) {
         if (Context.current().isCancelled()) {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
-            return;
-        }
-        if (!readRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
         try {

@@ -5,12 +5,11 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.grpc;
+package com.salesforce.cantor.grpc.open;
 
 import com.google.protobuf.ByteString;
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Events;
-import com.salesforce.cantor.grpc.auth.UnauthorizedException;
 import com.salesforce.cantor.grpc.events.*;
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
@@ -19,7 +18,7 @@ import java.io.IOException;
 import java.util.*;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
-import static com.salesforce.cantor.grpc.GrpcUtils.*;
+import static com.salesforce.cantor.grpc.open.GrpcUtils.*;
 
 public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
 
@@ -52,10 +51,6 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
-        if (!writeRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
-            return;
-        }
         try {
             getEvents().create(request.getNamespace());
             sendResponse(responseObserver, VoidResponse.getDefaultInstance());
@@ -70,10 +65,6 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
-        if (!writeRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
-            return;
-        }
         try {
             getEvents().drop(request.getNamespace());
             sendResponse(responseObserver, VoidResponse.getDefaultInstance());
@@ -86,10 +77,6 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
     public void get(final GetRequest request, final StreamObserver<GetResponse> responseObserver) {
         if (Context.current().isCancelled()) {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
-            return;
-        }
-        if (!readRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
         try {
@@ -128,10 +115,6 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
-        if (!writeRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
-            return;
-        }
         try {
             final DeleteResponse.Builder responseBuilder = DeleteResponse.newBuilder();
             final int results = getEvents().delete(
@@ -154,10 +137,6 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
-        if (!writeRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
-            return;
-        }
         try {
             final Collection<Events.Event> batch = new ArrayList<>();
             for (final EventProto eventProto : request.getBatchList()) {
@@ -178,10 +157,6 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
     public void aggregate(final AggregateRequest request, final StreamObserver<AggregateResponse> responseObserver) {
         if (Context.current().isCancelled()) {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
-            return;
-        }
-        if (!readRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
         try {
@@ -208,10 +183,6 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
             return;
         }
-        if (!readRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
-            return;
-        }
         try {
             final Set<String> results = getEvents().metadata(
                     request.getNamespace(),
@@ -232,10 +203,6 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
     public void expire(final ExpireRequest request, final StreamObserver<VoidResponse> responseObserver) {
         if (Context.current().isCancelled()) {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
-            return;
-        }
-        if (!writeRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
         try {

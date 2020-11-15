@@ -1,9 +1,8 @@
-package com.salesforce.cantor.grpc;
+package com.salesforce.cantor.grpc.auth;
 
 import com.google.common.hash.Hashing;
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Objects;
-import com.salesforce.cantor.grpc.auth.*;
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
 import io.jsonwebtoken.Jwts;
@@ -11,7 +10,7 @@ import io.jsonwebtoken.Jwts;
 import java.io.IOException;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
-import static com.salesforce.cantor.grpc.GrpcUtils.*;
+import static com.salesforce.cantor.grpc.open.GrpcUtils.*;
 
 public class AuthorizationGrpcService extends AuthorizationServiceGrpc.AuthorizationServiceImplBase {
     private final Cantor cantor;
