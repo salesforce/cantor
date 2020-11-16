@@ -8,9 +8,8 @@
 package com.salesforce.cantor.grpc.open;
 
 import com.google.protobuf.Message;
-import com.salesforce.cantor.grpc.auth.AuthorizationInterceptor;
-import com.salesforce.cantor.grpc.auth.Roles;
-import io.grpc.*;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

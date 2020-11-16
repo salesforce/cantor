@@ -3,6 +3,7 @@ package com.salesforce.cantor.grpc.auth;
 import com.google.common.hash.Hashing;
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Objects;
+import com.salesforce.cantor.common.credentials.User;
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
 import io.jsonwebtoken.Jwts;
@@ -49,8 +50,8 @@ public class AuthorizationGrpcService extends AuthorizationServiceGrpc.Authoriza
 
     private String generateUser(final GenerateAccessKeyRequest request, final String passHash) {
         return Jwts.builder()
-                .claim("passwordHash", passHash)
-                .claim("roles", new Roles(request))
+                .claim(AuthorizationConstants.SECRET_CLAIM, passHash)
+                .claim(AuthorizationConstants.USER_CLAIM, User.ADMIN)
                 .compact();
     }
 

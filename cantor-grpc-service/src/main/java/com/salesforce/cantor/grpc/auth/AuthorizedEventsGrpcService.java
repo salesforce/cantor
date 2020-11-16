@@ -29,7 +29,7 @@ public class AuthorizedEventsGrpcService extends EventsGrpcService {
 
     @Override
     public void create(final CreateRequest request, final StreamObserver<VoidResponse> responseObserver) {
-        if (!writeRequestValid(request.getNamespace())) {
+        if (writeRequestInvalid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
@@ -38,7 +38,7 @@ public class AuthorizedEventsGrpcService extends EventsGrpcService {
 
     @Override
     public void drop(final DropRequest request, final StreamObserver<VoidResponse> responseObserver) {
-        if (!writeRequestValid(request.getNamespace())) {
+        if (writeRequestInvalid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
@@ -47,7 +47,7 @@ public class AuthorizedEventsGrpcService extends EventsGrpcService {
 
     @Override
     public void get(final GetRequest request, final StreamObserver<GetResponse> responseObserver) {
-        if (!readRequestValid(request.getNamespace())) {
+        if (readRequestInvalid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
@@ -56,7 +56,7 @@ public class AuthorizedEventsGrpcService extends EventsGrpcService {
 
     @Override
     public void delete(final DeleteRequest request, final StreamObserver<DeleteResponse> responseObserver) {
-        if (!writeRequestValid(request.getNamespace())) {
+        if (writeRequestInvalid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
@@ -65,7 +65,7 @@ public class AuthorizedEventsGrpcService extends EventsGrpcService {
 
     @Override
     public void store(final StoreRequest request, final StreamObserver<VoidResponse> responseObserver) {
-        if (!writeRequestValid(request.getNamespace())) {
+        if (writeRequestInvalid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
@@ -74,7 +74,7 @@ public class AuthorizedEventsGrpcService extends EventsGrpcService {
 
     @Override
     public void aggregate(final AggregateRequest request, final StreamObserver<AggregateResponse> responseObserver) {
-        if (!readRequestValid(request.getNamespace())) {
+        if (readRequestInvalid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
@@ -83,7 +83,7 @@ public class AuthorizedEventsGrpcService extends EventsGrpcService {
 
     @Override
     public void metadata(final MetadataRequest request, final StreamObserver<MetadataResponse> responseObserver) {
-        if (!readRequestValid(request.getNamespace())) {
+        if (readRequestInvalid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
@@ -92,7 +92,7 @@ public class AuthorizedEventsGrpcService extends EventsGrpcService {
 
     @Override
     public void expire(final ExpireRequest request, final StreamObserver<VoidResponse> responseObserver) {
-        if (!writeRequestValid(request.getNamespace())) {
+        if (writeRequestInvalid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }

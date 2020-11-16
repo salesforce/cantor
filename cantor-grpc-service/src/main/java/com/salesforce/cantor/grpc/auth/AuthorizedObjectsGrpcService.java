@@ -28,7 +28,7 @@ public class AuthorizedObjectsGrpcService extends ObjectsGrpcService {
 
     @Override
     public void create(final CreateRequest request, final StreamObserver<VoidResponse> responseObserver) {
-        if (!writeRequestValid(request.getNamespace())) {
+        if (writeRequestInvalid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
@@ -37,7 +37,7 @@ public class AuthorizedObjectsGrpcService extends ObjectsGrpcService {
 
     @Override
     public void drop(final DropRequest request, final StreamObserver<VoidResponse> responseObserver) {
-        if (!writeRequestValid(request.getNamespace())) {
+        if (writeRequestInvalid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
@@ -46,7 +46,7 @@ public class AuthorizedObjectsGrpcService extends ObjectsGrpcService {
 
     @Override
     public void keys(final KeysRequest request, final StreamObserver<KeysResponse> responseObserver) {
-        if (!readRequestValid(request.getNamespace())) {
+        if (readRequestInvalid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
@@ -55,7 +55,7 @@ public class AuthorizedObjectsGrpcService extends ObjectsGrpcService {
 
     @Override
     public void get(final GetRequest request, final StreamObserver<GetResponse> responseObserver) {
-        if (!readRequestValid(request.getNamespace())) {
+        if (readRequestInvalid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
@@ -64,7 +64,7 @@ public class AuthorizedObjectsGrpcService extends ObjectsGrpcService {
 
     @Override
     public void store(final StoreRequest request, final StreamObserver<VoidResponse> responseObserver) {
-        if (!writeRequestValid(request.getNamespace())) {
+        if (writeRequestInvalid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
@@ -73,7 +73,7 @@ public class AuthorizedObjectsGrpcService extends ObjectsGrpcService {
 
     @Override
     public void delete(final DeleteRequest request, final StreamObserver<DeleteResponse> responseObserver) {
-        if (!writeRequestValid(request.getNamespace())) {
+        if (writeRequestInvalid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }
@@ -82,7 +82,7 @@ public class AuthorizedObjectsGrpcService extends ObjectsGrpcService {
 
     @Override
     public void size(final SizeRequest request, final StreamObserver<SizeResponse> responseObserver) {
-        if (!readRequestValid(request.getNamespace())) {
+        if (readRequestInvalid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
             return;
         }

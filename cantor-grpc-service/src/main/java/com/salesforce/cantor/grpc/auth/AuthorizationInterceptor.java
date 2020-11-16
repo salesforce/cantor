@@ -2,6 +2,7 @@ package com.salesforce.cantor.grpc.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.salesforce.cantor.Cantor;
+import com.salesforce.cantor.common.credentials.User;
 import io.grpc.*;
 import io.jsonwebtoken.*;
 
@@ -9,7 +10,7 @@ import java.io.IOException;
 import java.util.HashMap;
 
 public class AuthorizationInterceptor implements ServerInterceptor {
-    public final static Context.Key<Roles> userRoles = Context.key("userRoles");
+    public final static Context.Key<User> userContextKey = Context.key("user");
     private final static ObjectMapper mapper = new ObjectMapper();
     private final Cantor cantor;
 
@@ -26,7 +27,7 @@ public class AuthorizationInterceptor implements ServerInterceptor {
         if (accessKey == null) {
             // throw new StatusRuntimeException(Status.FAILED_PRECONDITION.withDescription("No key or secret provided."), metadata);
             // temporarily allowing unauthenticated connections with full access
-            final Context ctx = Context.current().withValue(userRoles, new Roles(null));
+            final Context ctx = Context.current().withValue(userContextKey, User.ADMIN);
             return Contexts.interceptCall(ctx, serverCall, metadata, serverCallHandler);
         }
 
@@ -41,8 +42,8 @@ public class AuthorizationInterceptor implements ServerInterceptor {
             if (!authorizationJwt.getBody().get("passwordHash").equals(secretKey)) {
                 throw new StatusRuntimeException(Status.FAILED_PRECONDITION.withDescription("Invalid key or secret provided."), metadata);
             }
-            final Roles roles = mapper.convertValue(authorizationJwt.getBody().get("roles", HashMap.class), Roles.class);
-            final Context ctx = Context.current().withValue(userRoles, roles);
+            final User user = mapper.convertValue(authorizationJwt.getBody().get(AuthorizationConstants.USER_CLAIM, HashMap.class), User.class);
+            final Context ctx = Context.current().withValue(userContextKey, user);
             return Contexts.interceptCall(ctx, serverCall, metadata, serverCallHandler);
         } catch (final IOException e) {
             final Status status = Status.ABORTED.withDescription("Authentication failed with internal server error").withCause(e);
