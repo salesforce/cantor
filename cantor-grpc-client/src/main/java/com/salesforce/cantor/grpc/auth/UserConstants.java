@@ -25,6 +25,6 @@ public class UserConstants {
 
     public static final Context.Key<Users.User> CONTEXT_KEY_USER = Context.key(USER_CLAIM);
     public static final Context.Key<List<Roles.Role>> CONTEXT_KEY_ROLES = Context.key(JSON_FIELD_ROLES);
-    public static final Metadata.Key<String> ACCESS_KEY = Metadata.Key.of("access_key", ASCII_STRING_MARSHALLER);
-    public static final Metadata.Key<String> SECRET_KEY = Metadata.Key.of("secret_key", ASCII_STRING_MARSHALLER);
+    public static final Metadata.Key<String> ACCESS_KEY = Metadata.Key.of("ACCESS-KEY", ASCII_STRING_MARSHALLER);
+    public static final Metadata.Key<String> SECRET_KEY = Metadata.Key.of("SECRET-KEY", ASCII_STRING_MARSHALLER);
 }
