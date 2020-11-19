@@ -62,7 +62,7 @@ public class UserUtils {
      */
     static boolean isAdmin() {
         final Users.User user = UserConstants.CONTEXT_KEY_USER.get(Context.current());
-        return user != null && user.getName().equals("ADMIN");
+        return user != null && user.getUsername().equals("ADMIN");
     }
 
     /**
@@ -140,21 +140,29 @@ public class UserUtils {
     }
 
     static Roles.Role jsonToRole(final String jsonRole) throws IOException {
-        final JsonNode json = mapper.readTree(jsonRole);
+        final JsonNode roleJson = mapper.readTree(jsonRole);
+        final String roleName = roleJson.get(UserConstants.JSON_FIELD_ROLE_NAME).asText();
 
-        return new Roles.Role("", Collections.emptyList(), Collections.emptyList());
+        final List<String> readAccess = new ArrayList<>();
+        final Iterator<JsonNode> roleReadAccess = roleJson.get(UserConstants.JSON_FIELD_ROLE_READ).elements();
+        while (roleReadAccess.hasNext()) {
+            readAccess.add(roleReadAccess.next().asText());
+        }
+
+        final List<String> writeAccess = new ArrayList<>();
+        final Iterator<JsonNode> roleWriteAccess = roleJson.get(UserConstants.JSON_FIELD_ROLE_WRITE).elements();
+        while (roleWriteAccess.hasNext()) {
+            writeAccess.add(roleWriteAccess.next().asText());
+        }
+        return new Roles.Role(roleName, readAccess, writeAccess);
     }
 
     /**
      * Custom exception for errors during role management
      */
     static class InvalidRoleException extends RuntimeException {
-        public InvalidRoleException(final String role) {
-            super("The requested role does not exist: " + role);
-        }
-
-        public InvalidRoleException(final String role, final Throwable throwable) {
-            super("Failed to retrieve the request role: " + role, throwable);
+        public InvalidRoleException(final String message) {
+            super(message);
         }
     }
 

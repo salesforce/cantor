@@ -15,7 +15,7 @@ import java.util.*;
  * against namespaces.</p>
  */
 public interface Roles {
-    Role FULL_ACCESS = new Role("full-access", Collections.singletonList(".*"), Collections.singletonList(".*"));
+    Role FULL_ACCESS = new Role("FULL-ACCESS", Collections.singletonList(".*"), Collections.singletonList(".*"));
 
     class Role {
         private final String name;
@@ -33,7 +33,21 @@ public interface Roles {
          * @return the name of this role
          */
         public String getName() {
-            return name;
+            return this.name;
+        }
+
+        /**
+         * Provides a copied list of namespace regexes that this role has read permissions for
+         */
+        public List<String> getReadAccess() {
+            return readAccess;
+        }
+
+        /**
+         * Provides a copied list of namespace regexes that this role has write permissions for
+         */
+        public List<String> getWriteAccess() {
+            return writeAccess;
         }
 
         /**
@@ -66,8 +80,7 @@ public interface Roles {
      * @param name unique role name that will be used to reference the role
      * @param readAccess the list of regex patterns that match namespaces which this role will allow read access
      * @param writeAccess the list of regex patterns that match namespaces which this role will allow write access
-     * @return {@literal true} if the role was create, {@literal false} otherwise
      * @throws IOException exception thrown from the underlying storage implementation
      */
-    boolean createRole(final String name, final List<String> readAccess, final List<String> writeAccess) throws IOException;
+    void createRole(final String name, final List<String> readAccess, final List<String> writeAccess) throws IOException;
 }

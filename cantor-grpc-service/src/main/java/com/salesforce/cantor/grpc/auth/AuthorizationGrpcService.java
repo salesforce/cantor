@@ -12,8 +12,8 @@ import io.jsonwebtoken.Jwts;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Base64;
-import java.util.Collection;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 import static com.salesforce.cantor.grpc.open.GrpcUtils.*;
@@ -28,7 +28,7 @@ public class AuthorizationGrpcService extends AuthorizationServiceGrpc.Authoriza
         cantor.objects().create(UserConstants.USER_NAMESPACE);
         cantor.objects().create(UserConstants.ROLES_NAMESPACE);
         cantor.objects().store(UserConstants.USER_NAMESPACE,
-                Users.ADMIN.getName(),
+                Users.ADMIN.getUsername(),
                 UserUtils.hashSecret(adminPassword));
         cantor.objects().store(UserConstants.ROLES_NAMESPACE,
                 Roles.FULL_ACCESS.getName(),
@@ -68,21 +68,51 @@ public class AuthorizationGrpcService extends AuthorizationServiceGrpc.Authoriza
 
     @Override
     public void createRole(final CreateRoleRequest request, final StreamObserver<EmptyResponse> responseObserver) {
-        super.createRole(request, responseObserver);
+        if (!UserUtils.isAdmin()) {
+            sendError(responseObserver, new UserUtils.UnauthorizedException("User not authorized to make this request: " + request));
+            return;
+        }
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
+        try {
+            final String roleKey = request.getNewRoleName().toUpperCase();
+            final byte[] role = getObjects().get(UserConstants.ROLES_NAMESPACE, roleKey);
+            if (role != null) {
+                throw new UserUtils.InvalidRoleException("This role already exists: " + roleKey);
+            }
+
+            // generate and store new jwt
+            final Roles.Role newRole = new Roles.Role(roleKey, request.getReadAccessNamespacesList(), request.getWriteAccessNamespacesList());
+            getObjects().store(UserConstants.ROLES_NAMESPACE, roleKey, mapper.writeValueAsBytes(newRole));
+
+            sendResponse(responseObserver, EmptyResponse.getDefaultInstance());
+        } catch (final IOException | UserUtils.InvalidRoleException e) {
+            sendError(responseObserver, e);
+        }
     }
 
     private String generateUser(final CreateUserRequest request,
                                 final String userHash,
                                 final byte[] secretHash) throws IOException {
+        // to upper all roles to make roles case-insensitive
+        final List<String> roleNamesList = request
+                .getRoleNamesList()
+                .stream()
+                .map(String::toUpperCase)
+                .collect(Collectors.toList());
+
         // get all roles and validate all requested roles exist
         final Collection<String> roles = getObjects().keys(UserConstants.ROLES_NAMESPACE, 0, -1);
-        for (final String role : request.getRoleNamesList()) {
-            if (!roles.contains(role)) {
-                throw new UserUtils.InvalidRoleException(role);
+        for (final String role : roleNamesList) {
+            final String roleKey = role.toUpperCase();
+            if (!roles.contains(roleKey)) {
+                throw new UserUtils.InvalidRoleException("The requested role does not exist: " + roleKey);
             }
         }
 
-        final Users.User newUser = new Users.User(request.getNewUsername(), Users.Status.ACTIVE, request.getRoleNamesList());
+        final Users.User newUser = new Users.User(request.getNewUsername(), Users.Status.ACTIVE, roleNamesList);
         return Jwts.builder()
                 .setSubject(userHash)
                 .claim(UserConstants.USER_CLAIM, mapper.writeValueAsString(newUser))

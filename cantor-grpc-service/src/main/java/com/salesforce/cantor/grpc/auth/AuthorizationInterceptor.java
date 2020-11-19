@@ -36,7 +36,7 @@ public class AuthorizationInterceptor implements ServerInterceptor {
             throw new StatusRuntimeException(Status.FAILED_PRECONDITION.withDescription("Invalid key or secret provided."), metadata);
         }
         // check for admin
-        if (Users.ADMIN.getName().equals(accessKey)) {
+        if (Users.ADMIN.getUsername().equals(accessKey)) {
             try {
                 // the first 16 bytes stored in the hash are the salt
                 final byte[] adminSecret = this.cantor.objects().get(UserConstants.USER_NAMESPACE, accessKey);
@@ -87,7 +87,8 @@ public class AuthorizationInterceptor implements ServerInterceptor {
     private List<Roles.Role> attachRoles(final List<String> roles) throws IOException {
         final List<Roles.Role> newRoles = new ArrayList<>();
         for (final String role : roles) {
-            newRoles.add(UserUtils.jsonToRole(new String(this.cantor.objects().get(UserConstants.ROLES_NAMESPACE, role))));
+            final String jsonRole = new String(this.cantor.objects().get(UserConstants.ROLES_NAMESPACE, role.toUpperCase()));
+            newRoles.add(UserUtils.jsonToRole(jsonRole));
         }
         return newRoles;
     }

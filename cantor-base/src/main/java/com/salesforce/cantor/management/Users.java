@@ -27,12 +27,12 @@ public interface Users {
     }
 
     class User {
-        private final String name;
+        private final String username;
         private final Status status;
         private final List<String> roles;
 
-        public User(final String name, final Status status, final List<String> initialRoles) {
-            this.name = name;
+        public User(final String username, final Status status, final List<String> initialRoles) {
+            this.username = username;
             this.status = status;
             this.roles = initialRoles;
         }
@@ -41,8 +41,8 @@ public interface Users {
          * Provides the unique name for this role
          * @return the name of this role
          */
-        public String getName() {
-            return this.name;
+        public String getUsername() {
+            return this.username;
         }
 
         /**

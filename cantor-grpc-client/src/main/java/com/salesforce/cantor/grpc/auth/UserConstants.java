@@ -15,9 +15,13 @@ public class UserConstants {
 
     public static final String USER_CLAIM = "user";
     public static final String PASSWORD_CLAIM = "passwordHash";
-    public static final String JSON_FIELD_USERNAME = "name";
+    public static final String JSON_FIELD_USERNAME = "username";
     public static final String JSON_FIELD_STATUS = "status";
     public static final String JSON_FIELD_ROLES = "roles";
+
+    public static final String JSON_FIELD_ROLE_NAME = "name";
+    public static final String JSON_FIELD_ROLE_WRITE = "writeAccess";
+    public static final String JSON_FIELD_ROLE_READ = "readAccess";
 
     public static final Context.Key<Users.User> CONTEXT_KEY_USER = Context.key(USER_CLAIM);
     public static final Context.Key<List<Roles.Role>> CONTEXT_KEY_ROLES = Context.key(JSON_FIELD_ROLES);

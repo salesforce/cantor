@@ -14,8 +14,12 @@ public class ManagementOnGrpc extends AbstractBaseGrpcClient<AuthorizationServic
     }
 
     @Override
-    public boolean createRole(final String name, final List<String> readAccess, final List<String> writeAccess) {
-        return false;
+    public void createRole(final String name, final List<String> readAccess, final List<String> writeAccess) {
+        getStub().createRole(CreateRoleRequest.newBuilder()
+                .setNewRoleName(name)
+                .addAllReadAccessNamespaces(readAccess)
+                .addAllWriteAccessNamespaces(writeAccess)
+                .build());
     }
 
     @Override
