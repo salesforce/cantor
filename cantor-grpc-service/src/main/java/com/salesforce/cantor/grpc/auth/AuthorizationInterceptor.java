@@ -1,57 +1,95 @@
 package com.salesforce.cantor.grpc.auth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.salesforce.cantor.Cantor;
-import com.salesforce.cantor.common.credentials.User;
+import com.salesforce.cantor.management.Roles;
+import com.salesforce.cantor.management.Users;
 import io.grpc.*;
 import io.jsonwebtoken.*;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.*;
+
+import static com.salesforce.cantor.grpc.auth.UserConstants.CONTEXT_KEY_ROLES;
+import static com.salesforce.cantor.grpc.auth.UserConstants.CONTEXT_KEY_USER;
 
 public class AuthorizationInterceptor implements ServerInterceptor {
-    public final static Context.Key<User> userContextKey = Context.key("user");
-    private final static ObjectMapper mapper = new ObjectMapper();
     private final Cantor cantor;
 
-    public AuthorizationInterceptor(final Cantor cantor) throws IOException {
+    public AuthorizationInterceptor(final Cantor cantor) {
         this.cantor = cantor;
-        cantor.objects().create(AuthorizationConstants.AUTHORIZATION_NAMESPACE);
     }
 
     @Override
     public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(final ServerCall<ReqT, RespT> serverCall,
                                                                  final Metadata metadata,
                                                                  final ServerCallHandler<ReqT, RespT> serverCallHandler) {
-        final String accessKey = metadata.get(AuthorizationConstants.ACCESS_KEY);
+        final String accessKey = metadata.get(UserConstants.ACCESS_KEY);
         if (accessKey == null) {
             // throw new StatusRuntimeException(Status.FAILED_PRECONDITION.withDescription("No key or secret provided."), metadata);
-            // temporarily allowing unauthenticated connections with full access
-            final Context ctx = Context.current().withValue(userContextKey, User.ADMIN);
+            // TODO: temporarily allowing unauthenticated connections with full access
+            final Context ctx = Context.current().withValue(CONTEXT_KEY_USER, Users.ADMIN);
             return Contexts.interceptCall(ctx, serverCall, metadata, serverCallHandler);
         }
 
+        final String secretKey = metadata.get(UserConstants.SECRET_KEY);
+        if (secretKey == null) {
+            throw new StatusRuntimeException(Status.FAILED_PRECONDITION.withDescription("Invalid key or secret provided."), metadata);
+        }
+        // check for admin
+        if (Users.ADMIN.getName().equals(accessKey)) {
+            try {
+                // the first 16 bytes stored in the hash are the salt
+                final byte[] adminSecret = this.cantor.objects().get(UserConstants.USER_NAMESPACE, accessKey);
+                final byte[] salt = Arrays.copyOf(adminSecret, 16);
+                final byte[] userSecret = UserUtils.hashSecretWithSalt(secretKey, salt);
+                if (Arrays.equals(userSecret, adminSecret)) {
+                    final Context ctx = Context.current().withValue(CONTEXT_KEY_USER, Users.ADMIN);
+                    return Contexts.interceptCall(ctx, serverCall, metadata, serverCallHandler);
+                }
+                throw new StatusRuntimeException(Status.FAILED_PRECONDITION.withDescription("Invalid key or secret provided."), metadata);
+            } catch (IOException e) {
+                final Status status = Status.ABORTED.withDescription("Authentication failed with internal server error").withCause(e);
+                serverCall.close(status, metadata);
+                return new ServerCall.Listener<ReqT>() {/*noop*/};
+            }
+        }
+
         try {
-            final byte[] jwtBytes = this.cantor.objects().get(AuthorizationConstants.AUTHORIZATION_NAMESPACE, accessKey);
+            final byte[] jwtBytes = this.cantor.objects().get(UserConstants.USER_NAMESPACE, accessKey);
             if (jwtBytes == null) {
                 throw new StatusRuntimeException(Status.FAILED_PRECONDITION.withDescription("Invalid key or secret provided."), metadata);
             }
 
             final Jwt<Header, Claims> authorizationJwt = Jwts.parser().parseClaimsJwt(new String(jwtBytes));
-            final String secretKey = metadata.get(AuthorizationConstants.SECRET_KEY);
-            if (!authorizationJwt.getBody().get("passwordHash").equals(secretKey)) {
+
+            // the first 16 bytes stored in the hash are the salt
+            final byte[] realSecret = Base64.getDecoder().decode(authorizationJwt.getBody().get(UserConstants.PASSWORD_CLAIM, String.class));
+            final byte[] salt = Arrays.copyOf(realSecret, 16);
+            final byte[] userSecret = UserUtils.hashSecretWithSalt(secretKey, salt);
+            if (!Arrays.equals(realSecret, userSecret)) {
                 throw new StatusRuntimeException(Status.FAILED_PRECONDITION.withDescription("Invalid key or secret provided."), metadata);
             }
-            final User user = mapper.convertValue(authorizationJwt.getBody().get(AuthorizationConstants.USER_CLAIM, HashMap.class), User.class);
-            final Context ctx = Context.current().withValue(userContextKey, user);
+
+            // extract user from jwt
+            final String jsonUser = authorizationJwt.getBody().get(UserConstants.USER_CLAIM, String.class);
+            final Users.User user = UserUtils.jsonToUser(jsonUser);
+            final Context ctx = Context.current()
+                    .withValue(CONTEXT_KEY_USER, user)
+                    .withValue(CONTEXT_KEY_ROLES, attachRoles(user.getRoles()));
             return Contexts.interceptCall(ctx, serverCall, metadata, serverCallHandler);
         } catch (final IOException e) {
             final Status status = Status.ABORTED.withDescription("Authentication failed with internal server error").withCause(e);
             serverCall.close(status, metadata);
-            return new ServerCall.Listener<ReqT>() {
-                // noop
-            };
+            return new ServerCall.Listener<ReqT>() {/*noop*/};
         }
+    }
+
+    private List<Roles.Role> attachRoles(final List<String> roles) throws IOException {
+        final List<Roles.Role> newRoles = new ArrayList<>();
+        for (final String role : roles) {
+            newRoles.add(UserUtils.jsonToRole(new String(this.cantor.objects().get(UserConstants.ROLES_NAMESPACE, role))));
+        }
+        return newRoles;
     }
 
 }

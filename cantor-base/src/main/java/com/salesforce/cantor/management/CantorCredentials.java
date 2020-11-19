@@ -1,4 +1,4 @@
-package com.salesforce.cantor.common.credentials;
+package com.salesforce.cantor.management;
 
 /**
  * Cantor authentication and authorization are managed from this interface. The access key is an assertion of who you

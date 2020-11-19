@@ -7,16 +7,32 @@ option objc_class_prefix = "AuthorizationProtos";
 
 package com.salesforce.cantor.grpc.auth;
 
-message GenerateAccessKeyRequest {
-    string username = 1;
-    string password = 2;
+message EmptyResponse {}
+
+message CreateUserRequest {
+    string newUsername = 1;
+    repeated string roleNames = 2;
 }
 
-message GenerateAccessKeyResponse {
+message CreateRoleRequest {
+    string newRoleName = 1;
+    repeated string writeAccessNamespaces = 2;
+    repeated string readAccessNamespaces = 3;
+}
+
+message AccessKeysResponse {
     string accessKey = 1;
     string secretKey = 2;
 }
 
+// TODO: implement the other admin commands
 service AuthorizationService {
-    rpc requestAccess (GenerateAccessKeyRequest) returns (GenerateAccessKeyResponse) {}
+    rpc createUser (CreateUserRequest) returns (AccessKeysResponse) {}
+    //    rpc deleteUser (CreateUserRequest) returns (GenerateAccessKeyResponse) {}
+
+    rpc createRole (CreateRoleRequest) returns (EmptyResponse) {}
+    //    rpc deleteRole (CreateUserRequest) returns (GenerateAccessKeyResponse) {}
+
+    //    rpc addRole (CreateUserRequest) returns (GenerateAccessKeyResponse) {}
+    //    rpc revokeRole (CreateUserRequest) returns (GenerateAccessKeyResponse) {}
 }

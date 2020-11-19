@@ -5,11 +5,11 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.grpc;
+package com.salesforce.cantor.grpc.user;
 
 import com.google.protobuf.ByteString;
 import com.salesforce.cantor.Objects;
-import com.salesforce.cantor.common.credentials.CantorCredentials;
+import com.salesforce.cantor.management.CantorCredentials;
 import com.salesforce.cantor.grpc.objects.*;
 import com.salesforce.cantor.grpc.objects.ObjectsServiceGrpc.ObjectsServiceBlockingStub;
 

@@ -48,7 +48,7 @@ public class GrpcServer {
                 .addService(new AuthorizedObjectsGrpcService(cantor))
                 .addService(new AuthorizedSetsGrpcService(cantor))
                 .addService(new AuthorizedEventsGrpcService(cantor))
-                .addService(new AuthorizationGrpcService(cantor))
+                .addService(new AuthorizationGrpcService(cantor, "secret"))
                 .intercept(new AuthorizationInterceptor(cantor))
                 .executor(
                         Executors.newFixedThreadPool(

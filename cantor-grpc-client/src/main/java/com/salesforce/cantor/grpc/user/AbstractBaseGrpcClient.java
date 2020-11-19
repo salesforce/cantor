@@ -5,11 +5,11 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.grpc;
+package com.salesforce.cantor.grpc.user;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.salesforce.cantor.common.credentials.CantorCredentials;
 import com.salesforce.cantor.grpc.auth.CredentialsProviderInterceptor;
+import com.salesforce.cantor.management.CantorCredentials;
 import io.grpc.*;
 import io.grpc.stub.AbstractStub;
 import org.slf4j.Logger;
@@ -22,24 +22,24 @@ import java.util.function.Function;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkString;
 
-abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
+public abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final StubType stub;
 
-    AbstractBaseGrpcClient(final Function<Channel, StubType> stubConstructor,
+    protected AbstractBaseGrpcClient(final Function<Channel, StubType> stubConstructor,
                            final String target) {
         checkString(target, "null/empty target");
         this.stub = makeStubs(stubConstructor, target);
     }
 
-    AbstractBaseGrpcClient(final Function<Channel, StubType> stubConstructor,
+    protected AbstractBaseGrpcClient(final Function<Channel, StubType> stubConstructor,
                            final String target,
                            final CantorCredentials credentials) {
         checkString(target, "null/empty target");
         this.stub = makeSecureStubs(stubConstructor, target, credentials);
     }
 
-    StubType getStub() {
+    protected StubType getStub() {
         return this.stub;
     }
 

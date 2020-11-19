@@ -12,7 +12,7 @@ import com.salesforce.cantor.grpc.open.SetsGrpcService;
 import com.salesforce.cantor.grpc.sets.*;
 import io.grpc.stub.StreamObserver;
 
-import static com.salesforce.cantor.grpc.auth.AuthorizationUtils.*;
+import static com.salesforce.cantor.grpc.auth.UserUtils.*;
 import static com.salesforce.cantor.grpc.open.GrpcUtils.*;
 
 public class AuthorizedSetsGrpcService extends SetsGrpcService {
@@ -29,7 +29,7 @@ public class AuthorizedSetsGrpcService extends SetsGrpcService {
     @Override
     public void create(final CreateRequest request, final StreamObserver<VoidResponse> responseObserver) {
         if (writeRequestInvalid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
         super.create(request, responseObserver);
@@ -38,7 +38,7 @@ public class AuthorizedSetsGrpcService extends SetsGrpcService {
     @Override
     public void drop(final DropRequest request, final StreamObserver<VoidResponse> responseObserver) {
         if (writeRequestInvalid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
         super.drop(request, responseObserver);
@@ -47,7 +47,7 @@ public class AuthorizedSetsGrpcService extends SetsGrpcService {
     @Override
     public void get(final GetRequest request, final StreamObserver<GetResponse> responseObserver) {
         if (readRequestInvalid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
         super.get(request, responseObserver);
@@ -56,7 +56,7 @@ public class AuthorizedSetsGrpcService extends SetsGrpcService {
     @Override
     public void union(final UnionRequest request, final StreamObserver<UnionResponse> responseObserver) {
         if (readRequestInvalid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
         super.union(request, responseObserver);
@@ -65,7 +65,7 @@ public class AuthorizedSetsGrpcService extends SetsGrpcService {
     @Override
     public void intersect(final IntersectRequest request, final StreamObserver<IntersectResponse> responseObserver) {
         if (readRequestInvalid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
         super.intersect(request, responseObserver);
@@ -74,7 +74,7 @@ public class AuthorizedSetsGrpcService extends SetsGrpcService {
     @Override
     public void pop(final PopRequest request, final StreamObserver<PopResponse> responseObserver) {
         if (writeRequestInvalid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
         super.pop(request, responseObserver);
@@ -83,7 +83,7 @@ public class AuthorizedSetsGrpcService extends SetsGrpcService {
     @Override
     public void add(final AddRequest request, final StreamObserver<VoidResponse> responseObserver) {
         if (writeRequestInvalid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
         super.add(request, responseObserver);
@@ -92,7 +92,7 @@ public class AuthorizedSetsGrpcService extends SetsGrpcService {
     @Override
     public void addBatch(final AddBatchRequest request, final StreamObserver<VoidResponse> responseObserver) {
         if (writeRequestInvalid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
         super.addBatch(request, responseObserver);
@@ -101,7 +101,7 @@ public class AuthorizedSetsGrpcService extends SetsGrpcService {
     @Override
     public void deleteBetween(final DeleteBetweenRequest request, final StreamObserver<VoidResponse> responseObserver) {
         if (writeRequestInvalid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
         super.deleteBetween(request, responseObserver);
@@ -110,7 +110,7 @@ public class AuthorizedSetsGrpcService extends SetsGrpcService {
     @Override
     public void deleteEntry(final DeleteEntryRequest request, final StreamObserver<DeleteEntryResponse> responseObserver) {
         if (writeRequestInvalid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
         super.deleteEntry(request, responseObserver);
@@ -119,7 +119,7 @@ public class AuthorizedSetsGrpcService extends SetsGrpcService {
     @Override
     public void deleteBatch(final DeleteBatchRequest request, final StreamObserver<VoidResponse> responseObserver) {
         if (writeRequestInvalid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
         super.deleteBatch(request, responseObserver);
@@ -128,7 +128,7 @@ public class AuthorizedSetsGrpcService extends SetsGrpcService {
     @Override
     public void keys(final KeysRequest request, final StreamObserver<KeysResponse> responseObserver) {
         if (readRequestInvalid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
         super.keys(request, responseObserver);
@@ -137,7 +137,7 @@ public class AuthorizedSetsGrpcService extends SetsGrpcService {
     @Override
     public void sets(final SetsRequest request, final StreamObserver<SetsResponse> responseObserver) {
         if (readRequestInvalid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
         super.sets(request, responseObserver);
@@ -146,7 +146,7 @@ public class AuthorizedSetsGrpcService extends SetsGrpcService {
     @Override
     public void size(final SizeRequest request, final StreamObserver<SizeResponse> responseObserver) {
         if (readRequestInvalid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
         super.size(request, responseObserver);
@@ -155,7 +155,7 @@ public class AuthorizedSetsGrpcService extends SetsGrpcService {
     @Override
     public void weight(final WeightRequest request, final StreamObserver<WeightResponse> responseObserver) {
         if (readRequestInvalid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
         super.weight(request, responseObserver);
@@ -164,7 +164,7 @@ public class AuthorizedSetsGrpcService extends SetsGrpcService {
     @Override
     public void inc(final IncRequest request, final StreamObserver<IncResponse> responseObserver) {
         if (writeRequestInvalid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException("User not authorized to make this request: " + request));
+            sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
         super.inc(request, responseObserver);

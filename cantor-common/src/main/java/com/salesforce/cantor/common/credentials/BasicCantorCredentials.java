@@ -1,5 +1,7 @@
 package com.salesforce.cantor.common.credentials;
 
+import com.salesforce.cantor.management.CantorCredentials;
+
 public class BasicCantorCredentials implements CantorCredentials {
     private final String accessKey;
     private final String secretKey;

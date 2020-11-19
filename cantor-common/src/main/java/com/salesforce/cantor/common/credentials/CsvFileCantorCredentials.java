@@ -1,5 +1,7 @@
 package com.salesforce.cantor.common.credentials;
 
+import com.salesforce.cantor.management.CantorCredentials;
+
 import java.io.*;
 import java.util.Scanner;
 

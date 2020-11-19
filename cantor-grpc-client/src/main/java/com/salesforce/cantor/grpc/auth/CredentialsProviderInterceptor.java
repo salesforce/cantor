@@ -1,7 +1,7 @@
 package com.salesforce.cantor.grpc.auth;
 
 import com.google.common.base.Preconditions;
-import com.salesforce.cantor.common.credentials.CantorCredentials;
+import com.salesforce.cantor.management.CantorCredentials;
 import io.grpc.*;
 
 public class CredentialsProviderInterceptor implements ClientInterceptor {
@@ -19,8 +19,8 @@ public class CredentialsProviderInterceptor implements ClientInterceptor {
         return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(channel.newCall(method, callOptions)) {
             @Override
             public void start(final Listener<RespT> responseListener, final Metadata headers) {
-                headers.put(AuthorizationConstants.ACCESS_KEY, credentials.getAccessKey());
-                headers.put(AuthorizationConstants.SECRET_KEY, credentials.getSecretKey());
+                headers.put(UserConstants.ACCESS_KEY, credentials.getAccessKey());
+                headers.put(UserConstants.SECRET_KEY, credentials.getSecretKey());
                 super.start(responseListener, headers);
             }
         };

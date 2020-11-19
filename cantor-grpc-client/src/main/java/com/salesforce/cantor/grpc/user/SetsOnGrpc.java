@@ -5,10 +5,10 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.grpc;
+package com.salesforce.cantor.grpc.user;
 
 import com.salesforce.cantor.Sets;
-import com.salesforce.cantor.common.credentials.CantorCredentials;
+import com.salesforce.cantor.management.CantorCredentials;
 import com.salesforce.cantor.grpc.sets.*;
 
 import java.io.IOException;
