@@ -18,12 +18,17 @@ import java.util.*;
 public class UserUtils {
     public static final ObjectMapper mapper = new ObjectMapper();
 
+    public static Users.User getCurrentUser() {
+        final Users.User user = UserConstants.CONTEXT_KEY_USER.get(Context.current());
+        return (user == null) ? Users.ANONYMOUS : user;
+    }
+
     /**
      * Evaluates if this user has read access to the provided namespace
      * TODO: consolidate the read and write requests and accept a method signature?
      */
     static boolean readRequestValid(final String namespace) {
-        final Users.User user = UserConstants.CONTEXT_KEY_USER.get(Context.current());
+        final Users.User user = getCurrentUser();
         final List<Roles.Role> roles = UserConstants.CONTEXT_KEY_ROLES.get(Context.current());
         if (user == null || roles == null || roles.isEmpty()) {
             return false;
@@ -42,7 +47,7 @@ public class UserUtils {
      * Evaluates if this user has write access to the provided namespace
      */
     static boolean writeRequestValid(final String namespace) {
-        final Users.User user = UserConstants.CONTEXT_KEY_USER.get(Context.current());
+        final Users.User user = getCurrentUser();
         final List<Roles.Role> roles = UserConstants.CONTEXT_KEY_ROLES.get(Context.current());
         if (user == null || roles == null || roles.isEmpty()) {
             return false;
@@ -62,7 +67,7 @@ public class UserUtils {
      */
     static boolean isAdmin() {
         final Users.User user = UserConstants.CONTEXT_KEY_USER.get(Context.current());
-        return user != null && user.getUsername().equals("ADMIN");
+        return user != null && user.getUsername().equals(Users.ADMIN.getUsername());
     }
 
     /**
@@ -160,18 +165,9 @@ public class UserUtils {
     /**
      * Custom exception for errors during role management
      */
-    static class InvalidRoleException extends RuntimeException {
+    public static class InvalidRoleException extends RuntimeException {
         public InvalidRoleException(final String message) {
             super(message);
-        }
-    }
-
-    /**
-     * Custom exception for when a user is unauthorized
-     */
-    static class UnauthorizedException extends RuntimeException {
-        public UnauthorizedException(final String request) {
-            super("User not authorized to make this request: " + request);
         }
     }
 }

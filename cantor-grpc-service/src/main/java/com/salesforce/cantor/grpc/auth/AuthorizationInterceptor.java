@@ -24,11 +24,18 @@ public class AuthorizationInterceptor implements ServerInterceptor {
                                                                  final Metadata metadata,
                                                                  final ServerCallHandler<ReqT, RespT> serverCallHandler) {
         final String accessKey = metadata.get(UserConstants.ACCESS_KEY);
+        // unauthenticated users will be given the status of an anonymous user
         if (accessKey == null) {
-            // throw new StatusRuntimeException(Status.FAILED_PRECONDITION.withDescription("No key or secret provided."), metadata);
-            // TODO: temporarily allowing unauthenticated connections with full access
-            final Context ctx = Context.current().withValue(CONTEXT_KEY_USER, Users.ADMIN);
-            return Contexts.interceptCall(ctx, serverCall, metadata, serverCallHandler);
+            try {
+                final Context ctx = Context.current()
+                        .withValue(CONTEXT_KEY_USER, Users.ANONYMOUS)
+                        .withValue(CONTEXT_KEY_ROLES, attachRoles(Users.ANONYMOUS.getRoles()));
+                return Contexts.interceptCall(ctx, serverCall, metadata, serverCallHandler);
+            } catch (final IOException e) {
+                final Status status = Status.INTERNAL.withDescription("Authentication failed with internal server error").withCause(e);
+                serverCall.close(status, metadata);
+                return new ServerCall.Listener<ReqT>() {/*noop*/};
+            }
         }
 
         final String secretKey = metadata.get(UserConstants.SECRET_KEY);

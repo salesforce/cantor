@@ -16,6 +16,8 @@ import java.util.*;
  */
 public interface Users {
     User ADMIN = new User("ADMIN", Status.ACTIVE, Collections.singletonList(Roles.FULL_ACCESS.getName()));
+    // TODO: temporarily giving unauthenticated users full access
+    User ANONYMOUS = new User("ANONYMOUS", Status.ACTIVE, Collections.singletonList(Roles.FULL_ACCESS.getName()));
 
     /**
      * Status is for tracking any restriction placed on the user. The status apply to all the user's roles

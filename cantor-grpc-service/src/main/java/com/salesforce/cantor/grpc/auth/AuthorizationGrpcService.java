@@ -5,7 +5,7 @@ import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Objects;
 import com.salesforce.cantor.management.Roles;
 import com.salesforce.cantor.management.Users;
-import io.grpc.Context;
+import io.grpc.*;
 import io.grpc.stub.StreamObserver;
 import io.jsonwebtoken.Jwts;
 
@@ -25,11 +25,13 @@ public class AuthorizationGrpcService extends AuthorizationServiceGrpc.Authoriza
 
     public AuthorizationGrpcService(final Cantor cantor, final String adminPassword) throws IOException {
         checkArgument(cantor != null, "null cantor");
+        // create user namespace
         cantor.objects().create(UserConstants.USER_NAMESPACE);
-        cantor.objects().create(UserConstants.ROLES_NAMESPACE);
         cantor.objects().store(UserConstants.USER_NAMESPACE,
                 Users.ADMIN.getUsername(),
                 UserUtils.hashSecret(adminPassword));
+        // create roles namespace
+        cantor.objects().create(UserConstants.ROLES_NAMESPACE);
         cantor.objects().store(UserConstants.ROLES_NAMESPACE,
                 Roles.FULL_ACCESS.getName(),
                 mapper.writeValueAsBytes(Roles.FULL_ACCESS));
@@ -39,7 +41,7 @@ public class AuthorizationGrpcService extends AuthorizationServiceGrpc.Authoriza
     @Override
     public void createUser(final CreateUserRequest request, final StreamObserver<AccessKeysResponse> responseObserver) {
         if (!UserUtils.isAdmin()) {
-            sendError(responseObserver, new UserUtils.UnauthorizedException("User not authorized to make this request: " + request));
+            sendUnauthorizedError(responseObserver, request.toString());
             return;
         }
         if (Context.current().isCancelled()) {
@@ -61,15 +63,17 @@ public class AuthorizationGrpcService extends AuthorizationServiceGrpc.Authoriza
                     .setSecretKey(secretKey)
                     .build();
             sendResponse(responseObserver, accessKeys);
-        } catch (final IOException | NoSuchAlgorithmException | UserUtils.InvalidRoleException e) {
+        } catch (final IOException | NoSuchAlgorithmException e) {
             sendError(responseObserver, e);
+        } catch (final UserUtils.InvalidRoleException e) {
+            responseObserver.onError(new StatusRuntimeException(Status.ABORTED.withCause(e)));
         }
     }
 
     @Override
     public void createRole(final CreateRoleRequest request, final StreamObserver<EmptyResponse> responseObserver) {
         if (!UserUtils.isAdmin()) {
-            sendError(responseObserver, new UserUtils.UnauthorizedException("User not authorized to make this request: " + request));
+            sendUnauthorizedError(responseObserver, request.toString());
             return;
         }
         if (Context.current().isCancelled()) {
@@ -80,7 +84,7 @@ public class AuthorizationGrpcService extends AuthorizationServiceGrpc.Authoriza
             final String roleKey = request.getNewRoleName().toUpperCase();
             final byte[] role = getObjects().get(UserConstants.ROLES_NAMESPACE, roleKey);
             if (role != null) {
-                throw new UserUtils.InvalidRoleException("This role already exists: " + roleKey);
+                responseObserver.onError(new StatusRuntimeException(Status.ALREADY_EXISTS.withDescription("This role already exists: " + roleKey)));
             }
 
             // generate and store new jwt
@@ -88,7 +92,7 @@ public class AuthorizationGrpcService extends AuthorizationServiceGrpc.Authoriza
             getObjects().store(UserConstants.ROLES_NAMESPACE, roleKey, mapper.writeValueAsBytes(newRole));
 
             sendResponse(responseObserver, EmptyResponse.getDefaultInstance());
-        } catch (final IOException | UserUtils.InvalidRoleException e) {
+        } catch (final IOException e) {
             sendError(responseObserver, e);
         }
     }

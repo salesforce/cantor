@@ -29,7 +29,7 @@ public class AuthorizedObjectsGrpcService extends ObjectsGrpcService {
     @Override
     public void create(final CreateRequest request, final StreamObserver<VoidResponse> responseObserver) {
         if (!writeRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException(request.toString()));
+            sendUnauthorizedError(responseObserver, request.toString());
             return;
         }
         super.create(request, responseObserver);
@@ -38,7 +38,7 @@ public class AuthorizedObjectsGrpcService extends ObjectsGrpcService {
     @Override
     public void drop(final DropRequest request, final StreamObserver<VoidResponse> responseObserver) {
         if (!writeRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException(request.toString()));
+            sendUnauthorizedError(responseObserver, request.toString());
             return;
         }
         super.drop(request, responseObserver);
@@ -47,7 +47,7 @@ public class AuthorizedObjectsGrpcService extends ObjectsGrpcService {
     @Override
     public void keys(final KeysRequest request, final StreamObserver<KeysResponse> responseObserver) {
         if (!readRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException(request.toString()));
+            sendUnauthorizedError(responseObserver, request.toString());
             return;
         }
         super.keys(request, responseObserver);
@@ -56,7 +56,7 @@ public class AuthorizedObjectsGrpcService extends ObjectsGrpcService {
     @Override
     public void get(final GetRequest request, final StreamObserver<GetResponse> responseObserver) {
         if (!readRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException(request.toString()));
+            sendUnauthorizedError(responseObserver, request.toString());
             return;
         }
         super.get(request, responseObserver);
@@ -65,7 +65,7 @@ public class AuthorizedObjectsGrpcService extends ObjectsGrpcService {
     @Override
     public void store(final StoreRequest request, final StreamObserver<VoidResponse> responseObserver) {
         if (!writeRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException(request.toString()));
+            sendUnauthorizedError(responseObserver, request.toString());
             return;
         }
         super.store(request, responseObserver);
@@ -74,7 +74,7 @@ public class AuthorizedObjectsGrpcService extends ObjectsGrpcService {
     @Override
     public void delete(final DeleteRequest request, final StreamObserver<DeleteResponse> responseObserver) {
         if (!writeRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException(request.toString()));
+            sendUnauthorizedError(responseObserver, request.toString());
             return;
         }
         super.delete(request, responseObserver);
@@ -83,7 +83,7 @@ public class AuthorizedObjectsGrpcService extends ObjectsGrpcService {
     @Override
     public void size(final SizeRequest request, final StreamObserver<SizeResponse> responseObserver) {
         if (!readRequestValid(request.getNamespace())) {
-            sendError(responseObserver, new UnauthorizedException(request.toString()));
+            sendUnauthorizedError(responseObserver, request.toString());
             return;
         }
         super.size(request, responseObserver);
