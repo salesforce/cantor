@@ -5,12 +5,13 @@ import com.salesforce.cantor.grpc.auth.*;
 import com.salesforce.cantor.grpc.auth.AuthorizationServiceGrpc.AuthorizationServiceBlockingStub;
 import com.salesforce.cantor.grpc.AbstractBaseGrpcClient;
 import com.salesforce.cantor.management.*;
+import io.grpc.ManagedChannel;
 
 import java.util.List;
 
 public class ManagementOnGrpc extends AbstractBaseGrpcClient<AuthorizationServiceBlockingStub> implements Users, Roles {
-    public ManagementOnGrpc(final String target) {
-        super(AuthorizationServiceGrpc::newBlockingStub, target);
+    public ManagementOnGrpc(final ManagedChannel channel) {
+        super(AuthorizationServiceGrpc::newBlockingStub, channel);
     }
 
     @Override

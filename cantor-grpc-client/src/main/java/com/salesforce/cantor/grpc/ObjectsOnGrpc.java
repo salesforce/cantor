@@ -9,14 +9,12 @@ package com.salesforce.cantor.grpc;
 
 import com.google.protobuf.ByteString;
 import com.salesforce.cantor.Objects;
-import com.salesforce.cantor.management.CantorCredentials;
 import com.salesforce.cantor.grpc.objects.*;
 import com.salesforce.cantor.grpc.objects.ObjectsServiceGrpc.ObjectsServiceBlockingStub;
+import io.grpc.ManagedChannel;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
 import static com.salesforce.cantor.common.CommonPreconditions.checkString;
@@ -28,8 +26,8 @@ public class ObjectsOnGrpc extends AbstractBaseGrpcClient<ObjectsServiceBlocking
         super(ObjectsServiceGrpc::newBlockingStub, target);
     }
 
-    public ObjectsOnGrpc(final String target, final CantorCredentials credentials) {
-        super(ObjectsServiceGrpc::newBlockingStub, target, credentials);
+    public ObjectsOnGrpc(final ManagedChannel channel) {
+        super(ObjectsServiceGrpc::newBlockingStub, channel);
     }
 
     @Override

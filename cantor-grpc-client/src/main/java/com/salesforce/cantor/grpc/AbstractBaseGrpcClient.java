@@ -7,9 +7,6 @@
 
 package com.salesforce.cantor.grpc;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.salesforce.cantor.grpc.auth.CredentialsProviderInterceptor;
-import com.salesforce.cantor.management.CantorCredentials;
 import io.grpc.*;
 import io.grpc.stub.AbstractStub;
 import org.slf4j.Logger;
@@ -17,10 +14,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
 import java.util.function.Function;
 
-import static com.salesforce.cantor.common.CommonPreconditions.checkString;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
     private final Logger logger = LoggerFactory.getLogger(getClass());
@@ -28,15 +24,13 @@ public abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubT
 
     protected AbstractBaseGrpcClient(final Function<Channel, StubType> stubConstructor,
                                      final String target) {
-        checkString(target, "null/empty target");
-        this.stub = makeStubs(stubConstructor, target);
+        this.stub = makeStubs(stubConstructor, GrpcChannelBuilder.newBuilder(target).usePlainText().build());
     }
 
     protected AbstractBaseGrpcClient(final Function<Channel, StubType> stubConstructor,
-                                     final String target,
-                                     final CantorCredentials credentials) {
-        checkString(target, "null/empty target");
-        this.stub = makeSecureStubs(stubConstructor, target, credentials);
+                                     final ManagedChannel channel) {
+        checkNotNull(channel, "null channel");
+        this.stub = makeStubs(stubConstructor, channel);
     }
 
     protected StubType getStub() {
@@ -59,33 +53,8 @@ public abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubT
     }
 
     private StubType makeStubs(final Function<Channel, StubType> stubConstructor,
-                               final String target) {
-        logger.info("creating stub of {} for target '{}'", stubConstructor.getClass(), target);
-        final ManagedChannel channel = ManagedChannelBuilder.forTarget(target)
-                .maxInboundMessageSize(32 * 1024 * 1024)  // 32MB
-                .executor(
-                        Executors.newFixedThreadPool(
-                                16, // exactly 16 concurrent worker threads
-                                new ThreadFactoryBuilder().setNameFormat("cantor-client-channel-%d").build())
-                )
-                .build();
-        return stubConstructor
-                .apply(channel);
-    }
-
-    private StubType makeSecureStubs(final Function<Channel, StubType> stubConstructor,
-                                     final String target,
-                                     final CantorCredentials credentials) {
-        logger.info("creating stub of {} for target '{}'", stubConstructor.getClass(), target);
-        final ManagedChannel channel = ManagedChannelBuilder.forTarget(target)
-                .maxInboundMessageSize(32 * 1024 * 1024)  // 32MB
-                .executor(
-                        Executors.newFixedThreadPool(
-                                16, // exactly 16 concurrent worker threads
-                                new ThreadFactoryBuilder().setNameFormat("cantor-client-channel-%d").build())
-                )
-                .intercept(new CredentialsProviderInterceptor(credentials))
-                .build();
+                               final ManagedChannel channel) {
+        logger.info("creating stub of {} for target '{}'", stubConstructor.getClass(), channel.authority());
         return stubConstructor
                 .apply(channel);
     }

@@ -9,7 +9,7 @@ package com.salesforce.cantor.grpc.admin;
 
 import com.salesforce.cantor.*;
 import com.salesforce.cantor.grpc.*;
-import com.salesforce.cantor.management.CantorCredentials;
+import io.grpc.ManagedChannel;
 
 public class CantorOnGrpcAdmin implements Cantor {
     private final Objects objects;
@@ -17,11 +17,11 @@ public class CantorOnGrpcAdmin implements Cantor {
     private final Events events;
     private final ManagementOnGrpc manager;
 
-    public CantorOnGrpcAdmin(final String target, final CantorCredentials credentials) {
-        this.objects = new ObjectsOnGrpc(target, credentials);
-        this.sets = new SetsOnGrpc(target, credentials);
-        this.events = new EventsOnGrpc(target, credentials);
-        this.manager = new ManagementOnGrpc(target);
+    public CantorOnGrpcAdmin(final ManagedChannel channel) {
+        this.objects = new ObjectsOnGrpc(channel);
+        this.sets = new SetsOnGrpc(channel);
+        this.events = new EventsOnGrpc(channel);
+        this.manager = new ManagementOnGrpc(channel);
     }
 
     @Override
