@@ -8,8 +8,8 @@
 package com.salesforce.cantor.grpc.admin;
 
 import com.salesforce.cantor.*;
+import com.salesforce.cantor.grpc.*;
 import com.salesforce.cantor.management.CantorCredentials;
-import com.salesforce.cantor.grpc.user.*;
 
 public class CantorOnGrpcAdmin implements Cantor {
     private final Objects objects;

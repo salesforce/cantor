@@ -9,11 +9,11 @@ package com.salesforce.cantor.grpc.auth;
 
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.grpc.events.*;
-import com.salesforce.cantor.grpc.open.EventsGrpcService;
+import com.salesforce.cantor.grpc.EventsGrpcService;
 import io.grpc.stub.StreamObserver;
 
 import static com.salesforce.cantor.grpc.auth.UserUtils.*;
-import static com.salesforce.cantor.grpc.open.GrpcUtils.*;
+import static com.salesforce.cantor.grpc.GrpcUtils.*;
 
 
 public class AuthorizedEventsGrpcService extends EventsGrpcService {
@@ -29,7 +29,7 @@ public class AuthorizedEventsGrpcService extends EventsGrpcService {
 
     @Override
     public void create(final CreateRequest request, final StreamObserver<VoidResponse> responseObserver) {
-        if (writeRequestInvalid(request.getNamespace())) {
+        if (!writeRequestValid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
@@ -38,7 +38,7 @@ public class AuthorizedEventsGrpcService extends EventsGrpcService {
 
     @Override
     public void drop(final DropRequest request, final StreamObserver<VoidResponse> responseObserver) {
-        if (writeRequestInvalid(request.getNamespace())) {
+        if (!writeRequestValid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
@@ -47,7 +47,7 @@ public class AuthorizedEventsGrpcService extends EventsGrpcService {
 
     @Override
     public void get(final GetRequest request, final StreamObserver<GetResponse> responseObserver) {
-        if (readRequestInvalid(request.getNamespace())) {
+        if (!readRequestValid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
@@ -56,7 +56,7 @@ public class AuthorizedEventsGrpcService extends EventsGrpcService {
 
     @Override
     public void delete(final DeleteRequest request, final StreamObserver<DeleteResponse> responseObserver) {
-        if (writeRequestInvalid(request.getNamespace())) {
+        if (!writeRequestValid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
@@ -65,7 +65,7 @@ public class AuthorizedEventsGrpcService extends EventsGrpcService {
 
     @Override
     public void store(final StoreRequest request, final StreamObserver<VoidResponse> responseObserver) {
-        if (writeRequestInvalid(request.getNamespace())) {
+        if (!writeRequestValid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
@@ -74,7 +74,7 @@ public class AuthorizedEventsGrpcService extends EventsGrpcService {
 
     @Override
     public void aggregate(final AggregateRequest request, final StreamObserver<AggregateResponse> responseObserver) {
-        if (readRequestInvalid(request.getNamespace())) {
+        if (!readRequestValid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
@@ -83,7 +83,7 @@ public class AuthorizedEventsGrpcService extends EventsGrpcService {
 
     @Override
     public void metadata(final MetadataRequest request, final StreamObserver<MetadataResponse> responseObserver) {
-        if (readRequestInvalid(request.getNamespace())) {
+        if (!readRequestValid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }
@@ -92,7 +92,7 @@ public class AuthorizedEventsGrpcService extends EventsGrpcService {
 
     @Override
     public void expire(final ExpireRequest request, final StreamObserver<VoidResponse> responseObserver) {
-        if (writeRequestInvalid(request.getNamespace())) {
+        if (!writeRequestValid(request.getNamespace())) {
             sendError(responseObserver, new UnauthorizedException(request.toString()));
             return;
         }

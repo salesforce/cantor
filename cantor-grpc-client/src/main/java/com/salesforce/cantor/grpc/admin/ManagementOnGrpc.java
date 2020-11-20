@@ -3,7 +3,7 @@ package com.salesforce.cantor.grpc.admin;
 import com.salesforce.cantor.common.credentials.BasicCantorCredentials;
 import com.salesforce.cantor.grpc.auth.*;
 import com.salesforce.cantor.grpc.auth.AuthorizationServiceGrpc.AuthorizationServiceBlockingStub;
-import com.salesforce.cantor.grpc.user.AbstractBaseGrpcClient;
+import com.salesforce.cantor.grpc.AbstractBaseGrpcClient;
 import com.salesforce.cantor.management.*;
 
 import java.util.List;

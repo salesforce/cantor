@@ -16,7 +16,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
-import static com.salesforce.cantor.grpc.open.GrpcUtils.*;
+import static com.salesforce.cantor.grpc.GrpcUtils.*;
 
 public class AuthorizationGrpcService extends AuthorizationServiceGrpc.AuthorizationServiceImplBase {
     private static final Base64.Encoder encoder = Base64.getEncoder();

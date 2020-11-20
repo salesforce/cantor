@@ -5,7 +5,7 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.grpc.open;
+package com.salesforce.cantor.grpc;
 
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Sets;
@@ -18,7 +18,7 @@ import java.util.Collection;
 import java.util.Map;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
-import static com.salesforce.cantor.grpc.open.GrpcUtils.*;
+import static com.salesforce.cantor.grpc.GrpcUtils.*;
 
 public class SetsGrpcService extends SetsServiceGrpc.SetsServiceImplBase {
 

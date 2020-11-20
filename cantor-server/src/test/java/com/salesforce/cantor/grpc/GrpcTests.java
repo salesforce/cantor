@@ -8,7 +8,6 @@
 package com.salesforce.cantor.grpc;
 
 import com.salesforce.cantor.Cantor;
-import com.salesforce.cantor.grpc.user.CantorOnGrpc;
 import com.salesforce.cantor.server.CantorEnvironment;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;

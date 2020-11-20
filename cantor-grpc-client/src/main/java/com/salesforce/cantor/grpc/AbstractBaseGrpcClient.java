@@ -5,7 +5,7 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.grpc.user;
+package com.salesforce.cantor.grpc;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.salesforce.cantor.grpc.auth.CredentialsProviderInterceptor;
@@ -27,14 +27,14 @@ public abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubT
     private final StubType stub;
 
     protected AbstractBaseGrpcClient(final Function<Channel, StubType> stubConstructor,
-                           final String target) {
+                                     final String target) {
         checkString(target, "null/empty target");
         this.stub = makeStubs(stubConstructor, target);
     }
 
     protected AbstractBaseGrpcClient(final Function<Channel, StubType> stubConstructor,
-                           final String target,
-                           final CantorCredentials credentials) {
+                                     final String target,
+                                     final CantorCredentials credentials) {
         checkString(target, "null/empty target");
         this.stub = makeSecureStubs(stubConstructor, target, credentials);
     }

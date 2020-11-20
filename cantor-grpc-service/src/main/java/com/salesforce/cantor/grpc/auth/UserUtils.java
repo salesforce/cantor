@@ -22,11 +22,11 @@ public class UserUtils {
      * Evaluates if this user has read access to the provided namespace
      * TODO: consolidate the read and write requests and accept a method signature?
      */
-    static boolean readRequestInvalid(final String namespace) {
+    static boolean readRequestValid(final String namespace) {
         final Users.User user = UserConstants.CONTEXT_KEY_USER.get(Context.current());
         final List<Roles.Role> roles = UserConstants.CONTEXT_KEY_ROLES.get(Context.current());
         if (user == null || roles == null || roles.isEmpty()) {
-            return true;
+            return false;
         }
 
         for (final Roles.Role role : roles) {
@@ -41,11 +41,11 @@ public class UserUtils {
     /**
      * Evaluates if this user has write access to the provided namespace
      */
-    static boolean writeRequestInvalid(final String namespace) {
+    static boolean writeRequestValid(final String namespace) {
         final Users.User user = UserConstants.CONTEXT_KEY_USER.get(Context.current());
         final List<Roles.Role> roles = UserConstants.CONTEXT_KEY_ROLES.get(Context.current());
         if (user == null || roles == null || roles.isEmpty()) {
-            return true;
+            return false;
         }
 
         for (final Roles.Role role : roles) {

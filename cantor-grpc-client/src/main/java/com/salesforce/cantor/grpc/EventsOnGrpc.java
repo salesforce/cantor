@@ -5,7 +5,7 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.grpc.user;
+package com.salesforce.cantor.grpc;
 
 import com.google.protobuf.ByteString;
 import com.salesforce.cantor.Events;

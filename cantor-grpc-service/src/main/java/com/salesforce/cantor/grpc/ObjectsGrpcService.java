@@ -5,7 +5,7 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.grpc.open;
+package com.salesforce.cantor.grpc;
 
 import com.google.protobuf.ByteString;
 import com.salesforce.cantor.Cantor;
@@ -18,7 +18,7 @@ import java.io.IOException;
 import java.util.Collection;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkArgument;
-import static com.salesforce.cantor.grpc.open.GrpcUtils.*;
+import static com.salesforce.cantor.grpc.GrpcUtils.*;
 
 public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBase {
 
