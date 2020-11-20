@@ -9,8 +9,70 @@
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%date{YYYY-MM-dd HH:mm:ss} %level [%thread] %logger{10} [%file:%line] %msg%n</pattern>
+            <!--<pattern>%msg%n</pattern>-->
         </encoder>
     </appender>
+
+    <appender name="cantor-s3-events" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!--<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">-->
+        <rollingPolicy class="com.salesforce.cantor.s3.CantorRollingPolicy">
+            <!-- hourly rollover -->
+            <fileNamePattern>/tmp/cantor-s3/%d{yyyy/MM/dd/HH/mm}/${HOSTNAME}.events.json.gz</fileNamePattern>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+            <!-- keep 1 hours worth of logs up to 10GB -->
+            <maxHistory>60</maxHistory>
+            <totalSizeCap>10GB</totalSizeCap>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder>
+            <pattern>%msg %n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="cantor-s3-events" level="DEBUG" additivity="false">
+        <appender-ref ref="cantor-s3-events"/>
+    </logger>
+
+    <appender name="cantor-s3-payloads" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!--<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">-->
+        <rollingPolicy class="com.salesforce.cantor.s3.CantorRollingPolicy">
+            <!-- hourly rollover -->
+            <fileNamePattern>/tmp/cantor-s3/%d{yyyy/MM/dd/HH/mm}/${HOSTNAME}.payloads.base64.gz</fileNamePattern>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+            <!-- keep 1 hours worth of logs up to 10GB -->
+            <maxHistory>60</maxHistory>
+            <totalSizeCap>10GB</totalSizeCap>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder>
+            <pattern>%msg %n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="cantor-s3-payloads" level="DEBUG" additivity="false">
+        <appender-ref ref="cantor-s3-payloads"/>
+    </logger>
+
+    <appender name="cantor-s3-sifting" class="ch.qos.logback.classic.sift.SiftingAppender">
+        <discriminator>
+            <Key>path</Key>
+            <DefaultValue>unknown</DefaultValue>
+        </discriminator>
+        <timeout>3seconds</timeout>
+        <sift>
+            <appender name="FILE-${path}" class="ch.qos.logback.core.FileAppender">
+                <file>/tmp/cantor-s3/${path}</file>
+                <append>true</append>
+                <layout class="ch.qos.logback.classic.PatternLayout">
+                    <pattern>%msg%n</pattern>
+                </layout>
+            </appender>
+        </sift>
+    </appender>
+
+    <logger name="cantor-s3-sifting" level="DEBUG" additivity="false">
+        <appender-ref ref="cantor-s3-sifting"/>
+    </logger>
 
     <root level="INFO">
         <appender-ref ref="STDOUT" />

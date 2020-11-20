@@ -72,12 +72,26 @@ public class S3Utils {
     public static byte[] getObjectBytes(final AmazonS3 s3Client,
                                         final String bucketName,
                                         final String key) throws IOException {
+        return getObjectBytes(s3Client, bucketName, key, 0, -1);
+    }
+
+    public static byte[] getObjectBytes(final AmazonS3 s3Client,
+                                        final String bucketName,
+                                        final String key,
+                                        final long start,
+                                        final long end) throws IOException {
         if (!s3Client.doesObjectExist(bucketName, key)) {
             logger.debug("object '{}.{}' doesn't exist, returning null", bucketName, key);
             return null;
         }
 
-        final S3Object s3Object = s3Client.getObject(bucketName, key);
+        final GetObjectRequest request = new GetObjectRequest(bucketName, key);
+        if (start >= 0 && end > 0) {
+            request.setRange(start, end);
+        } else if (start >= 0 && end < 0) {
+            request.setRange(start);
+        }
+        final S3Object s3Object = s3Client.getObject(request);
         final ByteArrayOutputStream buffer;
         try (final InputStream inputStream = s3Object.getObjectContent()) {
             buffer = new ByteArrayOutputStream();
