@@ -5,7 +5,6 @@ import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.amazonaws.services.s3.transfer.MultipleFileUpload;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
-import com.amazonaws.util.IOUtils;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -16,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 import java.io.*;
-import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,27 +35,33 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private static final String dimensionKeyPayloadOffset = ".payload-offset";
     private static final String dimensionKeyPayloadLength = ".payload-length";
 
-    private final Map<String, ByteArrayOutputStream> keyToObject = new ConcurrentHashMap<>();
     private static final AtomicReference<String> currentFlushCycleGuid = new AtomicReference<>(UUID.randomUUID().toString());
+    private static final Map<String, ByteArrayOutputStream> keyToObject = new ConcurrentHashMap<>();
 
     private static final Gson parser = new GsonBuilder().create();
 
-    private Logger siftingLogger = LoggerFactory.getLogger("cantor-s3-sifting");
-    private final ChunkFileManager manager;
+    private static final Logger siftingLogger = LoggerFactory.getLogger("cantor-s3-sifting");
+
+    private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+    private final String bufferDirectory;
 
     // cantor-events-<namespace>/<startTimestamp>-<endTimestamp>
     private static final String objectKeyPrefix = "cantor-events-%s/";
-    private static final Pattern eventsObjectPattern = Pattern.compile("cantor-events-(?<namespace>.*)/(?<start>\\d+)-(?<end>\\d+)");
-    private static final long chunkMillis = TimeUnit.HOURS.toMillis(1);
 
     // date formatter for converting an event timestamp to a hierarchical directory structure
     private static final DateFormat formatter = new SimpleDateFormat("YYYY/MM/dd/HH/mm");
 
     public EventsOnS3(final AmazonS3 s3Client,
                       final String bucketName) throws IOException {
-        super(s3Client, bucketName, "events");
+        this(s3Client, bucketName, 30);
+    }
 
-        this.manager = new ChunkFileManager("/tmp/cantor-s3/", s3Client, bucketName);
+    public EventsOnS3(final AmazonS3 s3Client,
+                      final String bucketName,
+                      final long flushIntervalSeconds) throws IOException {
+        super(s3Client, bucketName, "events");
+        this.bufferDirectory = "/tmp/cantor-s3";
+        this.executor.scheduleWithFixedDelay(this::flush, 0, flushIntervalSeconds, TimeUnit.SECONDS);
     }
 
     @Override
@@ -478,57 +482,47 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         return String.format("CAST ( s.dimensions.\"%s\" as decimal)", key);
     }
 
-    private static class ChunkFileManager {
-        private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-        private final AmazonS3 s3Client;
-        private final String bucketName;
-        private final String baseDirectory;
+    // update the rollover cycle guid and return the previous one
+    private String rollover() {
+        return currentFlushCycleGuid.getAndSet(UUID.randomUUID().toString());
+    }
 
-        ChunkFileManager(final String baseDirectory, final AmazonS3 s3Client, final String bucketName) throws IOException {
-            this.s3Client = s3Client;
-            this.bucketName = bucketName;
-            this.baseDirectory = baseDirectory;
-            this.executor.scheduleWithFixedDelay(this::flushToS3, 30, 30, TimeUnit.SECONDS);
-        }
+    private synchronized void flush() {
+        try {
+            final String previousFlushCycleGuid = rollover();
 
-        private void flushToS3() {
-            try {
-                // rotate flush cycle guid
-                final String previousFlushCycleGuid = currentFlushCycleGuid.getAndSet(UUID.randomUUID().toString());
-                final List<File> toDelete = new ArrayList<>();
-
-                final Path previousFlushCyclePath = Paths.get(this.baseDirectory + File.separator + previousFlushCycleGuid);
-                logger.info("uploading buffer directory: {}", previousFlushCyclePath.toAbsolutePath().toString());
-                // skip if path does not exist or is not a directory
-                if (!previousFlushCyclePath.toFile().exists() || !previousFlushCyclePath.toFile().isDirectory()) {
-                    logger.info("nothing to upload");
-                    return;
-                }
-
-                final TransferManagerBuilder builder = TransferManagerBuilder.standard();
-                builder.setS3Client(this.s3Client);
-                final TransferManager manager = builder.build();
-
-
-                final MultipleFileUpload upload = manager.uploadDirectory(this.bucketName, "", previousFlushCyclePath.toFile(), true, (file, objectMetadata) -> {
-                    // set object content type to plain text
-                    objectMetadata.setContentType("text/plain");
-                    // add file to be deleted after uploading
-                    toDelete.add(file);
-                });
-                upload.waitForCompletion();
-                logger.info("successfully uploaded, removing files under '{}'", previousFlushCyclePath.toAbsolutePath().toString());
-                for (final File file : toDelete) {
-                    file.delete();
-                }
-                // TODO delete the directory
-                Files.walk(previousFlushCyclePath)
-                        .sorted(Comparator.reverseOrder())
-                        .map(Path::toFile)
-                        .forEach(File::delete);
-            } catch (Exception e) {
-                logger.warn("exception caught on uploading buffer directory", e);
+            final List<File> toDelete = new ArrayList<>();
+            final Path previousFlushCyclePath = Paths.get(this.bufferDirectory + File.separator + previousFlushCycleGuid);
+            logger.info("uploading buffer directory: {}", previousFlushCyclePath.toAbsolutePath().toString());
+            // skip if path does not exist or is not a directory
+            if (!previousFlushCyclePath.toFile().exists() || !previousFlushCyclePath.toFile().isDirectory()) {
+                logger.info("nothing to upload");
+                return;
             }
+
+            final TransferManagerBuilder builder = TransferManagerBuilder.standard();
+            builder.setS3Client(this.s3Client);
+            final TransferManager manager = builder.build();
+
+
+            final MultipleFileUpload upload = manager.uploadDirectory(this.bucketName, null, previousFlushCyclePath.toFile(), true, (file, metadata) -> {
+                // set object content type to plain text
+                metadata.setContentType("text/plain");
+                // add file to be deleted after uploading
+                toDelete.add(file);
+            });
+            upload.waitForCompletion();
+            logger.info("successfully uploaded, removing files under '{}'", previousFlushCyclePath.toAbsolutePath().toString());
+            for (final File file : toDelete) {
+                file.delete();
+            }
+            // TODO delete the directory
+            Files.walk(previousFlushCyclePath)
+                    .sorted(Comparator.reverseOrder())
+                    .map(Path::toFile)
+                    .forEach(File::delete);
+        } catch (Exception e) {
+            logger.warn("exception caught on uploading buffer directory", e);
         }
     }
 }
