@@ -9,6 +9,7 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.GetObjectRequest;
+import com.google.common.io.ByteStreams;
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Events;
 import com.salesforce.cantor.common.AbstractBaseEventsTest;
@@ -24,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.GZIPInputStream;
 
 @Test(enabled = false)
 public class EventsOnS3Test extends AbstractBaseEventsTest {
@@ -74,30 +76,40 @@ public class EventsOnS3Test extends AbstractBaseEventsTest {
 
         for (int n = 0; n < 10; ++n) {
             final String namespace = namespacePrefix + "-" + n;
-            cantor.events().create(namespace);
+//            cantor.events().create(namespace);
         }
 
-        final long before = System.nanoTime();
-        for (int i = 0; i < 1_000_000; ++i) {
-            final String namespace = namespacePrefix + "-" + (i % 10);
-            cantor.events().store(namespace, ThreadLocalRandom.current().nextLong(System.currentTimeMillis() - 1000 * 60 * 10, System.currentTimeMillis()), metadata, dimensions, uuid.getBytes());
+//        final long before = System.nanoTime();
+//        for (int i = 0; i < 1_000_000; ++i) {
+//            final String namespace = namespacePrefix + "-" + (i % 10);
+//            cantor.events().store(namespace, ThreadLocalRandom.current().nextLong(System.currentTimeMillis() - 1000 * 60 * 10, System.currentTimeMillis()), metadata, dimensions, uuid.getBytes());
 //            Thread.sleep(1);
 //            logger.info("events: {}", cantor.events().get(namespace, 0, Long.MAX_VALUE));
+//        }
+//        logger.info("time spent: {}ms", (System.nanoTime() - before) / 1000000);
+
+
+        final Events.Event t = new Events.Event(0, null, null, uuid.getBytes());
+        for (int i = 0; i < 10; ++i) {
+            cantor.events().store("maiev-tenant-autobuild-prd", t);
         }
-        logger.info("time spent: {}ms", (System.nanoTime() - before) / 1000000);
 
-
-
+        logger.info("returned: {}", cantor.events().get("maiev-tenant-autobuild-prd", 0, 0, null, null, true));
 
 
 //        final byte[] bytes = S3Utils.getObjectBytes(s3Client, bucketName, "maiev-tenant-falcon-aws-prod1-useast1", 98, 98 + 48 - 1);
 //        logger.info("48 bytes after 48th byte are: '{}'", new String(bytes));
-        Thread.sleep(1000000);
+//        Thread.sleep(1000000);
 
         final Map<String, String> query = new HashMap<>();
         query.put("changeList", "=29235163");
 //        query.put("name", "=top");
-        logger.info("events found: {}", cantor.events().get("maiev-tenant-autobuild-prd", 1605776701237L - TimeUnit.HOURS.toMillis(10), 1605776701237L + TimeUnit.HOURS.toMillis(10), query, null));
+        final List<Events.Event> events = cantor.events().get("maiev-tenant-autobuild-prd", 1605776701237L - TimeUnit.HOURS.toMillis(10), 1605776701237L + TimeUnit.HOURS.toMillis(10), query, null, true);
+        for (final Events.Event event : events) {
+            logger.info("event name is: {}", event.getMetadata().get("name"));
+            logger.info("event payload is: {}", new String(decompress(event.getPayload())));
+        }
+//        logger.info("events found: {}", cantor.events().get("maiev-tenant-autobuild-prd", 1605776701237L - TimeUnit.HOURS.toMillis(10), 1605776701237L + TimeUnit.HOURS.toMillis(10), query, null, true));
         Thread.sleep(1000000);
 
 
@@ -140,6 +152,15 @@ public class EventsOnS3Test extends AbstractBaseEventsTest {
 
     }
 
+    public static byte[] decompress(final byte[] compressedBytes) throws IOException {
+        final byte[] unzippedPayload;
+        try (final ByteArrayInputStream byteStream = new ByteArrayInputStream(compressedBytes);
+             final GZIPInputStream gzis = new GZIPInputStream(byteStream)) {
+            unzippedPayload = ByteStreams.toByteArray(gzis);
+        }
+
+        return unzippedPayload;
+    }
     private static void run(Cantor cantor, final String n) throws IOException {
         final Cantor prdCantor = new CantorOnGrpc("cantor.casp.prd-samtwo.prd.slb.sfdc.net:11983");
         cantor.events().create(n);

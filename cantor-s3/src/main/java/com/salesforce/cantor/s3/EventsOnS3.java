@@ -28,8 +28,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.salesforce.cantor.common.EventsPreconditions.*;
 
@@ -42,14 +40,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private final Map<String, ByteArrayOutputStream> keyToObject = new ConcurrentHashMap<>();
     private static final AtomicReference<String> currentFlushCycleGuid = new AtomicReference<>(UUID.randomUUID().toString());
 
-    // custom gson parser to auto-convert payload to byte[]
-    private static final Gson parser = new GsonBuilder()
-            .registerTypeHierarchyAdapter(byte[].class, new ByteArrayHandler()).create();
-
-    private static final Gson parserPayloadless = new GsonBuilder()
-            // ignore parameters; empty payload field
-            .registerTypeHierarchyAdapter(byte[].class, (JsonDeserializer<Object>) (i, i1, i2) -> new byte[0])
-            .create();
+    private static final Gson parser = new GsonBuilder().create();
 
     private Logger siftingLogger = LoggerFactory.getLogger("cantor-s3-sifting");
     private final ChunkFileManager manager;
@@ -222,12 +213,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                               final int limit) throws IOException {
 
         // find all matching log files
-        final List<String> matchingKeys = new ArrayList<>();
-        for (long timestamp = startTimestampMillis; timestamp <= endTimestampMillis; timestamp += TimeUnit.HOURS.toMillis(1)) {
-            final String prefix = String.format("%s/%s.events-", trim(namespace), formatter.format(timestamp));
-            matchingKeys.addAll(S3Utils.getKeys(this.s3Client, this.bucketName, prefix));
-        }
-
+        final List<String> matchingKeys = getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis);
         logger.info("matching files are: {}", matchingKeys);
 
         // using tree map for convenient sorting
@@ -238,21 +224,33 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                 continue;
             }
             final String query = generateQuery(startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-            logger.info("object key: {} - query: {}", objectKey, query);
             final InputStream jsonLines = S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query);
             final Scanner lineReader = new Scanner(jsonLines);
             // json events are stored in json lines format, so one json object per line
             while (lineReader.hasNext()) {
-                final Event event;
-                if (!includePayloads) {
-                    event = parserPayloadless.fromJson(lineReader.nextLine(), Event.class);
+                final Event event = parser.fromJson(lineReader.nextLine(), Event.class);
+                if (includePayloads
+                        && event.getDimensions().containsKey(dimensionKeyPayloadOffset)
+                        && event.getDimensions().containsKey(dimensionKeyPayloadLength)) {
+                    final long offset = event.getDimensions().get(dimensionKeyPayloadOffset).longValue();
+                    final long length = event.getDimensions().get(dimensionKeyPayloadLength).longValue();
+                    final String payloadFilename = objectKey.replace("events", "payloads").replace("json", "b64");
+                    final byte[] payloadBase64Bytes = S3Utils.getObjectBytes(this.s3Client, this.bucketName, payloadFilename, offset, offset + length - 1);
+                    logger.info("payload bytes are: {}", new String(payloadBase64Bytes));
+                    if (payloadBase64Bytes == null || payloadBase64Bytes.length == 0) {
+                        throw new IOException("failed to retrieve payload for event");
+                    }
+                    final byte[] payload = Base64.getDecoder().decode(new String(payloadBase64Bytes));
+                    final Event eventWithPayload = new Event(event.getTimestampMillis(), event.getMetadata(), event.getDimensions(), payload);
+                    if (validEvent(eventWithPayload, metadataPatterns)) {
+                        events.put(event.getTimestampMillis(), eventWithPayload);
+                    }
                 } else {
-                    event = parser.fromJson(lineReader.nextLine(), Event.class);
+                    if (validEvent(event, metadataPatterns)) {
+                        events.put(event.getTimestampMillis(), event);
+                    }
                 }
 
-                if (validEvent(event, metadataPatterns)) {
-                    events.put(event.getTimestampMillis(), event);
-                }
             }
             // files are already sorted, so we are guaranteed to have all the correct events once we hit the limit
             if (limit > 0 && events.size() >= limit) {
@@ -271,8 +269,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                          final long endTimestampMillis,
                          final Map<String, String> metadataQuery,
                          final Map<String, String> dimensionsQuery) throws IOException {
-        final Collection<String> eventsObjectKeys = S3Utils.getKeys(this.s3Client, this.bucketName, getObjectKeyPrefix(namespace));
-        final List<String> matchingKeys = getMatchingKeys(eventsObjectKeys, startTimestampMillis, endTimestampMillis, true);
+        final List<String> matchingKeys = getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis);
 
         final Map<String, Pattern> metadataPatterns = generateRegex(metadataQuery);
         int deleteCount = 0;
@@ -300,8 +297,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     }
 
     private void doExpire(final String namespace, final long endTimestampMillis) throws IOException {
-        final Collection<String> eventsObjectKeys = S3Utils.getKeys(this.s3Client, this.bucketName, getObjectKeyPrefix(namespace));
-        final List<String> matchingKeys = getMatchingKeys(eventsObjectKeys, 0, endTimestampMillis, true);
+        final List<String> matchingKeys = getMatchingKeys(namespace, 0, endTimestampMillis);
         final Iterator<String> objectToExpire = matchingKeys.iterator();
         while (objectToExpire.hasNext()) {
             final String objectKey = objectToExpire.next();
@@ -311,76 +307,6 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                 doDelete(namespace, 0, endTimestampMillis, Collections.emptyMap(), Collections.emptyMap());
             }
         }
-    }
-
-    // simple caching logic to prevent numerous copies of the object that events will be added to
-    private ByteArrayOutputStream getOutputStream(final String bucketName,
-                                                  final String key,
-                                                  final Map<String, ByteArrayOutputStream> localCache) throws IOException {
-        if (localCache.containsKey(key)) {
-            return localCache.get(key);
-        }
-        localCache.put(key, new ByteArrayOutputStream());
-        try (final InputStream objectStream = S3Utils.getObjectStream(this.s3Client, bucketName, key)) {
-            if (objectStream != null) {
-                IOUtils.copy(objectStream, localCache.get(key));
-            }
-            return localCache.get(key);
-        }
-    }
-
-    // returns all keys that overlap with the timeframe
-    public <R> List<R> getMatchingKeys(final Collection<R> keys,
-                                       final long startTimestampMillis,
-                                       final long endTimestampMillis,
-                                       final boolean ascending) {
-        final long windowStart = getFloorForChunk(startTimestampMillis);
-        final long windowEnd = (endTimestampMillis <= Long.MAX_VALUE - chunkMillis)
-                ? getCeilingForChunk(endTimestampMillis)
-                : endTimestampMillis;
-        final Stream<R> keysStream = keys.stream().filter(key -> {
-            final Matcher matcher = eventsObjectPattern.matcher(key.toString());
-            if (matcher.matches()) {
-                final long fileStart = Long.parseLong(matcher.group("start"));
-                final long fileEnd = Long.parseLong(matcher.group("end"));
-                // -------s-------------e---------  <- start and end parameters
-                // ssssssssssssssssssssss           <- first check
-                //        eeeeeeeeeeeeeeeeeeeeeeee  <- second check
-                // any combination of s and e the file overlaps the timeframe
-                return fileStart <= windowEnd && fileEnd >= windowStart;
-            }
-            return false;
-        });
-
-        final List<R> matchingKeys;
-        if (ascending) {
-            matchingKeys = keysStream.sorted(this::ascendingSort).collect(Collectors.toList());
-        } else {
-            matchingKeys = keysStream.sorted(this::descendingSort).collect(Collectors.toList());
-        }
-        return matchingKeys;
-    }
-
-    private <R> int ascendingSort(final R keyA, final R keyB) {
-        final Matcher matcherA = eventsObjectPattern.matcher(keyA.toString());
-        final Matcher matcherB = eventsObjectPattern.matcher(keyB.toString());
-        if (matcherA.matches() && matcherB.matches()) {
-            final long fileStartA = Long.parseLong(matcherA.group("start"));
-            final long fileStartB = Long.parseLong(matcherB.group("start"));
-            return Long.compare(fileStartA, fileStartB);
-        }
-        return 0;
-    }
-
-    private <R> int descendingSort(final R keyA, final R keyB) {
-        final Matcher matcherA = eventsObjectPattern.matcher(keyA.toString());
-        final Matcher matcherB = eventsObjectPattern.matcher(keyB.toString());
-        if (matcherA.matches() && matcherB.matches()) {
-            final long fileStartA = Long.parseLong(matcherA.group("start"));
-            final long fileStartB = Long.parseLong(matcherB.group("start"));
-            return Long.compare(fileStartB, fileStartA);
-        }
-        return 0;
     }
 
     // creates an s3 select compatible query; see https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-glacier-select-sql-reference-select.html
@@ -407,6 +333,16 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                 getMetadataQuerySql(metadataQuery, true),
                 getDimensionQuerySql(dimensionsQuery, true))
                 .replaceFirst("AND", "");
+    }
+
+    private List<String> getMatchingKeys(final String namespace, final long startTimestampMillis, final long endTimestampMillis)
+            throws IOException {
+        final List<String> matchingKeys = new ArrayList<>();
+        for (long timestamp = startTimestampMillis; timestamp <= endTimestampMillis; timestamp += TimeUnit.HOURS.toMillis(1)) {
+            final String prefix = String.format("%s/%s.events-", trim(namespace), formatter.format(timestamp));
+            matchingKeys.addAll(S3Utils.getKeys(this.s3Client, this.bucketName, prefix));
+        }
+        return matchingKeys;
     }
 
     // do full regex evaluation server side as s3 select only supports limited regex
@@ -542,41 +478,8 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         return String.format("CAST ( s.dimensions.\"%s\" as decimal)", key);
     }
 
-    private long getFloorForChunk(final long timestampMillis) {
-        return (timestampMillis / chunkMillis) * chunkMillis;
-    }
-
-    private long getCeilingForChunk(final long timestampMillis) {
-        if (timestampMillis >= Long.MAX_VALUE - chunkMillis) {
-            return Long.MAX_VALUE;
-        }
-        return getFloorForChunk(timestampMillis) + chunkMillis - 1;
-    }
-
-    /**
-     * Serialize override to allow conversion of payload string to byte array
-     */
-    private static class ByteArrayHandler implements JsonSerializer<byte[]>, JsonDeserializer<byte[]> {
-
-        @Override
-        public byte[] deserialize(final JsonElement jsonElement,
-                                  final Type type,
-                                  final JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
-            return Base64.getDecoder().decode(jsonElement.getAsString());
-        }
-
-        @Override
-        public JsonElement serialize(final byte[] bytes,
-                                     final Type type,
-                                     final JsonSerializationContext jsonSerializationContext) {
-            final String encodedString = Base64.getEncoder().encodeToString(bytes);
-            return new JsonPrimitive(encodedString);
-        }
-    }
-
     private static class ChunkFileManager {
         private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-        private final AtomicReference<Path> basePath = new AtomicReference<>();
         private final AmazonS3 s3Client;
         private final String bucketName;
         private final String baseDirectory;
@@ -585,7 +488,6 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             this.s3Client = s3Client;
             this.bucketName = bucketName;
             this.baseDirectory = baseDirectory;
-            this.basePath.set(Files.createTempDirectory("cantor-s3-buffer"));
             this.executor.scheduleWithFixedDelay(this::flushToS3, 30, 30, TimeUnit.SECONDS);
         }
 
