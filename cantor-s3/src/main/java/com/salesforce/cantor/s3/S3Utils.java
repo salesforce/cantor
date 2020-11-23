@@ -227,7 +227,8 @@ public class S3Utils {
                                 request.getKey(),
                                 request.getExpression(),
                                 event.getDetails().getBytesProcessed(),
-                                event.getDetails().getBytesScanned());
+                                event.getDetails().getBytesScanned()
+                        );
                     }
 
                     @Override
@@ -235,7 +236,8 @@ public class S3Utils {
                         logger.info("s3 select query completed for bucket={} key={} query={}",
                                 request.getBucketName(),
                                 request.getKey(),
-                                request.getExpression());
+                                request.getExpression()
+                        );
                     }
                 }
             );

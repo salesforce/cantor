@@ -60,7 +60,6 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private final DateFormat directoryFormatterHourly = new SimpleDateFormat("YYYY/MM/dd/HH/");
     private final DateFormat directoryFormatterDayly = new SimpleDateFormat("YYYY/MM/dd/");
     private final DateFormat directoryFormatterMonthly = new SimpleDateFormat("YYYY/MM/");
-    private final DateFormat directoryFormatterYearly = new SimpleDateFormat("YYYY/");
     private final TransferManager s3TransferManager;
 
     public EventsOnS3(final AmazonS3 s3Client,
@@ -359,12 +358,9 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             } else if (endTimestampMillis - start < TimeUnit.DAYS.toMillis(28)) {
                 prefixes.add(String.format("%s/%s", trim(namespace), this.directoryFormatterDayly.format(start)));
                 start += TimeUnit.DAYS.toMillis(1);
-            } else if (endTimestampMillis - start < TimeUnit.DAYS.toMillis(364)) {
+            } else {
                 prefixes.add(String.format("%s/%s", trim(namespace), this.directoryFormatterMonthly.format(start)));
                 start += TimeUnit.DAYS.toMillis(28);
-            } else {
-                prefixes.add(String.format("%s/%s", trim(namespace), this.directoryFormatterYearly.format(start)));
-                start += TimeUnit.DAYS.toMillis(364);
             }
         }
         logger.info("prefixes are: {}", prefixes);
