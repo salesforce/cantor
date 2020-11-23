@@ -15,7 +15,7 @@
     <artifactId>cantor-parent</artifactId>
     <packaging>pom</packaging>
     <name>cantor-parent</name>
-    <version>0.3.8</version>
+    <version>0.3.9-SNAPSHOT</version>
     <url>https://github.com/salesforce/cantor</url>
 
     <description>Generic DAO Layer</description>
