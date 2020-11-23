@@ -13,10 +13,12 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.common.AbstractBaseObjectsTest;
 import org.testng.annotations.Listeners;
+import org.testng.annotations.Test;
 
 import java.io.IOException;
 
 @Listeners(value = { S3MockListener.class })
+@Test(enabled = false)
 public class ObjectsOnS3Test extends AbstractBaseObjectsTest {
 
     @Override
