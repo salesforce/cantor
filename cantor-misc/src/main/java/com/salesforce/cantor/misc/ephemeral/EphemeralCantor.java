@@ -16,7 +16,7 @@ import java.util.function.Function;
  *  ...
  *  final UserRequest request = ...
  *  final String path = request.getParam("path");
- *  cantor.setParameter(path);
+ *  cantor.setFunctionParam(path);
  *  cantor.objects().namespaces(); // initializes h2 cantor with path provided by user
  * </pre>
  */

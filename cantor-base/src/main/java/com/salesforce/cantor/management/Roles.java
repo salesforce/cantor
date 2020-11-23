@@ -7,7 +7,7 @@ import java.util.*;
  * Cantor Authentication and Authorization is based on two main systems: {@link Users} and {@link Roles}
  * <br><br>
  * <h3>Users:</h3>
- * <p>Users can have any number of roles assigned to them. Created to be the backend's access management tool, this
+ * <p>Users can have any number of roles assigned to them. Created to be the backend's access management tool, this is
  * meant to reduce the scope of a user's activities or track usage.</p>
  * <br>
  * <h3>Roles:</h3>
@@ -76,7 +76,7 @@ public interface Roles {
     }
 
     /**
-     * Creates a role is it doesn't already exist
+     * Creates a role if it doesn't already exist
      * @param name unique role name that will be used to reference the role
      * @param readAccess the list of regex patterns that match namespaces which this role will allow read access
      * @param writeAccess the list of regex patterns that match namespaces which this role will allow write access

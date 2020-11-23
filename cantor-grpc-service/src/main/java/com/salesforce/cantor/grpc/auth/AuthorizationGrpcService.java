@@ -51,7 +51,7 @@ public class AuthorizationGrpcService extends AuthorizationServiceGrpc.Authoriza
         try {
             // create access and secret key
             final MessageDigest md = MessageDigest.getInstance("SHA-256");
-            final String accessKey = encoder.encodeToString(md.digest(request.getNewUsernameBytes().toByteArray()));
+            final String accessKey = encoder.encodeToString(md.digest(UUID.randomUUID().toString().getBytes()));
             final String secretKey = UserUtils.generateSecretKey();
 
             // generate and store new jwt
