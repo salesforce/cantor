@@ -12,27 +12,6 @@
         </encoder>
     </appender>
 
-    <appender name="cantor-s3-sifting" class="ch.qos.logback.classic.sift.SiftingAppender">
-        <discriminator>
-            <Key>path</Key>
-            <DefaultValue>unknown</DefaultValue>
-        </discriminator>
-        <timeout>3seconds</timeout>
-        <sift>
-            <appender name="FILE-${path}" class="ch.qos.logback.core.FileAppender">
-                <file>/tmp/cantor-s3/${path}</file>
-                <append>true</append>
-                <layout class="ch.qos.logback.classic.PatternLayout">
-                    <pattern>%msg%n</pattern>
-                </layout>
-            </appender>
-        </sift>
-    </appender>
-
-    <logger name="cantor-s3-sifting" level="DEBUG" additivity="false">
-        <appender-ref ref="cantor-s3-sifting"/>
-    </logger>
-
     <root level="INFO">
         <appender-ref ref="STDOUT" />
     </root>

@@ -1,5 +1,13 @@
 package com.salesforce.cantor.s3;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
+import ch.qos.logback.classic.sift.MDCBasedDiscriminator;
+import ch.qos.logback.classic.sift.SiftingAppender;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.FileAppender;
+import ch.qos.logback.core.util.Duration;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.amazonaws.services.s3.transfer.MultipleFileUpload;
@@ -15,10 +23,6 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -32,36 +36,59 @@ import static com.salesforce.cantor.common.EventsPreconditions.*;
 public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private static final Logger logger = LoggerFactory.getLogger(EventsOnS3.class);
 
+    private static final String defaultBufferDirectory = "/tmp/cantor-events-s3-buffer";
+    private static final long defaultFlushIntervalSeconds = 30;
+
     private static final String dimensionKeyPayloadOffset = ".payload-offset";
     private static final String dimensionKeyPayloadLength = ".payload-length";
 
-    private static final AtomicReference<String> currentFlushCycleGuid = new AtomicReference<>(UUID.randomUUID().toString());
-    private static final Map<String, ByteArrayOutputStream> keyToObject = new ConcurrentHashMap<>();
-
-    private static final Gson parser = new GsonBuilder().create();
-
-    private static final Logger siftingLogger = LoggerFactory.getLogger("cantor-s3-sifting");
+    private final AtomicReference<String> currentFlushCycleGuid = new AtomicReference<>();
+    private final Gson parser = new GsonBuilder().create();
+    private final Logger siftingLogger = initSiftingLogger();
 
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
     private final String bufferDirectory;
+    private final long maxFlushIntervalSeconds;
 
     // cantor-events-<namespace>/<startTimestamp>-<endTimestamp>
     private static final String objectKeyPrefix = "cantor-events-%s/";
 
-    // date formatter for converting an event timestamp to a hierarchical directory structure
-    private static final DateFormat formatter = new SimpleDateFormat("YYYY/MM/dd/HH/mm");
+    // date directoryFormatter for flush cycle name calculation
+    private final DateFormat cycleNameFormatter = new SimpleDateFormat("YYYY-MM-dd_HH-mm-ss");
+    // date directoryFormatter for converting an event timestamp to a hierarchical directory structure
+    private final DateFormat directoryFormatter = new SimpleDateFormat("YYYY/MM/dd/HH/mm");
+    private final DateFormat directoryFormatterHourly = new SimpleDateFormat("YYYY/MM/dd/HH/");
+    private final DateFormat directoryFormatterDayly = new SimpleDateFormat("YYYY/MM/dd/");
+    private final DateFormat directoryFormatterMonthly = new SimpleDateFormat("YYYY/MM/");
+    private final DateFormat directoryFormatterYearly = new SimpleDateFormat("YYYY/");
+    private final TransferManager s3TransferManager;
 
     public EventsOnS3(final AmazonS3 s3Client,
                       final String bucketName) throws IOException {
-        this(s3Client, bucketName, 30);
+        this(s3Client, bucketName, defaultBufferDirectory, defaultFlushIntervalSeconds);
     }
 
     public EventsOnS3(final AmazonS3 s3Client,
                       final String bucketName,
-                      final long flushIntervalSeconds) throws IOException {
+                      final String bufferDirectory) throws IOException {
+        this(s3Client, bucketName, bufferDirectory, defaultFlushIntervalSeconds);
+    }
+
+    public EventsOnS3(final AmazonS3 s3Client,
+                      final String bucketName,
+                      final String bufferDirectory,
+                      final long maxFlushIntervalSeconds) throws IOException {
         super(s3Client, bucketName, "events");
-        this.bufferDirectory = "/tmp/cantor-s3";
-        this.executor.scheduleWithFixedDelay(this::flush, 0, flushIntervalSeconds, TimeUnit.SECONDS);
+        this.bufferDirectory = bufferDirectory;
+        this.maxFlushIntervalSeconds = maxFlushIntervalSeconds;
+
+        // initialize s3 transfer manager
+        final TransferManagerBuilder builder = TransferManagerBuilder.standard();
+        builder.setS3Client(this.s3Client);
+        this.s3TransferManager = builder.build();
+
+        // schedule flush cycle to start immediately
+        this.executor.submit(this::flush);
     }
 
     @Override
@@ -108,18 +135,8 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                       final long endTimestampMillis,
                       final Map<String, String> metadataQuery,
                       final Map<String, String> dimensionsQuery) throws IOException {
-        checkDelete(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        checkNamespace(namespace);
-        try {
-            return doDelete(namespace,
-                    startTimestampMillis,
-                    endTimestampMillis,
-                    (metadataQuery != null) ? metadataQuery : Collections.emptyMap(),
-                    (dimensionsQuery != null) ? dimensionsQuery : Collections.emptyMap());
-        } catch (final AmazonS3Exception e) {
-            logger.warn("exception deleting events from namespace: " + namespace, e);
-            throw new IOException("exception deleting events from namespace: " + namespace, e);
-        }
+//        throw new UnsupportedOperationException("delete is not supported");
+        return -1;
     }
 
     @Override
@@ -131,8 +148,8 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                                        final Map<String, String> dimensionsQuery,
                                        final int aggregateIntervalMillis,
                                        final AggregationFunction aggregationFunction) throws IOException {
-        // not implemented yet
-        return null;
+//        throw new UnsupportedOperationException("aggregate is not supported");
+        return Collections.emptyMap();
     }
 
     @Override
@@ -143,7 +160,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                                 final Map<String, String> metadataQuery,
                                 final Map<String, String> dimensionsQuery) throws IOException {
         // not implemented yet
-        return null;
+        return Collections.emptySet();
     }
 
     @Override
@@ -171,25 +188,62 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                 }
             });
 
-    // storing each event in json lines format to conform to s3 selects preferred format
-    // see https://docs.aws.amazon.com/AmazonS3/latest/dev/selecting-content-from-objects.html
+    private Logger initSiftingLogger() {
+        final LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+        final SiftingAppender siftingAppender = new SiftingAppender();
+        final String loggerName = "cantor-s3-events-sifting-logger";
+        siftingAppender.setName(loggerName);
+        siftingAppender.setContext(loggerContext);
+
+        final MDCBasedDiscriminator discriminator = new MDCBasedDiscriminator();
+        discriminator.setKey("path");
+        discriminator.setDefaultValue("unknown");
+        discriminator.start();
+        siftingAppender.setDiscriminator(discriminator);
+        siftingAppender.setTimeout(Duration.buildBySeconds(3));
+        siftingAppender.setAppenderFactory((context, discriminatingValue) -> {
+            final FileAppender<ILoggingEvent> fileAppender = new FileAppender<>();
+            fileAppender.setName("file-" + discriminatingValue);
+            fileAppender.setContext(context);
+            fileAppender.setFile(discriminatingValue);
+
+            final PatternLayoutEncoder patternLayoutEncoder = new PatternLayoutEncoder();
+            patternLayoutEncoder.setContext(context);
+            patternLayoutEncoder.setPattern("%msg%n");
+            patternLayoutEncoder.start();
+            fileAppender.setEncoder(patternLayoutEncoder);
+
+            fileAppender.start();
+            return fileAppender;
+        });
+        siftingAppender.start();
+
+        final ch.qos.logback.classic.Logger logger = loggerContext.getLogger(loggerName);
+        logger.setAdditive(false);
+        logger.setLevel(Level.ALL);
+        logger.addAppender(siftingAppender);
+        return logger;
+    }
+
+    // storing each event in a json lines format to conform to s3 selects preferred format,
+    // and payloads encoded in base64 in a separate file
     private synchronized void doStore(final String namespace, final Collection<Event> batch) throws IOException {
         for (final Event event : batch) {
             final Map<String, String> metadata = new HashMap<>(event.getMetadata());
             final Map<String, Double> dimensions = new HashMap<>(event.getDimensions());
             final byte[] payload = event.getPayload();
 
-            final String currentCycleGuid = currentFlushCycleGuid.get();
-            final String payloadFilePath = String.format("%s/%s/%s.payloads-%s.b64",
-                    currentCycleGuid, trim(namespace), formatter.format(event.getTimestampMillis()), currentCycleGuid
+            final String currentCycleName = getRolloverCycleName();
+            final String cyclePath = getPath(currentCycleName);
+            final String filePath = String.format("%s/%s/%s.%s",
+                    cyclePath, trim(namespace), directoryFormatter.format(event.getTimestampMillis()), currentCycleName
             );
-            final String eventsFilePath = String.format("%s/%s/%s.events-%s.json",
-                    currentCycleGuid, trim(namespace), formatter.format(event.getTimestampMillis()), currentCycleGuid
-            );
+            final String payloadFilePath = filePath + ".b64";
+            final String eventsFilePath = filePath + ".json";
 
             if (payload != null && payload.length > 0) {
                 final String payloadBase64 = Base64.getEncoder().encodeToString(payload);
-                logMessage(payloadFilePath, payloadBase64);
+                append(payloadFilePath, payloadBase64);
 
                 // one for new line at the end of the base64 encoded byte array
                 final long offset = this.payloadOffset.getUnchecked(payloadFilePath).getAndAdd(payloadBase64.length() + 1);
@@ -197,11 +251,11 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                 dimensions.put(dimensionKeyPayloadLength, (double) payloadBase64.length());
             }
             final Event toWrite = new Event(event.getTimestampMillis(), metadata, dimensions);
-            logMessage(eventsFilePath, parser.toJson(toWrite));
+            append(eventsFilePath, parser.toJson(toWrite));
         }
     }
 
-    private void logMessage(final String path, final String message) {
+    private void append(final String path, final String message) {
         MDC.put("path", path);
         this.siftingLogger.info(message);
         MDC.remove("path");
@@ -232,25 +286,26 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             final Scanner lineReader = new Scanner(jsonLines);
             // json events are stored in json lines format, so one json object per line
             while (lineReader.hasNext()) {
-                final Event event = parser.fromJson(lineReader.nextLine(), Event.class);
+                final Event event = this.parser.fromJson(lineReader.nextLine(), Event.class);
+                // if include payloads is true, find the payload offset and length, do a range call to s3 to pull
+                // the base64 representation of the payload bytes
                 if (includePayloads
                         && event.getDimensions().containsKey(dimensionKeyPayloadOffset)
                         && event.getDimensions().containsKey(dimensionKeyPayloadLength)) {
                     final long offset = event.getDimensions().get(dimensionKeyPayloadOffset).longValue();
                     final long length = event.getDimensions().get(dimensionKeyPayloadLength).longValue();
-                    final String payloadFilename = objectKey.replace("events", "payloads").replace("json", "b64");
+                    final String payloadFilename = objectKey.replace("json", "b64");
                     final byte[] payloadBase64Bytes = S3Utils.getObjectBytes(this.s3Client, this.bucketName, payloadFilename, offset, offset + length - 1);
-                    logger.info("payload bytes are: {}", new String(payloadBase64Bytes));
                     if (payloadBase64Bytes == null || payloadBase64Bytes.length == 0) {
                         throw new IOException("failed to retrieve payload for event");
                     }
                     final byte[] payload = Base64.getDecoder().decode(new String(payloadBase64Bytes));
                     final Event eventWithPayload = new Event(event.getTimestampMillis(), event.getMetadata(), event.getDimensions(), payload);
-                    if (validEvent(eventWithPayload, metadataPatterns)) {
+                    if (matches(eventWithPayload, metadataPatterns)) {
                         events.put(event.getTimestampMillis(), eventWithPayload);
                     }
                 } else {
-                    if (validEvent(event, metadataPatterns)) {
+                    if (matches(event, metadataPatterns)) {
                         events.put(event.getTimestampMillis(), event);
                     }
                 }
@@ -267,58 +322,21 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         return (limit <= 0) ? orderedEvents : orderedEvents.subList(0, limit);
     }
 
-    // delete can also be seen as only keeping the events that don't match the query
-    private int doDelete(final String namespace,
-                         final long startTimestampMillis,
-                         final long endTimestampMillis,
-                         final Map<String, String> metadataQuery,
-                         final Map<String, String> dimensionsQuery) throws IOException {
-        final List<String> matchingKeys = getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis);
-
-        final Map<String, Pattern> metadataPatterns = generateRegex(metadataQuery);
-        int deleteCount = 0;
-        for (final String objectKey : matchingKeys) {
-            keyToObject.put(objectKey, new ByteArrayOutputStream());
-
-            final String query = generateQueryNegative(metadataQuery, dimensionsQuery);
-            final InputStream jsonLines = S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query);
-            final Scanner lineReader = new Scanner(jsonLines);
-            // json events are stored in json lines format, so one json object per line
-            while (lineReader.hasNextLine()) {
-                final Event event = parser.fromJson(lineReader.nextLine(), Event.class);
-                if (event.getTimestampMillis() < startTimestampMillis || // event must be within timerange
-                    event.getTimestampMillis() > endTimestampMillis || // else should not be deleted
-                    !validEvent(event, metadataPatterns)) { // event matching query should be deleted
-                    keyToObject.get(objectKey).write((parser.toJson(event) + "\n").getBytes(StandardCharsets.UTF_8));
-                } else {
-                    deleteCount++;
-                }
-            }
-        }
-
-        // TODO: this is an inaccurate count; events simply not returned due to the s3 select query won't be counted
-        return deleteCount;
-    }
-
     private void doExpire(final String namespace, final long endTimestampMillis) throws IOException {
-        final List<String> matchingKeys = getMatchingKeys(namespace, 0, endTimestampMillis);
-        final Iterator<String> objectToExpire = matchingKeys.iterator();
-        while (objectToExpire.hasNext()) {
-            final String objectKey = objectToExpire.next();
-            if (objectToExpire.hasNext()) {
-                S3Utils.deleteObject(this.s3Client, this.bucketName, objectKey);
-            } else { // delete the matching events from the last object instead
-                doDelete(namespace, 0, endTimestampMillis, Collections.emptyMap(), Collections.emptyMap());
-            }
-        }
+        // TODO this has to be implemented properly
+        logger.info("expiring namespace '{}' with end timestamp of '{}'", namespace, endTimestampMillis);
+        final List<String> keys = getMatchingKeys(namespace, 0, endTimestampMillis);
+        logger.info("expiring objects: {}", keys);
+        S3Utils.deleteObjects(this.s3Client, this.bucketName, keys);
     }
 
-    // creates an s3 select compatible query; see https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-glacier-select-sql-reference-select.html
+    // creates an s3 select compatible query
+    // see https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-glacier-select-sql-reference-select.html
     private String generateQuery(final long startTimestampMillis,
-                                 final long endTimestampMillis,
+                                 final long endTmestampMillis,
                                  final Map<String, String> metadataQuery,
                                  final Map<String, String> dimensionsQuery) {
-        final String timestampClause = String.format("s.timestampMillis BETWEEN %d AND %d", startTimestampMillis, endTimestampMillis);
+        final String timestampClause = String.format("s.timestampMillis BETWEEN %d AND %d", startTimestampMillis, endTmestampMillis);
         return String.format("SELECT * FROM s3object[*] s WHERE %s %s %s",
                 timestampClause,
                 getMetadataQuerySql(metadataQuery, false),
@@ -326,31 +344,39 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         );
     }
 
-    // creates an s3 select query that is the negation of the two queries provided
-    private String generateQueryNegative(final Map<String, String> metadataQuery,
-                                         final Map<String, String> dimensionsQuery) {
-        if (metadataQuery.isEmpty() && dimensionsQuery.isEmpty()) {
-            return "SELECT * FROM s3object[*] s";
-        }
-
-        return String.format("SELECT * FROM s3object[*] s WHERE %s %s",
-                getMetadataQuerySql(metadataQuery, true),
-                getDimensionQuerySql(dimensionsQuery, true))
-                .replaceFirst("AND", "");
-    }
-
     private List<String> getMatchingKeys(final String namespace, final long startTimestampMillis, final long endTimestampMillis)
             throws IOException {
+        final Set<String> prefixes = new HashSet<>();
+
+        long start = startTimestampMillis;
+        while (start <= endTimestampMillis) {
+            if (endTimestampMillis - start < TimeUnit.HOURS.toMillis(1)) {
+                prefixes.add(String.format("%s/%s", trim(namespace), this.directoryFormatter.format(start)));
+                start += TimeUnit.MINUTES.toMillis(1);
+            } else if (endTimestampMillis - start < TimeUnit.DAYS.toMillis(1)) {
+                prefixes.add(String.format("%s/%s", trim(namespace), this.directoryFormatterHourly.format(start)));
+                start += TimeUnit.HOURS.toMillis(1);
+            } else if (endTimestampMillis - start < TimeUnit.DAYS.toMillis(28)) {
+                prefixes.add(String.format("%s/%s", trim(namespace), this.directoryFormatterDayly.format(start)));
+                start += TimeUnit.DAYS.toMillis(1);
+            } else if (endTimestampMillis - start < TimeUnit.DAYS.toMillis(364)) {
+                prefixes.add(String.format("%s/%s", trim(namespace), this.directoryFormatterMonthly.format(start)));
+                start += TimeUnit.DAYS.toMillis(28);
+            } else {
+                prefixes.add(String.format("%s/%s", trim(namespace), this.directoryFormatterYearly.format(start)));
+                start += TimeUnit.DAYS.toMillis(364);
+            }
+        }
+        logger.info("prefixes are: {}", prefixes);
         final List<String> matchingKeys = new ArrayList<>();
-        for (long timestamp = startTimestampMillis; timestamp <= endTimestampMillis; timestamp += TimeUnit.HOURS.toMillis(1)) {
-            final String prefix = String.format("%s/%s.events-", trim(namespace), formatter.format(timestamp));
+        for (final String prefix : prefixes) {
             matchingKeys.addAll(S3Utils.getKeys(this.s3Client, this.bucketName, prefix));
         }
         return matchingKeys;
     }
 
     // do full regex evaluation server side as s3 select only supports limited regex
-    private boolean validEvent(final Event event, final Map<String, Pattern> metadataPatterns) {
+    private boolean matches(final Event event, final Map<String, Pattern> metadataPatterns) {
         for (final Map.Entry<String, Pattern> metaRegex : metadataPatterns.entrySet()) {
             final String metadataValue = event.getMetadata().get(metaRegex.getKey().substring(2));
             if (metadataValue == null) {
@@ -484,45 +510,90 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
     // update the rollover cycle guid and return the previous one
     private String rollover() {
-        return currentFlushCycleGuid.getAndSet(UUID.randomUUID().toString());
+        // cycle name is: <timestamp>-<guid>
+        final String rolloverCycleName = String.format("%s.%s",
+                this.cycleNameFormatter.format(System.currentTimeMillis()), UUID.randomUUID().toString().replaceAll("-", ""));
+        logger.info("starting new cycle: {}", rolloverCycleName);
+        return this.currentFlushCycleGuid.getAndSet(rolloverCycleName);
     }
 
-    private synchronized void flush() {
-        try {
-            final String previousFlushCycleGuid = rollover();
+    private String getRolloverCycleName() {
+        return this.currentFlushCycleGuid.get();
+    }
 
-            final List<File> toDelete = new ArrayList<>();
-            final Path previousFlushCyclePath = Paths.get(this.bufferDirectory + File.separator + previousFlushCycleGuid);
-            logger.info("uploading buffer directory: {}", previousFlushCyclePath.toAbsolutePath().toString());
-            // skip if path does not exist or is not a directory
-            if (!previousFlushCyclePath.toFile().exists() || !previousFlushCyclePath.toFile().isDirectory()) {
-                logger.info("nothing to upload");
+    private String getPath(final String rolloverCycleName) {
+        return this.bufferDirectory + File.separator + rolloverCycleName;
+    }
+
+    private void flush() {
+        final long startMillis = System.currentTimeMillis();
+        try {
+            rollover();
+
+            final File bufferDirectoryFile = new File(this.bufferDirectory);
+            if (!bufferDirectoryFile.exists() || !bufferDirectoryFile.canWrite() || !bufferDirectoryFile.isDirectory()) {
+                logger.error("buffer directory '{}' does not exist or is not writable", this.bufferDirectory);
                 return;
             }
 
-            final TransferManagerBuilder builder = TransferManagerBuilder.standard();
-            builder.setS3Client(this.s3Client);
-            final TransferManager manager = builder.build();
+            final List<File> toDelete = new ArrayList<>();
+            for (final File toUpload : bufferDirectoryFile.listFiles()) {
+                logger.info("uploading buffer directory: {}", toUpload.getAbsolutePath());
+                // skip if path does not exist or is not a directory
+                if (!toUpload.exists() || !toUpload.isDirectory()) {
+                    logger.info("nothing to upload");
+                    continue;
+                }
 
+                // upload all of the contents of the directory to s3
+                uploadDirectory(toUpload);
 
-            final MultipleFileUpload upload = manager.uploadDirectory(this.bucketName, null, previousFlushCyclePath.toFile(), true, (file, metadata) -> {
-                // set object content type to plain text
-                metadata.setContentType("text/plain");
-                // add file to be deleted after uploading
-                toDelete.add(file);
-            });
-            upload.waitForCompletion();
-            logger.info("successfully uploaded, removing files under '{}'", previousFlushCyclePath.toAbsolutePath().toString());
-            for (final File file : toDelete) {
-                file.delete();
+                logger.info("successfully uploaded buffer directory: {}", toUpload.getAbsolutePath());
+                toDelete.add(toUpload);
             }
-            // TODO delete the directory
-            Files.walk(previousFlushCyclePath)
-                    .sorted(Comparator.reverseOrder())
-                    .map(Path::toFile)
-                    .forEach(File::delete);
+
+            for (final File file : toDelete) {
+                logger.info("deleting buffer file: {}", file.getAbsolutePath());
+                delete(file);
+            }
+        } catch (InterruptedException e) {
+            logger.warn("flush cycle interrupted; exiting");
+            return;
         } catch (Exception e) {
-            logger.warn("exception caught on uploading buffer directory", e);
+            logger.warn("exception during flush", e);
         }
+
+        final long endMillis = System.currentTimeMillis();
+        final long elapsedSeconds = (endMillis - startMillis) / 1_000;
+        logger.info("flush cycle elapsed time: {}s", elapsedSeconds);
+
+        // schedule the next flush cycle immediately if elapsed time is larger than flush interval so we catch up
+        this.executor.schedule(this::flush, Math.max(0, this.maxFlushIntervalSeconds - elapsedSeconds), TimeUnit.SECONDS);
+    }
+
+    private void uploadDirectory(final File toUpload) throws InterruptedException {
+        final MultipleFileUpload upload = this.s3TransferManager.uploadDirectory(this.bucketName, null, toUpload, true, (file, metadata) -> {
+            // set object content type to plain text
+            metadata.setContentType("text/plain");
+        });
+        // log the upload progress
+        do {
+            logger.info("s3 transfer progress of '{}': {}% of {}mb",
+                    toUpload.getAbsolutePath(),
+                    (int) upload.getProgress().getPercentTransferred(),
+                    upload.getProgress().getTotalBytesToTransfer() / (1024*1024)
+            );
+            Thread.sleep(1_000);
+        } while (!upload.isDone());
+    }
+
+    private void delete(final File dir) {
+        final File[] files = dir.listFiles();
+        if (files != null) {
+            for (final File file : files) {
+                delete(file);
+            }
+        }
+        dir.delete();
     }
 }

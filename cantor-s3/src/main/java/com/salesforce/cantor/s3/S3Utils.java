@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This class is responsible for all direct communication to s3 objects
@@ -134,6 +135,15 @@ public class S3Utils {
 
         s3Client.deleteObject(bucketName, key);
         return true;
+    }
+
+    public static void deleteObjects(final AmazonS3 s3Client, final String bucketName, final Collection<String> keys) {
+        if (keys == null || keys.isEmpty()) {
+            return;
+        }
+        final DeleteObjectsRequest request = new DeleteObjectsRequest(bucketName);
+        request.setKeys(keys.stream().map(DeleteObjectsRequest.KeyVersion::new).collect(Collectors.toList()));
+        s3Client.deleteObjects(request);
     }
 
     public static void deleteObjects(final AmazonS3 s3Client,
