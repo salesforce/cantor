@@ -36,11 +36,14 @@ import static com.salesforce.cantor.common.EventsPreconditions.*;
 public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private static final Logger logger = LoggerFactory.getLogger(EventsOnS3.class);
 
-    private static final String defaultBufferDirectory = "/tmp/cantor-events-s3-buffer";
-    private static final long defaultFlushIntervalSeconds = 30;
+    private static final String defaultBufferDirectory = "cantor-events-s3-buffer";
+    private static final long defaultFlushIntervalSeconds = 60;
 
-    private static final String dimensionKeyPayloadOffset = ".payload-offset";
-    private static final String dimensionKeyPayloadLength = ".payload-length";
+    private static final String dimensionKeyPayloadOffset = ".cantor-payload-offset";
+    private static final String dimensionKeyPayloadLength = ".cantor-payload-length";
+
+    // parameter used for path to file for the sifting logger
+    private static final String siftingDiscriminatorKey = "path";
 
     private final AtomicReference<String> currentFlushCycleGuid = new AtomicReference<>();
     private final Gson parser = new GsonBuilder().create();
@@ -48,7 +51,6 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
     private final String bufferDirectory;
-    private final long maxFlushIntervalSeconds;
 
     // cantor-events-<namespace>/<startTimestamp>-<endTimestamp>
     private static final String objectKeyPrefix = "cantor-events-%s/";
@@ -76,10 +78,13 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     public EventsOnS3(final AmazonS3 s3Client,
                       final String bucketName,
                       final String bufferDirectory,
-                      final long maxFlushIntervalSeconds) throws IOException {
+                      final long flushIntervalSeconds) throws IOException {
         super(s3Client, bucketName, "events");
+        checkArgument(flushIntervalSeconds > 0, "invalid flush interval");
+        checkString(bucketName, "invalid bucket name");
+        checkString(bufferDirectory, "invalid buffer directory");
+
         this.bufferDirectory = bufferDirectory;
-        this.maxFlushIntervalSeconds = maxFlushIntervalSeconds;
 
         // initialize s3 transfer manager
         final TransferManagerBuilder builder = TransferManagerBuilder.standard();
@@ -87,7 +92,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         this.s3TransferManager = builder.build();
 
         // schedule flush cycle to start immediately
-        this.executor.submit(this::flush);
+        this.executor.scheduleAtFixedRate(this::flush, 0, flushIntervalSeconds, TimeUnit.SECONDS);
     }
 
     @Override
@@ -195,7 +200,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         siftingAppender.setContext(loggerContext);
 
         final MDCBasedDiscriminator discriminator = new MDCBasedDiscriminator();
-        discriminator.setKey("path");
+        discriminator.setKey(siftingDiscriminatorKey);
         discriminator.setDefaultValue("unknown");
         discriminator.start();
         siftingAppender.setDiscriminator(discriminator);
@@ -235,7 +240,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             final String currentCycleName = getRolloverCycleName();
             final String cyclePath = getPath(currentCycleName);
             final String filePath = String.format("%s/%s/%s.%s",
-                    cyclePath, trim(namespace), directoryFormatter.format(event.getTimestampMillis()), currentCycleName
+                    cyclePath, trim(namespace), this.directoryFormatter.format(event.getTimestampMillis()), currentCycleName
             );
             final String payloadFilePath = filePath + ".b64";
             final String eventsFilePath = filePath + ".json";
@@ -250,14 +255,14 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                 dimensions.put(dimensionKeyPayloadLength, (double) payloadBase64.length());
             }
             final Event toWrite = new Event(event.getTimestampMillis(), metadata, dimensions);
-            append(eventsFilePath, parser.toJson(toWrite));
+            append(eventsFilePath, this.parser.toJson(toWrite));
         }
     }
 
     private void append(final String path, final String message) {
-        MDC.put("path", path);
+        MDC.put(siftingDiscriminatorKey, path);
         this.siftingLogger.info(message);
-        MDC.remove("path");
+        MDC.remove(siftingDiscriminatorKey);
     }
 
     private List<Event> doGet(final String namespace,
@@ -554,17 +559,13 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             }
         } catch (InterruptedException e) {
             logger.warn("flush cycle interrupted; exiting");
-            return;
         } catch (Exception e) {
             logger.warn("exception during flush", e);
+        } finally {
+            final long endMillis = System.currentTimeMillis();
+            final long elapsedSeconds = (endMillis - startMillis) / 1_000;
+            logger.info("flush cycle elapsed time: {}s", elapsedSeconds);
         }
-
-        final long endMillis = System.currentTimeMillis();
-        final long elapsedSeconds = (endMillis - startMillis) / 1_000;
-        logger.info("flush cycle elapsed time: {}s", elapsedSeconds);
-
-        // schedule the next flush cycle immediately if elapsed time is larger than flush interval so we catch up
-        this.executor.schedule(this::flush, Math.max(0, this.maxFlushIntervalSeconds - elapsedSeconds), TimeUnit.SECONDS);
     }
 
     private void uploadDirectory(final File toUpload) throws InterruptedException {

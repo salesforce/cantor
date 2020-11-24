@@ -14,7 +14,6 @@ import com.salesforce.cantor.archive.TestUtils;
 import com.salesforce.cantor.h2.CantorOnH2;
 import com.salesforce.cantor.misc.archivable.impl.ArchivableCantor;
 import com.salesforce.cantor.misc.archivable.CantorArchiver;
-import com.salesforce.cantor.misc.archivable.impl.ArchivableCantor;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
@@ -30,7 +29,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 public class FileArchiveTest {
     private static final long timeframeBound = System.currentTimeMillis();
