@@ -1,43 +1,104 @@
 package com.salesforce.cantor.s3;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
+import ch.qos.logback.classic.sift.MDCBasedDiscriminator;
+import ch.qos.logback.classic.sift.SiftingAppender;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.FileAppender;
+import ch.qos.logback.core.util.Duration;
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.util.IOUtils;
+import com.amazonaws.services.s3.transfer.MultipleFileUpload;
+import com.amazonaws.services.s3.transfer.TransferManager;
+import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.gson.*;
+import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Events;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 import java.io.*;
-import java.lang.reflect.Type;
-import java.nio.charset.StandardCharsets;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.salesforce.cantor.common.EventsPreconditions.*;
 
 public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private static final Logger logger = LoggerFactory.getLogger(EventsOnS3.class);
-    // custom gson parser to auto-convert payload to byte[]
-    private static final Gson parser = new GsonBuilder()
-            .registerTypeHierarchyAdapter(byte[].class, new ByteArrayHandler()).create();
-    private static final Gson parserPayloadless = new GsonBuilder()
-            // ignore parameters; empty payload field
-            .registerTypeHierarchyAdapter(byte[].class, (JsonDeserializer<Object>) (i, i1, i2) -> new byte[0])
-            .create();
 
-    // cantor-events-[<namespace>]-<startTimestamp>-<endTimestamp>
-    private static final String objectKeyPrefix = "cantor-events-[%s]-";
-    private static final String objectKeyFormat = objectKeyPrefix + "%d-%d";
-    private static final Pattern eventsObjectPattern = Pattern.compile("cantor-events-\\[(?<namespace>.*)]-(?<start>\\d+)-(?<end>\\d+)");
-    private static final long chunkMillis = TimeUnit.HOURS.toMillis(1);
+    private static final String defaultBufferDirectory = "cantor-events-s3-buffer";
+    private static final long defaultFlushIntervalSeconds = 60;
 
-    public EventsOnS3(final AmazonS3 s3Client, final String bucketName) throws IOException {
+    private static final String dimensionKeyPayloadOffset = ".cantor-payload-offset";
+    private static final String dimensionKeyPayloadLength = ".cantor-payload-length";
+
+    // parameter used for path to file for the sifting logger
+    private static final String siftingDiscriminatorKey = "path";
+
+    private final AtomicReference<String> currentFlushCycleGuid = new AtomicReference<>();
+    private final Gson parser = new GsonBuilder().create();
+    private final Logger siftingLogger = initSiftingLogger();
+
+    private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+    private final String bufferDirectory;
+
+    // cantor-events-<namespace>/<startTimestamp>-<endTimestamp>
+    private static final String objectKeyPrefix = "cantor-events-%s/";
+
+    // date directoryFormatter for flush cycle name calculation
+    private final DateFormat cycleNameFormatter = new SimpleDateFormat("YYYY-MM-dd_HH-mm-ss");
+    // date directoryFormatter for converting an event timestamp to a hierarchical directory structure
+    private final DateFormat directoryFormatter = new SimpleDateFormat("YYYY/MM/dd/HH/mm");
+    private final DateFormat directoryFormatterHourly = new SimpleDateFormat("YYYY/MM/dd/HH/");
+    private final DateFormat directoryFormatterDayly = new SimpleDateFormat("YYYY/MM/dd/");
+    private final DateFormat directoryFormatterMonthly = new SimpleDateFormat("YYYY/MM/");
+    private final TransferManager s3TransferManager;
+
+    public EventsOnS3(final AmazonS3 s3Client,
+                      final String bucketName) throws IOException {
+        this(s3Client, bucketName, defaultBufferDirectory, defaultFlushIntervalSeconds);
+    }
+
+    public EventsOnS3(final AmazonS3 s3Client,
+                      final String bucketName,
+                      final String bufferDirectory) throws IOException {
+        this(s3Client, bucketName, bufferDirectory, defaultFlushIntervalSeconds);
+    }
+
+    public EventsOnS3(final AmazonS3 s3Client,
+                      final String bucketName,
+                      final String bufferDirectory,
+                      final long flushIntervalSeconds) throws IOException {
         super(s3Client, bucketName, "events");
+        checkArgument(flushIntervalSeconds > 0, "invalid flush interval");
+        checkString(bucketName, "invalid bucket name");
+        checkString(bufferDirectory, "invalid buffer directory");
+
+        this.bufferDirectory = bufferDirectory;
+
+        // initialize s3 transfer manager
+        final TransferManagerBuilder builder = TransferManagerBuilder.standard();
+        builder.setS3Client(this.s3Client);
+        this.s3TransferManager = builder.build();
+
+        // schedule flush cycle to start immediately
+        this.executor.scheduleAtFixedRate(this::flush, 0, flushIntervalSeconds, TimeUnit.SECONDS);
     }
 
     @Override
@@ -84,18 +145,8 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                       final long endTimestampMillis,
                       final Map<String, String> metadataQuery,
                       final Map<String, String> dimensionsQuery) throws IOException {
-        checkDelete(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        checkNamespace(namespace);
-        try {
-            return doDelete(namespace,
-                    startTimestampMillis,
-                    endTimestampMillis,
-                    (metadataQuery != null) ? metadataQuery : Collections.emptyMap(),
-                    (dimensionsQuery != null) ? dimensionsQuery : Collections.emptyMap());
-        } catch (final AmazonS3Exception e) {
-            logger.warn("exception deleting events from namespace: " + namespace, e);
-            throw new IOException("exception deleting events from namespace: " + namespace, e);
-        }
+//        throw new UnsupportedOperationException("delete is not supported");
+        return -1;
     }
 
     @Override
@@ -107,8 +158,8 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                                        final Map<String, String> dimensionsQuery,
                                        final int aggregateIntervalMillis,
                                        final AggregationFunction aggregationFunction) throws IOException {
-        // not implemented yet
-        return null;
+//        throw new UnsupportedOperationException("aggregate is not supported");
+        return Collections.emptyMap();
     }
 
     @Override
@@ -119,7 +170,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                                 final Map<String, String> metadataQuery,
                                 final Map<String, String> dimensionsQuery) throws IOException {
         // not implemented yet
-        return null;
+        return Collections.emptySet();
     }
 
     @Override
@@ -139,18 +190,85 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         return String.format(objectKeyPrefix, namespace);
     }
 
-    // storing each event in json lines format to conform to s3 selects preferred format; see https://docs.aws.amazon.com/AmazonS3/latest/dev/selecting-content-from-objects.html
-    private void doStore(final String namespace, final Collection<Event> batch) throws IOException {
-        final Map<String, ByteArrayOutputStream> keyToObject = new HashMap<>();
-        final Collection<String> eventsObjectKeys = S3Utils.getKeys(this.s3Client, this.bucketName, getObjectKeyPrefix(namespace));
-        for (final Event event : batch) {
-            final String key = getObjectKey(eventsObjectKeys, namespace, event.getTimestampMillis());
-            try (final OutputStream objectStream = getOutputStream(this.bucketName, key, keyToObject)) {
-                objectStream.write((parser.toJson(event) + "\n").getBytes(StandardCharsets.UTF_8));
-            }
-        }
+    private LoadingCache<String, AtomicLong> payloadOffset = CacheBuilder.newBuilder()
+            .build(new CacheLoader<String, AtomicLong>() {
+                @Override
+                public AtomicLong load(final String path) {
+                    return new AtomicLong(0);
+                }
+            });
 
-        flushStreamsToS3(keyToObject);
+    private Logger initSiftingLogger() {
+        final LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+        final SiftingAppender siftingAppender = new SiftingAppender();
+        final String loggerName = "cantor-s3-events-sifting-logger";
+        siftingAppender.setName(loggerName);
+        siftingAppender.setContext(loggerContext);
+
+        final MDCBasedDiscriminator discriminator = new MDCBasedDiscriminator();
+        discriminator.setKey(siftingDiscriminatorKey);
+        discriminator.setDefaultValue("unknown");
+        discriminator.start();
+        siftingAppender.setDiscriminator(discriminator);
+        siftingAppender.setTimeout(Duration.buildBySeconds(3));
+        siftingAppender.setAppenderFactory((context, discriminatingValue) -> {
+            final FileAppender<ILoggingEvent> fileAppender = new FileAppender<>();
+            fileAppender.setName("file-" + discriminatingValue);
+            fileAppender.setContext(context);
+            fileAppender.setFile(discriminatingValue);
+
+            final PatternLayoutEncoder patternLayoutEncoder = new PatternLayoutEncoder();
+            patternLayoutEncoder.setContext(context);
+            patternLayoutEncoder.setPattern("%msg%n");
+            patternLayoutEncoder.start();
+            fileAppender.setEncoder(patternLayoutEncoder);
+
+            fileAppender.start();
+            return fileAppender;
+        });
+        siftingAppender.start();
+
+        final ch.qos.logback.classic.Logger logger = loggerContext.getLogger(loggerName);
+        logger.setAdditive(false);
+        logger.setLevel(Level.ALL);
+        logger.addAppender(siftingAppender);
+        return logger;
+    }
+
+    // storing each event in a json lines format to conform to s3 selects preferred format,
+    // and payloads encoded in base64 in a separate file
+    private synchronized void doStore(final String namespace, final Collection<Event> batch) throws IOException {
+        for (final Event event : batch) {
+            final Map<String, String> metadata = new HashMap<>(event.getMetadata());
+            final Map<String, Double> dimensions = new HashMap<>(event.getDimensions());
+            final byte[] payload = event.getPayload();
+
+            final String currentCycleName = getRolloverCycleName();
+            final String cyclePath = getPath(currentCycleName);
+            final String filePath = String.format("%s/%s/%s.%s",
+                    cyclePath, trim(namespace), this.directoryFormatter.format(event.getTimestampMillis()), currentCycleName
+            );
+            final String payloadFilePath = filePath + ".b64";
+            final String eventsFilePath = filePath + ".json";
+
+            if (payload != null && payload.length > 0) {
+                final String payloadBase64 = Base64.getEncoder().encodeToString(payload);
+                append(payloadFilePath, payloadBase64);
+
+                // one for new line at the end of the base64 encoded byte array
+                final long offset = this.payloadOffset.getUnchecked(payloadFilePath).getAndAdd(payloadBase64.length() + 1);
+                dimensions.put(dimensionKeyPayloadOffset, (double) offset);
+                dimensions.put(dimensionKeyPayloadLength, (double) payloadBase64.length());
+            }
+            final Event toWrite = new Event(event.getTimestampMillis(), metadata, dimensions);
+            append(eventsFilePath, this.parser.toJson(toWrite));
+        }
+    }
+
+    private void append(final String path, final String message) {
+        MDC.put(siftingDiscriminatorKey, path);
+        this.siftingLogger.info(message);
+        MDC.remove(siftingDiscriminatorKey);
     }
 
     private List<Event> doGet(final String namespace,
@@ -161,207 +279,110 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                               final boolean includePayloads,
                               final boolean ascending,
                               final int limit) throws IOException {
-        final Collection<String> eventsObjectKeys = S3Utils.getKeys(this.s3Client, this.bucketName, getObjectKeyPrefix(namespace));
-        final List<String> matchingKeys = getMatchingKeys(eventsObjectKeys, startTimestampMillis, endTimestampMillis, ascending);
 
-        // using tree map for convenient sorting
-        final Map<Long, Event> events = (ascending) ? new TreeMap<>() : new TreeMap<>(Collections.reverseOrder());
+        final List<Event> results = new CopyOnWriteArrayList<>();
+        // parallel calls to s3
+        final CompletionService<List<Event>> completionService =
+                new ExecutorCompletionService<>(Executors.newWorkStealingPool(64));
+        final List<Future<List<Event>>> futures = new ArrayList<>();
         final Map<String, Pattern> metadataPatterns = generateRegex(metadataQuery);
-        for (final String objectKey : matchingKeys) {
-            final String query = generateQuery(startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-            final InputStream jsonLines = S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query);
-            final Scanner lineReader = new Scanner(jsonLines);
-            // json events are stored in json lines format, so one json object per line
-            while (lineReader.hasNext()) {
-                final Event event;
-                if (!includePayloads) {
-                    event = parserPayloadless.fromJson(lineReader.nextLine(), Event.class);
-                } else {
-                    event = parser.fromJson(lineReader.nextLine(), Event.class);
-                }
-
-                if (validEvent(event, metadataPatterns)) {
-                    events.put(event.getTimestampMillis(), event);
-                }
+        // iterate over all s3 objects that match this request
+        for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
+            // only query json files
+            if (!objectKey.endsWith("json")) {
+                continue;
             }
-            // files are already sorted, so we are guaranteed to have all the correct events once we hit the limit
-            if (limit > 0 && events.size() >= limit) {
-                break;
+            futures.add(completionService.submit(() -> doGetOnObject(
+                    objectKey, startTimestampMillis, endTimestampMillis,
+                    metadataQuery, dimensionsQuery, includePayloads, metadataPatterns
+                    ))
+            );
+        }
+        // iterate over all calls, wait max of 5 seconds per call to return
+        for (int i = 0; i < futures.size(); ++i) {
+            try {
+                results.addAll(completionService.take().get(5, TimeUnit.SECONDS));
+            } catch (Exception e) {
+                logger.warn("exception on get call to s3", e);
+                throw new IOException(e);
             }
         }
-
-        final ArrayList<Event> orderedEvents = new ArrayList<>(events.values());
-        // events may include more than the limit as files must to read in their entirety as order is not guaranteed
-        return (limit <= 0) ? orderedEvents : orderedEvents.subList(0, limit);
+        // events are fetched from multiple sources, sort before returning
+        sortEventsByTimestamp(results, ascending);
+        if (limit > 0) {
+            return results.subList(0, Math.min(limit, results.size()));
+        }
+        return results;
     }
 
-    // delete can also be seen as only keeping the events that don't match the query
-    private int doDelete(final String namespace,
-                         final long startTimestampMillis,
-                         final long endTimestampMillis,
-                         final Map<String, String> metadataQuery,
-                         final Map<String, String> dimensionsQuery) throws IOException {
-        final Map<String, ByteArrayOutputStream> keyToObject = new HashMap<>();
-        final Collection<String> eventsObjectKeys = S3Utils.getKeys(this.s3Client, this.bucketName, getObjectKeyPrefix(namespace));
-        final List<String> matchingKeys = getMatchingKeys(eventsObjectKeys, startTimestampMillis, endTimestampMillis, true);
+    private void sortEventsByTimestamp(final List<Event> events, final boolean ascending) {
+        events.sort((event1, event2) -> {
+            if (event1.getTimestampMillis() < event2.getTimestampMillis()) {
+                return ascending ? -1 : 1;
+            } else if (event1.getTimestampMillis() > event2.getTimestampMillis()) {
+                return ascending ? 1 : -1;
+            }
+            return 0;
+        });
+    }
 
-        final Map<String, Pattern> metadataPatterns = generateRegex(metadataQuery);
-        int deleteCount = 0;
-        for (final String objectKey : matchingKeys) {
-            keyToObject.put(objectKey, new ByteArrayOutputStream());
+    private List<Event> doGetOnObject(final String objectKey,
+                                      final long startTimestampMillis,
+                                      final long endTimestampMillis,
+                                      final Map<String, String> metadataQuery,
+                                      final Map<String, String> dimensionsQuery,
+                                      final boolean includePayloads,
+                                      final Map<String, Pattern> metadataPatterns) throws IOException {
 
-            final String query = generateQueryNegative(metadataQuery, dimensionsQuery);
-            final InputStream jsonLines = S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query);
-            final Scanner lineReader = new Scanner(jsonLines);
-            // json events are stored in json lines format, so one json object per line
-            while (lineReader.hasNextLine()) {
-                final Event event = parser.fromJson(lineReader.nextLine(), Event.class);
-                if (event.getTimestampMillis() < startTimestampMillis || // event must be within timerange
-                    event.getTimestampMillis() > endTimestampMillis || // else should not be deleted
-                    !validEvent(event, metadataPatterns)) { // event matching query should be deleted
-                    keyToObject.get(objectKey).write((parser.toJson(event) + "\n").getBytes(StandardCharsets.UTF_8));
-                } else {
-                    deleteCount++;
+        final List<Event> results = new ArrayList<>();
+        final String query = generateQuery(startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
+        final InputStream jsonLines = S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query);
+        final Scanner lineReader = new Scanner(jsonLines);
+        // json events are stored in json lines format, so one json object per line
+        while (lineReader.hasNext()) {
+            final Event event = this.parser.fromJson(lineReader.nextLine(), Event.class);
+            // if include payloads is true, find the payload offset and length, do a range call to s3 to pull
+            // the base64 representation of the payload bytes
+            if (includePayloads
+                    && event.getDimensions().containsKey(dimensionKeyPayloadOffset)
+                    && event.getDimensions().containsKey(dimensionKeyPayloadLength)) {
+                final long offset = event.getDimensions().get(dimensionKeyPayloadOffset).longValue();
+                final long length = event.getDimensions().get(dimensionKeyPayloadLength).longValue();
+                final String payloadFilename = objectKey.replace("json", "b64");
+                final byte[] payloadBase64Bytes = S3Utils.getObjectBytes(this.s3Client, this.bucketName, payloadFilename, offset, offset + length - 1);
+                if (payloadBase64Bytes == null || payloadBase64Bytes.length == 0) {
+                    throw new IOException("failed to retrieve payload for event");
+                }
+                final byte[] payload = Base64.getDecoder().decode(new String(payloadBase64Bytes));
+                final Event eventWithPayload = new Event(event.getTimestampMillis(), event.getMetadata(), event.getDimensions(), payload);
+                if (matches(eventWithPayload, metadataPatterns)) {
+                    results.add(eventWithPayload);
+                }
+            } else {
+                if (matches(event, metadataPatterns)) {
+                    results.add(event);
                 }
             }
-        }
 
-        flushStreamsToS3(keyToObject);
-        // TODO: this is an inaccurate count; events simply not returned due to the s3 select query won't be counted
-        return deleteCount;
+        }
+        return results;
     }
 
     private void doExpire(final String namespace, final long endTimestampMillis) throws IOException {
-        final Collection<String> eventsObjectKeys = S3Utils.getKeys(this.s3Client, this.bucketName, getObjectKeyPrefix(namespace));
-        final List<String> matchingKeys = getMatchingKeys(eventsObjectKeys, 0, endTimestampMillis, true);
-        final Iterator<String> objectToExpire = matchingKeys.iterator();
-        while (objectToExpire.hasNext()) {
-            final String objectKey = objectToExpire.next();
-            if (objectToExpire.hasNext()) {
-                S3Utils.deleteObject(this.s3Client, this.bucketName, objectKey);
-            } else { // delete the matching events from the last object instead
-                doDelete(namespace, 0, endTimestampMillis, Collections.emptyMap(), Collections.emptyMap());
-            }
-        }
+        // TODO this has to be implemented properly
+        logger.info("expiring namespace '{}' with end timestamp of '{}'", namespace, endTimestampMillis);
+        final Set<String> keys = getMatchingKeys(namespace, 0, endTimestampMillis);
+        logger.info("expiring objects: {}", keys);
+        S3Utils.deleteObjects(this.s3Client, this.bucketName, keys);
     }
 
-    // simple caching logic to prevent numerous copies of the object that events will be added to
-    private ByteArrayOutputStream getOutputStream(final String bucketName,
-                                                  final String key,
-                                                  final Map<String, ByteArrayOutputStream> localCache) throws IOException {
-        if (localCache.containsKey(key)) {
-            return localCache.get(key);
-        }
-
-        localCache.put(key, new ByteArrayOutputStream());
-        try (final InputStream objectStream = S3Utils.getObjectStream(this.s3Client, bucketName, key)) {
-            if (objectStream != null) {
-                IOUtils.copy(objectStream, localCache.get(key));
-            }
-            return localCache.get(key);
-        }
-    }
-
-    private void flushStreamsToS3(final Map<String, ByteArrayOutputStream> keyToObject) throws IOException {
-        for (final Map.Entry<String, ByteArrayOutputStream> entry : keyToObject.entrySet()) {
-            final ByteArrayInputStream content = new ByteArrayInputStream(entry.getValue().toByteArray());
-            if (content.available() != 0) {
-                logger.info("storing stream with length={} at '{}.{}'", content.available(), this.bucketName, entry.getKey());
-                final ObjectMetadata metadata = new ObjectMetadata();
-                metadata.setContentLength(content.available());
-                // if no exception is thrown, the object was put successfully - ignore response value
-                S3Utils.putObject(this.s3Client, this.bucketName, entry.getKey(), content, metadata);
-            } else {
-                logger.info("deleting object with no more events at '{}.{}'", this.bucketName, entry.getKey());
-                S3Utils.deleteObject(this.s3Client, this.bucketName, entry.getKey());
-            }
-        }
-    }
-
-    // attempts to get key which container the timestamp within its bounds
-    private String getObjectKey(final Collection<String> keys,
-                                final String namespace,
-                                final long eventTimestampMillis) throws IOException {
-        final Optional<String> existingKey = keys.stream().filter(key -> {
-            final Matcher matcher = eventsObjectPattern.matcher(key);
-            if (matcher.matches()) {
-                final long start = Long.parseLong(matcher.group("start"));
-                final long end = Long.parseLong(matcher.group("end"));
-                return start <= eventTimestampMillis && eventTimestampMillis <= end;
-            }
-            return false;
-        }).findFirst();
-
-        // else gets default form of the key that would contain the timestamp
-        return existingKey.orElse(
-                String.format(objectKeyFormat,
-                        namespace,
-                        getFloorForChunk(eventTimestampMillis),
-                        getCeilingForChunk(eventTimestampMillis)
-                )
-        );
-    }
-
-    // returns all keys that overlap with the timeframe
-    public <R> List<R> getMatchingKeys(final Collection<R> keys,
-                                       final long startTimestampMillis,
-                                       final long endTimestampMillis,
-                                       final boolean ascending) {
-        final long windowStart = getFloorForChunk(startTimestampMillis);
-        final long windowEnd = (endTimestampMillis <= Long.MAX_VALUE - chunkMillis)
-                ? getCeilingForChunk(endTimestampMillis)
-                : endTimestampMillis;
-        final Stream<R> keysStream = keys.stream().filter(key -> {
-            final Matcher matcher = eventsObjectPattern.matcher(key.toString());
-            if (matcher.matches()) {
-                final long fileStart = Long.parseLong(matcher.group("start"));
-                final long fileEnd = Long.parseLong(matcher.group("end"));
-                // -------s-------------e---------  <- start and end parameters
-                // ssssssssssssssssssssss           <- first check
-                //        eeeeeeeeeeeeeeeeeeeeeeee  <- second check
-                // any combination of s and e the file overlaps the timeframe
-                return fileStart <= windowEnd && fileEnd >= windowStart;
-            }
-            return false;
-        });
-
-        final List<R> matchingKeys;
-        if (ascending) {
-            matchingKeys = keysStream.sorted(this::ascendingSort).collect(Collectors.toList());
-        } else {
-            matchingKeys = keysStream.sorted(this::descendingSort).collect(Collectors.toList());
-        }
-        return matchingKeys;
-    }
-
-    private <R> int ascendingSort(final R keyA, final R keyB) {
-        final Matcher matcherA = eventsObjectPattern.matcher(keyA.toString());
-        final Matcher matcherB = eventsObjectPattern.matcher(keyB.toString());
-        if (matcherA.matches() && matcherB.matches()) {
-            final long fileStartA = Long.parseLong(matcherA.group("start"));
-            final long fileStartB = Long.parseLong(matcherB.group("start"));
-            return Long.compare(fileStartA, fileStartB);
-        }
-        return 0;
-    }
-
-    private <R> int descendingSort(final R keyA, final R keyB) {
-        final Matcher matcherA = eventsObjectPattern.matcher(keyA.toString());
-        final Matcher matcherB = eventsObjectPattern.matcher(keyB.toString());
-        if (matcherA.matches() && matcherB.matches()) {
-            final long fileStartA = Long.parseLong(matcherA.group("start"));
-            final long fileStartB = Long.parseLong(matcherB.group("start"));
-            return Long.compare(fileStartB, fileStartA);
-        }
-        return 0;
-    }
-
-    // creates an s3 select compatible query; see https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-glacier-select-sql-reference-select.html
+    // creates an s3 select compatible query
+    // see https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-glacier-select-sql-reference-select.html
     private String generateQuery(final long startTimestampMillis,
-                                 final long endTimestampMillis,
+                                 final long endTmestampMillis,
                                  final Map<String, String> metadataQuery,
                                  final Map<String, String> dimensionsQuery) {
-        final String timestampClause = String.format("s.timestampMillis BETWEEN %d AND %d", startTimestampMillis, endTimestampMillis);
+        final String timestampClause = String.format("s.timestampMillis BETWEEN %d AND %d", startTimestampMillis, endTmestampMillis);
         return String.format("SELECT * FROM s3object[*] s WHERE %s %s %s",
                 timestampClause,
                 getMetadataQuerySql(metadataQuery, false),
@@ -369,21 +390,38 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         );
     }
 
-    // creates an s3 select query that is the negation of the two queries provided
-    private String generateQueryNegative(final Map<String, String> metadataQuery,
-                                         final Map<String, String> dimensionsQuery) {
-        if (metadataQuery.isEmpty() && dimensionsQuery.isEmpty()) {
-            return "SELECT * FROM s3object[*] s";
+    private Set<String> getMatchingKeys(final String namespace, final long startTimestampMillis, final long endTimestampMillis)
+            throws IOException {
+        final Set<String> prefixes = new HashSet<>();
+        long start = startTimestampMillis;
+        while (start <= endTimestampMillis) {
+            prefixes.add(String.format("%s/%s", trim(namespace), this.directoryFormatter.format(start)));
+            start += TimeUnit.MINUTES.toMillis(1);
         }
-
-        return String.format("SELECT * FROM s3object[*] s WHERE %s %s",
-                getMetadataQuerySql(metadataQuery, true),
-                getDimensionQuerySql(dimensionsQuery, true))
-                .replaceFirst("AND", "");
+        prefixes.add(String.format("%s/%s", trim(namespace), this.directoryFormatter.format(endTimestampMillis)));
+        final Set<String> matchingKeys = new ConcurrentSkipListSet<>();
+        final ExecutorService executor = Executors.newWorkStealingPool(64);
+        final CompletionService<List<Event>> completionService = new ExecutorCompletionService<>(executor);
+        final List<Future<?>> futures = new ArrayList<>();
+        for (final String prefix : prefixes) {
+            futures.add(completionService.submit(() -> {
+                matchingKeys.addAll(S3Utils.getKeys(this.s3Client, this.bucketName, prefix));
+                return null;
+            }));
+        }
+        for (int i = 0; i < futures.size(); ++i) {
+            try {
+                completionService.take().get(5, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                logger.warn("exception on get call to s3", e);
+                throw new IOException(e);
+            }
+        }
+        return matchingKeys;
     }
 
     // do full regex evaluation server side as s3 select only supports limited regex
-    private boolean validEvent(final Event event, final Map<String, Pattern> metadataPatterns) {
+    private boolean matches(final Event event, final Map<String, Pattern> metadataPatterns) {
         for (final Map.Entry<String, Pattern> metaRegex : metadataPatterns.entrySet()) {
             final String metadataValue = event.getMetadata().get(metaRegex.getKey().substring(2));
             if (metadataValue == null) {
@@ -515,35 +553,90 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         return String.format("CAST ( s.dimensions.\"%s\" as decimal)", key);
     }
 
-    private long getFloorForChunk(final long timestampMillis) {
-        return (timestampMillis / chunkMillis) * chunkMillis;
+    // update the rollover cycle guid and return the previous one
+    private String rollover() {
+        // cycle name is: <timestamp>-<guid>
+        final String rolloverCycleName = String.format("%s.%s",
+                this.cycleNameFormatter.format(System.currentTimeMillis()), UUID.randomUUID().toString().replaceAll("-", ""));
+        logger.info("starting new cycle: {}", rolloverCycleName);
+        return this.currentFlushCycleGuid.getAndSet(rolloverCycleName);
     }
 
-    private long getCeilingForChunk(final long timestampMillis) {
-        if (timestampMillis >= Long.MAX_VALUE - chunkMillis) {
-            return Long.MAX_VALUE;
-        }
-        return getFloorForChunk(timestampMillis) + chunkMillis - 1;
+    private String getRolloverCycleName() {
+        return this.currentFlushCycleGuid.get();
     }
 
-    /**
-     * Serialize override to allow conversion of payload string to byte array
-     */
-    private static class ByteArrayHandler implements JsonSerializer<byte[]>, JsonDeserializer<byte[]> {
+    private String getPath(final String rolloverCycleName) {
+        return this.bufferDirectory + File.separator + rolloverCycleName;
+    }
 
-        @Override
-        public byte[] deserialize(final JsonElement jsonElement,
-                                  final Type type,
-                                  final JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
-            return Base64.getDecoder().decode(jsonElement.getAsString());
-        }
+    private void flush() {
+        final long startMillis = System.currentTimeMillis();
+        try {
+            rollover();
 
-        @Override
-        public JsonElement serialize(final byte[] bytes,
-                                     final Type type,
-                                     final JsonSerializationContext jsonSerializationContext) {
-            final String encodedString = Base64.getEncoder().encodeToString(bytes);
-            return new JsonPrimitive(encodedString);
+            final File bufferDirectoryFile = new File(this.bufferDirectory);
+            if (!bufferDirectoryFile.exists() || !bufferDirectoryFile.canWrite() || !bufferDirectoryFile.isDirectory()) {
+                logger.error("buffer directory '{}' does not exist or is not writable", this.bufferDirectory);
+                return;
+            }
+
+            final List<File> toDelete = new ArrayList<>();
+            for (final File toUpload : bufferDirectoryFile.listFiles()) {
+                logger.info("uploading buffer directory: {}", toUpload.getAbsolutePath());
+                // skip if path does not exist or is not a directory
+                if (!toUpload.exists() || !toUpload.isDirectory()) {
+                    logger.info("nothing to upload");
+                    continue;
+                }
+
+                // upload all of the contents of the directory to s3
+                uploadDirectory(toUpload);
+
+                logger.info("successfully uploaded buffer directory: {}", toUpload.getAbsolutePath());
+                toDelete.add(toUpload);
+            }
+
+            for (final File file : toDelete) {
+                logger.info("deleting buffer file: {}", file.getAbsolutePath());
+                delete(file);
+            }
+        } catch (InterruptedException e) {
+            logger.warn("flush cycle interrupted; exiting");
+        } catch (Exception e) {
+            logger.warn("exception during flush", e);
+        } finally {
+            final long endMillis = System.currentTimeMillis();
+            final long elapsedSeconds = (endMillis - startMillis) / 1_000;
+            logger.info("flush cycle elapsed time: {}s", elapsedSeconds);
         }
     }
+
+    private void uploadDirectory(final File toUpload) throws InterruptedException {
+        final MultipleFileUpload upload = this.s3TransferManager.uploadDirectory(this.bucketName, null, toUpload, true, (file, metadata) -> {
+            // set object content type to plain text
+            metadata.setContentType("text/plain");
+        });
+        // log the upload progress
+        do {
+            logger.info("s3 transfer progress of '{}': {}% of {}mb",
+                    toUpload.getAbsolutePath(),
+                    (int) upload.getProgress().getPercentTransferred(),
+                    upload.getProgress().getTotalBytesToTransfer() / (1024*1024)
+            );
+            Thread.sleep(1_000);
+        } while (!upload.isDone());
+    }
+
+    private void delete(final File dir) {
+        final File[] files = dir.listFiles();
+        if (files != null) {
+            for (final File file : files) {
+                delete(file);
+            }
+        }
+        dir.delete();
+    }
+
+
 }

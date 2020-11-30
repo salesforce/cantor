@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This class is responsible for all direct communication to s3 objects
@@ -72,12 +73,26 @@ public class S3Utils {
     public static byte[] getObjectBytes(final AmazonS3 s3Client,
                                         final String bucketName,
                                         final String key) throws IOException {
+        return getObjectBytes(s3Client, bucketName, key, 0, -1);
+    }
+
+    public static byte[] getObjectBytes(final AmazonS3 s3Client,
+                                        final String bucketName,
+                                        final String key,
+                                        final long start,
+                                        final long end) throws IOException {
         if (!s3Client.doesObjectExist(bucketName, key)) {
             logger.debug("object '{}.{}' doesn't exist, returning null", bucketName, key);
             return null;
         }
 
-        final S3Object s3Object = s3Client.getObject(bucketName, key);
+        final GetObjectRequest request = new GetObjectRequest(bucketName, key);
+        if (start >= 0 && end > 0) {
+            request.setRange(start, end);
+        } else if (start >= 0 && end < 0) {
+            request.setRange(start);
+        }
+        final S3Object s3Object = s3Client.getObject(request);
         final ByteArrayOutputStream buffer;
         try (final InputStream inputStream = s3Object.getObjectContent()) {
             buffer = new ByteArrayOutputStream();
@@ -120,6 +135,15 @@ public class S3Utils {
 
         s3Client.deleteObject(bucketName, key);
         return true;
+    }
+
+    public static void deleteObjects(final AmazonS3 s3Client, final String bucketName, final Collection<String> keys) {
+        if (keys == null || keys.isEmpty()) {
+            return;
+        }
+        final DeleteObjectsRequest request = new DeleteObjectsRequest(bucketName);
+        request.setKeys(keys.stream().map(DeleteObjectsRequest.KeyVersion::new).collect(Collectors.toList()));
+        s3Client.deleteObjects(request);
     }
 
     public static void deleteObjects(final AmazonS3 s3Client,
@@ -198,20 +222,13 @@ public class S3Utils {
                 new SelectObjectContentEventVisitor() {
                     @Override
                     public void visit(final SelectObjectContentEvent.StatsEvent event) {
-                        logger.info("s3 select query stats: bucket={} key={} query={} bytes-scanned={} bytes-processed={}",
+                        logger.debug("s3 select query stats: bucket='{}' key='{}' bytes-scanned='{}' bytes-processed='{}' bytes-returned='{}'",
                                 request.getBucketName(),
                                 request.getKey(),
-                                request.getExpression(),
                                 event.getDetails().getBytesProcessed(),
-                                event.getDetails().getBytesScanned());
-                    }
-
-                    @Override
-                    public void visit(final SelectObjectContentEvent.EndEvent event) {
-                        logger.info("s3 select query completed for bucket={} key={} query={}",
-                                request.getBucketName(),
-                                request.getKey(),
-                                request.getExpression());
+                                event.getDetails().getBytesScanned(),
+                                event.getDetails().getBytesReturned()
+                        );
                     }
                 }
             );
