@@ -222,21 +222,12 @@ public class S3Utils {
                 new SelectObjectContentEventVisitor() {
                     @Override
                     public void visit(final SelectObjectContentEvent.StatsEvent event) {
-                        logger.info("s3 select query stats: bucket={} key={} query={} bytes-scanned={} bytes-processed={}",
+                        logger.debug("s3 select query stats: bucket='{}' key='{}' bytes-scanned='{}' bytes-processed='{}' bytes-returned='{}'",
                                 request.getBucketName(),
                                 request.getKey(),
-                                request.getExpression(),
                                 event.getDetails().getBytesProcessed(),
-                                event.getDetails().getBytesScanned()
-                        );
-                    }
-
-                    @Override
-                    public void visit(final SelectObjectContentEvent.EndEvent event) {
-                        logger.info("s3 select query completed for bucket={} key={} query={}",
-                                request.getBucketName(),
-                                request.getKey(),
-                                request.getExpression()
+                                event.getDetails().getBytesScanned(),
+                                event.getDetails().getBytesReturned()
                         );
                     }
                 }
