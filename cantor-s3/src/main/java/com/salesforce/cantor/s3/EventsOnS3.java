@@ -8,12 +8,7 @@ import ch.qos.logback.classic.sift.SiftingAppender;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.FileAppender;
 import ch.qos.logback.core.util.Duration;
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.amazonaws.services.s3.transfer.MultipleFileUpload;
 import com.amazonaws.services.s3.transfer.TransferManager;
@@ -22,7 +17,6 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.gson.*;
-import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.Events;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -169,8 +163,19 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                                 final long endTimestampMillis,
                                 final Map<String, String> metadataQuery,
                                 final Map<String, String> dimensionsQuery) throws IOException {
-        // not implemented yet
-        return Collections.emptySet();
+        checkMetadata(namespace, metadataKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
+        checkNamespace(namespace);
+        try {
+            return doMetadata(namespace,
+                    metadataKey,
+                    startTimestampMillis,
+                    endTimestampMillis,
+                    (metadataQuery != null) ? metadataQuery : Collections.emptyMap(),
+                    (dimensionsQuery != null) ? dimensionsQuery : Collections.emptyMap());
+        } catch (final AmazonS3Exception e) {
+            logger.warn("exception getting metadata from namespace: " + namespace, e);
+            throw new IOException("exception getting metadata from namespace: " + namespace, e);
+        }
     }
 
     @Override
@@ -315,6 +320,41 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         return results;
     }
 
+    private Set<String> doMetadata(final String namespace,
+                                   final String metadataKey,
+                                   final long startTimestampMillis,
+                                   final long endTimestampMillis,
+                                   final Map<String, String> metadataQuery,
+                                   final Map<String, String> dimensionsQuery) throws IOException {
+
+        final Set<String> results = new CopyOnWriteArraySet<>();
+        // parallel calls to s3
+        final CompletionService<Set<String>> completionService =
+                new ExecutorCompletionService<>(Executors.newWorkStealingPool(64));
+        final List<Future<Set<String>>> futures = new ArrayList<>();
+        // iterate over all s3 objects that match this request
+        for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
+            // only query json files
+            if (!objectKey.endsWith("json")) {
+                continue;
+            }
+            futures.add(completionService.submit(() -> doMetadataOnObject(
+                    objectKey, metadataKey, startTimestampMillis, endTimestampMillis,
+                    metadataQuery, dimensionsQuery))
+            );
+        }
+        // iterate over all calls, wait max of 5 seconds per call to return
+        for (int i = 0; i < futures.size(); ++i) {
+            try {
+                results.addAll(completionService.take().get(5, TimeUnit.SECONDS));
+            } catch (Exception e) {
+                logger.warn("exception on metadata call to s3", e);
+                throw new IOException(e);
+            }
+        }
+        return results;
+    }
+
     private void sortEventsByTimestamp(final List<Event> events, final boolean ascending) {
         events.sort((event1, event2) -> {
             if (event1.getTimestampMillis() < event2.getTimestampMillis()) {
@@ -335,7 +375,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                                       final Map<String, Pattern> metadataPatterns) throws IOException {
 
         final List<Event> results = new ArrayList<>();
-        final String query = generateQuery(startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
+        final String query = generateGetQuery(startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
         final InputStream jsonLines = S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query);
         final Scanner lineReader = new Scanner(jsonLines);
         // json events are stored in json lines format, so one json object per line
@@ -368,6 +408,27 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         return results;
     }
 
+    private Set<String> doMetadataOnObject(final String objectKey,
+                                           final String metadataKey,
+                                           final long startTimestampMillis,
+                                           final long endTimestampMillis,
+                                           final Map<String, String> metadataQuery,
+                                           final Map<String, String> dimensionsQuery) throws IOException {
+
+        final Set<String> results = new HashSet<>();
+        final String query = generateMetadataQuery(metadataKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
+        final InputStream jsonLines = S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query);
+        final Scanner lineReader = new Scanner(jsonLines);
+        // json events are stored in json lines format, so one json object per line
+        while (lineReader.hasNext()) {
+            final Map<String, String> metadata = this.parser.fromJson(lineReader.nextLine(), Map.class);
+            if (metadata.containsKey(metadataKey)) {
+                results.add(metadata.get(metadataKey));
+            }
+        }
+        return results;
+    }
+
     private void doExpire(final String namespace, final long endTimestampMillis) throws IOException {
         // TODO this has to be implemented properly
         logger.info("expiring namespace '{}' with end timestamp of '{}'", namespace, endTimestampMillis);
@@ -378,12 +439,26 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
     // creates an s3 select compatible query
     // see https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-glacier-select-sql-reference-select.html
-    private String generateQuery(final long startTimestampMillis,
+    private String generateGetQuery(final long startTimestampMillis,
                                  final long endTmestampMillis,
                                  final Map<String, String> metadataQuery,
                                  final Map<String, String> dimensionsQuery) {
         final String timestampClause = String.format("s.timestampMillis BETWEEN %d AND %d", startTimestampMillis, endTmestampMillis);
         return String.format("SELECT * FROM s3object[*] s WHERE %s %s %s",
+                timestampClause,
+                getMetadataQuerySql(metadataQuery, false),
+                getDimensionQuerySql(dimensionsQuery, false)
+        );
+    }
+
+    private String generateMetadataQuery(final String metadataKey,
+                                         final long startTimestampMillis,
+                                         final long endTmestampMillis,
+                                         final Map<String, String> metadataQuery,
+                                         final Map<String, String> dimensionsQuery) {
+        final String timestampClause = String.format("s.timestampMillis BETWEEN %d AND %d", startTimestampMillis, endTmestampMillis);
+        return String.format("SELECT s.metadata.\"%s\" FROM s3object[*] s WHERE %s %s %s",
+                metadataKey,
                 timestampClause,
                 getMetadataQuerySql(metadataQuery, false),
                 getDimensionQuerySql(dimensionsQuery, false)
@@ -577,7 +652,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
             final File bufferDirectoryFile = new File(this.bufferDirectory);
             if (!bufferDirectoryFile.exists() || !bufferDirectoryFile.canWrite() || !bufferDirectoryFile.isDirectory()) {
-                logger.error("buffer directory '{}' does not exist or is not writable", this.bufferDirectory);
+                logger.warn("buffer directory '{}' does not exist or is not writable", this.bufferDirectory);
                 return;
             }
 
@@ -637,6 +712,4 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         }
         dir.delete();
     }
-
-
 }
