@@ -86,7 +86,6 @@ public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
         } catch (final AmazonS3Exception e) {
             // creation failed invalidate cache
             this.namespaceCache.invalidate(namespace);
-
             logger.warn("exception creating namespace: " + namespace, e);
             throw new IOException("exception creating namespace: " + namespace, e);
         }
