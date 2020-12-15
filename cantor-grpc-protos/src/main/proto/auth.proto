@@ -1,11 +1,11 @@
 syntax = "proto3";
 
 option java_multiple_files = true;
-option java_package = "com.salesforce.cantor.grpc.auth";
+option java_package = "com.salesforce.cantor.grpc.management";
 option java_outer_classname = "Authorization";
 option objc_class_prefix = "AuthorizationProtos";
 
-package com.salesforce.cantor.grpc.auth;
+package com.salesforce.cantor.grpc.management;
 
 message EmptyResponse {}
 

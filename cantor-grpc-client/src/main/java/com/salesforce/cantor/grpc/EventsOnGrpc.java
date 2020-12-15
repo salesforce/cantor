@@ -9,6 +9,7 @@ package com.salesforce.cantor.grpc;
 
 import com.google.protobuf.ByteString;
 import com.salesforce.cantor.Events;
+import com.salesforce.cantor.grpc.auth.utils.Credentials;
 import com.salesforce.cantor.grpc.events.*;
 import com.salesforce.cantor.grpc.events.EventsServiceGrpc.EventsServiceBlockingStub;
 import io.grpc.ManagedChannel;
@@ -27,6 +28,10 @@ public class EventsOnGrpc extends AbstractBaseGrpcClient<EventsServiceBlockingSt
 
     public EventsOnGrpc(final ManagedChannel channel) {
         super(EventsServiceGrpc::newBlockingStub, channel);
+    }
+
+    public EventsOnGrpc(final String target, final Credentials credentials) {
+        super(EventsServiceGrpc::newBlockingStub, target, credentials);
     }
 
     @Override

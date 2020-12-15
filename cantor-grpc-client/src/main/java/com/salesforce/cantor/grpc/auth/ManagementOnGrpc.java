@@ -1,20 +1,22 @@
-package com.salesforce.cantor.grpc.admin;
+package com.salesforce.cantor.grpc.auth;
 
-import com.salesforce.cantor.common.credentials.BasicCantorCredentials;
-import com.salesforce.cantor.grpc.auth.*;
-import com.salesforce.cantor.grpc.auth.AuthorizationServiceGrpc.AuthorizationServiceBlockingStub;
 import com.salesforce.cantor.grpc.AbstractBaseGrpcClient;
-import com.salesforce.cantor.management.*;
+import com.salesforce.cantor.grpc.auth.utils.Credentials;
+import com.salesforce.cantor.grpc.management.*;
+import com.salesforce.cantor.grpc.management.AuthorizationServiceGrpc.AuthorizationServiceBlockingStub;
 import io.grpc.ManagedChannel;
 
 import java.util.List;
 
-public class ManagementOnGrpc extends AbstractBaseGrpcClient<AuthorizationServiceBlockingStub> implements Users, Roles {
+public class ManagementOnGrpc extends AbstractBaseGrpcClient<AuthorizationServiceBlockingStub> {
+    public ManagementOnGrpc(final String target, final Credentials credentials) {
+        super(AuthorizationServiceGrpc::newBlockingStub, target, credentials);
+    }
+
     public ManagementOnGrpc(final ManagedChannel channel) {
         super(AuthorizationServiceGrpc::newBlockingStub, channel);
     }
 
-    @Override
     public void createRole(final String name, final List<String> readAccess, final List<String> writeAccess) {
         getStub().createRole(CreateRoleRequest.newBuilder()
                 .setNewRoleName(name)
@@ -23,12 +25,11 @@ public class ManagementOnGrpc extends AbstractBaseGrpcClient<AuthorizationServic
                 .build());
     }
 
-    @Override
-    public CantorCredentials createUser(final String name, List<String> roles) {
+    public Credentials createUser(final String name, List<String> roles) {
         final AccessKeysResponse response = getStub().createUser(CreateUserRequest.newBuilder()
                 .setNewUsername(name)
                 .addAllRoleNames(roles)
                 .build());
-        return new BasicCantorCredentials(response.getAccessKey(), response.getSecretKey());
+        return new Credentials(response.getAccessKey(), response.getSecretKey());
     }
 }

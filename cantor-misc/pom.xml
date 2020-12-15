@@ -37,6 +37,12 @@
             <artifactId>cantor-common</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- CANTOR AUTH -->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-auth</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- SLF4J API -->
         <dependency>
             <groupId>org.slf4j</groupId>

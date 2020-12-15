@@ -8,6 +8,7 @@
 package com.salesforce.cantor.grpc;
 
 import com.salesforce.cantor.Sets;
+import com.salesforce.cantor.grpc.auth.utils.Credentials;
 import com.salesforce.cantor.grpc.sets.*;
 import io.grpc.ManagedChannel;
 
@@ -26,6 +27,10 @@ public class SetsOnGrpc extends AbstractBaseGrpcClient<SetsServiceBlockingStub> 
 
     public SetsOnGrpc(final ManagedChannel channel) {
         super(SetsServiceGrpc::newBlockingStub, channel);
+    }
+
+    public SetsOnGrpc(final String target, final Credentials credentials) {
+        super(SetsServiceGrpc::newBlockingStub, target, credentials);
     }
 
     @Override

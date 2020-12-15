@@ -9,6 +9,7 @@ package com.salesforce.cantor.grpc;
 
 import com.google.protobuf.ByteString;
 import com.salesforce.cantor.Objects;
+import com.salesforce.cantor.grpc.auth.utils.Credentials;
 import com.salesforce.cantor.grpc.objects.*;
 import com.salesforce.cantor.grpc.objects.ObjectsServiceGrpc.ObjectsServiceBlockingStub;
 import io.grpc.ManagedChannel;
@@ -28,6 +29,10 @@ public class ObjectsOnGrpc extends AbstractBaseGrpcClient<ObjectsServiceBlocking
 
     public ObjectsOnGrpc(final ManagedChannel channel) {
         super(ObjectsServiceGrpc::newBlockingStub, channel);
+    }
+
+    public ObjectsOnGrpc(final String target, final Credentials credentials) {
+        super(ObjectsServiceGrpc::newBlockingStub, target, credentials);
     }
 
     @Override

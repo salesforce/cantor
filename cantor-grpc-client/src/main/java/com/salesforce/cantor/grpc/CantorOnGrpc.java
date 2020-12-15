@@ -8,6 +8,7 @@
 package com.salesforce.cantor.grpc;
 
 import com.salesforce.cantor.*;
+import com.salesforce.cantor.grpc.auth.utils.Credentials;
 import io.grpc.ManagedChannel;
 
 public class CantorOnGrpc implements Cantor {
@@ -19,6 +20,12 @@ public class CantorOnGrpc implements Cantor {
         this.objects = new ObjectsOnGrpc(target);
         this.sets = new SetsOnGrpc(target);
         this.events = new EventsOnGrpc(target);
+    }
+
+    public CantorOnGrpc(final String target, final Credentials credentials) {
+        this.objects = new ObjectsOnGrpc(target, credentials);
+        this.sets = new SetsOnGrpc(target, credentials);
+        this.events = new EventsOnGrpc(target, credentials);
     }
 
     public CantorOnGrpc(final ManagedChannel channel) {

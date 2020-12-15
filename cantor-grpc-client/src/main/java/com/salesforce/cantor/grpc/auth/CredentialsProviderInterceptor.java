@@ -1,13 +1,18 @@
 package com.salesforce.cantor.grpc.auth;
 
 import com.google.common.base.Preconditions;
-import com.salesforce.cantor.management.CantorCredentials;
+import com.salesforce.cantor.grpc.auth.utils.Credentials;
 import io.grpc.*;
 
-public class CredentialsProviderInterceptor implements ClientInterceptor {
-    private final CantorCredentials credentials;
+import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
 
-    public CredentialsProviderInterceptor(final CantorCredentials credentials) {
+public class CredentialsProviderInterceptor implements ClientInterceptor {
+    public static final Metadata.Key<String> ACCESS_KEY = Metadata.Key.of("ACCESS-KEY", ASCII_STRING_MARSHALLER);
+    public static final Metadata.Key<String> SECRET_KEY = Metadata.Key.of("SECRET-KEY", ASCII_STRING_MARSHALLER);
+
+    private final Credentials credentials;
+
+    public CredentialsProviderInterceptor(final Credentials credentials) {
         Preconditions.checkNotNull(credentials, "credentials cannot be null");
         this.credentials = credentials;
     }
@@ -19,8 +24,8 @@ public class CredentialsProviderInterceptor implements ClientInterceptor {
         return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(channel.newCall(method, callOptions)) {
             @Override
             public void start(final Listener<RespT> responseListener, final Metadata headers) {
-                headers.put(UserConstants.ACCESS_KEY, credentials.getAccessKey());
-                headers.put(UserConstants.SECRET_KEY, credentials.getSecretKey());
+                headers.put(ACCESS_KEY, credentials.getAccessKey());
+                headers.put(SECRET_KEY, credentials.getSecretKey());
                 super.start(responseListener, headers);
             }
         };

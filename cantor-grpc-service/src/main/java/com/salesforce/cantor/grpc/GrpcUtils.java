@@ -8,14 +8,11 @@
 package com.salesforce.cantor.grpc;
 
 import com.google.protobuf.Message;
-import com.salesforce.cantor.management.Users;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static com.salesforce.cantor.grpc.auth.UserUtils.getCurrentUser;
 
 public class GrpcUtils {
     private static final Logger logger = LoggerFactory.getLogger(GrpcUtils.class);
@@ -24,12 +21,6 @@ public class GrpcUtils {
         logger.warn("exception caught handling request: ", throwable);
         observer.onError(new StatusRuntimeException(Status.INTERNAL.withCause(throwable)
                 .withDescription(throwable.getMessage())));
-    }
-
-    public static void sendUnauthorizedError(final StreamObserver<?> observer, final String request) {
-        final Users.User currentUser = getCurrentUser();
-        logger.warn("unauthorized request: user={} status={} request={}", currentUser.getUsername(), currentUser.getStatus(), request);
-        observer.onError(new StatusRuntimeException(Status.ABORTED.withDescription(String.format("User not authorized to make this request: user=%s status=%s request=%s", currentUser.getUsername(), currentUser.getStatus(), request))));
     }
 
     public static void sendCancelledError(final StreamObserver<?> observer, final Throwable cancellationCause) {

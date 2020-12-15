@@ -9,10 +9,14 @@ package com.salesforce.cantor.server.grpc;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.salesforce.cantor.Cantor;
+import com.salesforce.cantor.grpc.*;
 import com.salesforce.cantor.grpc.auth.*;
+import com.salesforce.cantor.misc.auth.AbstractBaseAuthorizedNamespaceable;
+import com.salesforce.cantor.misc.auth.AuthorizedCantor;
 import com.salesforce.cantor.server.CantorEnvironment;
 import com.salesforce.cantor.server.Constants;
 import com.salesforce.cantor.server.utils.CantorFactory;
+import io.grpc.Context;
 import io.grpc.Server;
 import io.grpc.netty.NettyServerBuilder;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -21,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 
@@ -38,17 +43,17 @@ public class GrpcServer {
                 cantorEnvironment.getStorageType()
         );
 
-        final Cantor cantor = cantorProvider.getCantor();
+        final Cantor cantor = new AuthorizedCantor(cantorProvider.getCantor(), this::validRequest, "secret");
         final NettyServerBuilder serverBuilder = NettyServerBuilder.forPort(port)
                 .workerEventLoopGroup(new NioEventLoopGroup(
                         8,  // max of exactly 8 event loop threads
                         new ThreadFactoryBuilder().setNameFormat("cantor-grpc-event-loop-%d").build())
                 )
                 .maxMessageSize(64 * 1024 * 1024) // 64MB
-                .addService(new AuthorizedObjectsGrpcService(cantor))
-                .addService(new AuthorizedSetsGrpcService(cantor))
-                .addService(new AuthorizedEventsGrpcService(cantor))
-                .addService(new AuthorizationGrpcService(cantor, "secret"))
+                .addService(new EventsGrpcService(cantor))
+                .addService(new SetsGrpcService(cantor))
+                .addService(new ObjectsGrpcService(cantor))
+                .addService(new AuthorizationGrpcService(cantor))
                 .intercept(new AuthorizationInterceptor(cantor))
                 .executor(
                         Executors.newFixedThreadPool(
@@ -101,5 +106,32 @@ public class GrpcServer {
         }
     }
 
+    private boolean validRequest(final AbstractBaseAuthorizedNamespaceable.Request request) {
+        final User user = getCurrentUser();
+        final List<Role> roles = user.getRoles();
+        if (roles == null || roles.isEmpty()) {
+            return false;
+        }
+
+        if (Role.READ_METHODS.contains(request.methodName)) {
+            for (final Role role : roles) {
+                if (role.hasReadAccess(request.namespace)) {
+                    return true;
+                }
+            }
+        } else if (Role.WRITE_METHODS.contains(request.methodName)) {
+            for (final Role role : roles) {
+                if (role.hasWriteAccess(request.namespace)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static User getCurrentUser() {
+        final User user = UserUtil.CONTEXT_KEY_USER.get(Context.current());
+        return (user == null) ? User.ANONYMOUS : user;
+    }
 }
 

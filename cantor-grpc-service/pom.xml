@@ -22,6 +22,10 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
+    <properties>
+        <jwt.version>0.9.1</jwt.version>
+    </properties>
+
     <dependencies>
         <!--CANTOR GRPC COMMON-->
         <dependency>
