@@ -8,14 +8,9 @@
 package com.salesforce.cantor.misc.sharded;
 
 import com.salesforce.cantor.Cantor;
-import com.salesforce.cantor.Events;
-import com.salesforce.cantor.common.providers.Factory;
 import com.salesforce.cantor.h2.CantorOnH2;
-import com.salesforce.cantor.h2.EventsOnH2;
-import com.salesforce.cantor.mysql.CantorOnMysql;
 
 import java.io.IOException;
-import java.lang.reflect.Proxy;
 import java.util.UUID;
 
 class ShardedTests {
@@ -36,16 +31,5 @@ class ShardedTests {
 
     public static Cantor getCantor() {
         return cantor;
-    }
-
-
-    public static void main(String[] args) throws IOException {
-        final Events proxyInstance = (Events) Proxy.newProxyInstance(
-                Factory.CantorInvocationHandler.class.getClassLoader(),
-                new Class[] { Events.class },
-                new Factory.CantorInvocationHandler(new EventsOnH2("/tmp/foo"))
-        );
-        proxyInstance.create("s3.foo");
-        System.out.println("proxy call: " + proxyInstance.namespaces());
     }
 }

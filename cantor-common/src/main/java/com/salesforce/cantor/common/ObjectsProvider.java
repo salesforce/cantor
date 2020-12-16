@@ -5,7 +5,7 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.common.providers;
+package com.salesforce.cantor.common;
 
 import com.salesforce.cantor.Objects;
 

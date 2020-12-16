@@ -5,13 +5,19 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.common.providers;
+package com.salesforce.cantor.common;
 
 import com.salesforce.cantor.Namespaceable;
 
+import java.io.IOException;
+
 interface NamespaceableProvider<T extends Namespaceable> {
+    // default scope is empty string, so '.<namespace>' goes to the default provider
+    String DEFAULT_SCOPE = "";
 
-    String getName();
+    default String getScope() {
+        return DEFAULT_SCOPE;
+    }
 
-    T getInstance();
+    T getInstance() throws IOException;
 }

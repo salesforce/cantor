@@ -5,9 +5,9 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.cantor.common.providers;
+package com.salesforce.cantor.common;
 
-import com.salesforce.cantor.Objects;
+import com.salesforce.cantor.Sets;
 
-public interface SetsProvider extends NamespaceableProvider<Objects> {
+public interface SetsProvider extends NamespaceableProvider<Sets> {
 }
