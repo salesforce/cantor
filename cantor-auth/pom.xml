@@ -5,7 +5,7 @@
     <parent>
         <artifactId>cantor-parent</artifactId>
         <groupId>com.salesforce.cantor</groupId>
-        <version>0.3.8-SNAPSHOT</version>
+        <version>0.3.16-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -20,6 +20,18 @@
         <dependency>
             <groupId>com.salesforce.cantor</groupId>
             <artifactId>cantor-base</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- CANTOR COMMON -->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- CANTOR MISC -->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-misc</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!-- JACKSON -->

@@ -11,8 +11,6 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.grpc.*;
 import com.salesforce.cantor.grpc.auth.*;
-import com.salesforce.cantor.misc.auth.AbstractBaseAuthorizedNamespaceable;
-import com.salesforce.cantor.misc.auth.AuthorizedCantor;
 import com.salesforce.cantor.server.CantorEnvironment;
 import com.salesforce.cantor.server.Constants;
 import com.salesforce.cantor.server.utils.CantorFactory;
@@ -25,7 +23,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 
@@ -43,7 +40,8 @@ public class GrpcServer {
                 cantorEnvironment.getStorageType()
         );
 
-        final Cantor cantor = new AuthorizedCantor(cantorProvider.getCantor(), this::validRequest, "secret");
+        final Cantor unauthenticatedCantor = cantorProvider.getCantor();
+        final AuthorizedCantorGrpc cantor = new AuthorizedCantorGrpc(unauthenticatedCantor, "secret");
         final NettyServerBuilder serverBuilder = NettyServerBuilder.forPort(port)
                 .workerEventLoopGroup(new NioEventLoopGroup(
                         8,  // max of exactly 8 event loop threads
@@ -54,7 +52,7 @@ public class GrpcServer {
                 .addService(new SetsGrpcService(cantor))
                 .addService(new ObjectsGrpcService(cantor))
                 .addService(new AuthorizationGrpcService(cantor))
-                .intercept(new AuthorizationInterceptor(cantor))
+                .intercept(new AuthorizationInterceptor(unauthenticatedCantor))
                 .executor(
                         Executors.newFixedThreadPool(
                                 64, // exactly 64 concurrent worker threads
@@ -106,32 +104,16 @@ public class GrpcServer {
         }
     }
 
-    private boolean validRequest(final AbstractBaseAuthorizedNamespaceable.Request request) {
-        final User user = getCurrentUser();
-        final List<Role> roles = user.getRoles();
-        if (roles == null || roles.isEmpty()) {
-            return false;
+    private static class AuthorizedCantorGrpc extends AuthorizedCantor {
+        public AuthorizedCantorGrpc(final Cantor cantor, final String adminPassword) throws IOException {
+            super(cantor, adminPassword);
         }
 
-        if (Role.READ_METHODS.contains(request.methodName)) {
-            for (final Role role : roles) {
-                if (role.hasReadAccess(request.namespace)) {
-                    return true;
-                }
-            }
-        } else if (Role.WRITE_METHODS.contains(request.methodName)) {
-            for (final Role role : roles) {
-                if (role.hasWriteAccess(request.namespace)) {
-                    return true;
-                }
-            }
+        @Override
+        public User getCurrentUser() {
+            final User user = UserUtil.CONTEXT_KEY_USER.get(Context.current());
+            return (user == null) ? User.ANONYMOUS : user;
         }
-        return false;
-    }
-
-    public static User getCurrentUser() {
-        final User user = UserUtil.CONTEXT_KEY_USER.get(Context.current());
-        return (user == null) ? User.ANONYMOUS : user;
     }
 }
 

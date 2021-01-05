@@ -65,6 +65,12 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <!--CANTOR AUTH-->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-auth</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!--CANTOR MISC-->
         <dependency>
             <groupId>com.salesforce.cantor</groupId>
