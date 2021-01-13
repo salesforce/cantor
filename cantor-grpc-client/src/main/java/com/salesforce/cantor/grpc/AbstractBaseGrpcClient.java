@@ -56,7 +56,7 @@ abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
                                final String target) {
         logger.info("creating stub of {} for target '{}'", stubConstructor.getClass(), target);
         final ManagedChannel channel = ManagedChannelBuilder.forTarget(target)
-                .usePlaintext(true)
+                .usePlaintext()
                 .maxInboundMessageSize(32 * 1024 * 1024)  // 32MB
                 .executor(
                         Executors.newFixedThreadPool(

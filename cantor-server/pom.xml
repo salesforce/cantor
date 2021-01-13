@@ -10,7 +10,7 @@
     <parent>
         <artifactId>cantor-parent</artifactId>
         <groupId>com.salesforce.cantor</groupId>
-        <version>0.3.16-SNAPSHOT</version>
+        <version>0.3.17-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
