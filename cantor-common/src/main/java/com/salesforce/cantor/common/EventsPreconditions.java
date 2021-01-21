@@ -8,13 +8,11 @@
 package com.salesforce.cantor.common;
 
 import com.salesforce.cantor.Events;
-import com.salesforce.cantor.Events.AggregationFunction;
 
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 public class EventsPreconditions extends CommonPreconditions {
 
@@ -33,34 +31,6 @@ public class EventsPreconditions extends CommonPreconditions {
                                 final Map<String, String> dimensionsQuery) {
         checkNamespace(namespace);
         checkTimestamps(startTimestampMillis, endTimestampMillis);
-        checkMetadataQuery(metadataQuery);
-        checkDimensionsQuery(dimensionsQuery);
-    }
-
-    public static void checkDelete(final String namespace,
-                                   final long startTimestampMillis,
-                                   final long endTimestampMillis,
-                                   final Map<String, String> metadataQuery,
-                                   final Map<String, String> dimensionsQuery) {
-        checkNamespace(namespace);
-        checkTimestamps(startTimestampMillis, endTimestampMillis);
-        checkMetadataQuery(metadataQuery);
-        checkDimensionsQuery(dimensionsQuery);
-    }
-
-    public static void checkAggregate(final String namespace,
-                                      final String dimension,
-                                      final long startTimestampMillis,
-                                      final long endTimestampMillis,
-                                      final Map<String, String> metadataQuery,
-                                      final Map<String, String> dimensionsQuery,
-                                      final int aggregationIntervalMillis,
-                                      final AggregationFunction aggregationFunctionIgnored) {
-        checkNamespace(namespace);
-        checkString(dimension);
-        checkTimestamps(startTimestampMillis, endTimestampMillis);
-        checkArgument(aggregationIntervalMillis > 0 && aggregationIntervalMillis <= TimeUnit.HOURS.toMillis(1),
-                "aggregate interval must be more than 0 and less than or equal to " + TimeUnit.HOURS.toMillis(1));
         checkMetadataQuery(metadataQuery);
         checkDimensionsQuery(dimensionsQuery);
     }

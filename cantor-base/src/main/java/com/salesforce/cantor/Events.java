@@ -107,13 +107,6 @@ public interface Events extends Namespaceable {
     }
 
     /**
-     * Enum representing all available aggregation functions.
-     */
-    enum AggregationFunction {
-        AVG, MIN, MAX, SUM, COUNT
-    }
-
-    /**
      * Store an event in the given namespace, with timestamp and optionally metadata and dimensions.
      *
      * @param namespace the namespace identifier
@@ -414,47 +407,6 @@ public interface Events extends Namespaceable {
         final List<Event> events = get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, false, 1);
         return !events.isEmpty() ? events.get(0) : null;
     }
-
-    /**
-     * Delete all events in the given namespace, matching start/end timestamps and metadata/dimension query objects
-     * and return the number of events deleted.
-     *
-     * @param namespace the namespace identifier
-     * @param startTimestampMillis start UTC timestamp in milli-seconds
-     * @param endTimestampMillis end UTC timestamp in milli-seconds
-     * @param metadataQuery map of string to string representing a query to run against events metadata
-     * @param dimensionsQuery map of string to string representing a query to run against events dimensions
-     * @return number of events deleted
-     * @throws IOException exception thrown from the underlying storage implementation
-     */
-    int delete(String namespace,
-               long startTimestampMillis,
-               long endTimestampMillis,
-               Map<String, String> metadataQuery,
-               Map<String, String> dimensionsQuery) throws IOException;
-
-    /**
-     * Get result of an aggregate function for all events in the given namespace, with timestamp between the start
-     * and end, and metadata and dimensions matching the given queries, for the given function and aggregated over an
-     * interval period in milli-seconds.
-     *
-     * @param namespace the namespace identifier
-     * @param startTimestampMillis start timestamp in milli-seconds
-     * @param endTimestampMillis end timestamp in milli-seconds
-     * @param metadataQuery map of string to string representing a query to run against events metadata
-     * @param dimensionsQuery map of string to string representing a query to run against events dimensions
-     * @return map of timestamp to value of the aggregate function for all events in the namespace with timestamp
-     * between start/end and metadata/dimensions matching the query, bucketed for each interval
-     * @throws IOException exception thrown from the underlying storage implementation
-     */
-    Map<Long, Double> aggregate(String namespace,
-                                String dimension,
-                                long startTimestampMillis,
-                                long endTimestampMillis,
-                                Map<String, String> metadataQuery,
-                                Map<String, String> dimensionsQuery,
-                                int aggregateIntervalMillis,
-                                AggregationFunction aggregationFunction) throws IOException;
 
     /**
      * Get distinct metadata values for the given metadata key for events in the given namespace, with timestamp between

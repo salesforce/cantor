@@ -17,7 +17,6 @@ import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 import com.salesforce.cantor.Cantor;
-import com.salesforce.cantor.Events;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -149,64 +148,6 @@ public class EventsResource {
         return Response.ok(parser.toJson(metadataValueSet)).build();
     }
 
-    @GET
-    @Path("/{namespace}/aggregate/{aggregate}/{dimension}/{bucket}")
-    @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Aggregate a dimension")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200",
-                     description = "Provides a json with each property being the bucketed timestamp to the aggregated value",
-                     content = @Content(schema = @Schema(implementation = Map.class))),
-        @ApiResponse(responseCode = "400", description = "Aggregate function was not a valid type or one of the query parameters has a bad value"),
-        @ApiResponse(responseCode = "500", description = serverErrorMessage)
-    })
-    public Response getAggregate(@Parameter(description = "Namespace identifier") @PathParam("namespace") final String namespace,
-                                 @Parameter(description = "Specific dimension to aggregate") @PathParam("dimension") final String dimension,
-                                 @Parameter(description = "The aggregation function (AVG, MIN, MAX, SUM, COUNT, STDDEV_POP, STDDEV_SAMP, VAR_POP, VAR_SAMP)") @PathParam("aggregate") final String aggregate,
-                                 @Parameter(description = "The type of grouping (hour, minute, [number])") @PathParam("bucket") final String bucket,
-                                 @BeanParam final EventsDataSourceBean bean) throws IOException {
-        logger.info("received request for aggregate {} of dimension {} in namespace {} with buckets {}", aggregate, dimension, namespace, bucket);
-        logger.debug("request parameters: {}", bean);
-        final int bucketMillis;
-        switch (bucket) {
-            case "hour":
-                bucketMillis = (int) TimeUnit.HOURS.toMillis(1) - 1; // buckets are still maxed at an hour
-                break;
-            case "minute":
-                bucketMillis = (int) TimeUnit.MINUTES.toMillis(1);
-                break;
-            default:
-                try {
-                    bucketMillis = Integer.valueOf(bucket);
-                } catch (final NumberFormatException nfe) {
-                    throw new IllegalArgumentException("bucket" + bucket + " is not hour/minute/NUMBER", nfe);
-                }
-        }
-
-        Events.AggregationFunction aggregateFunction = null;
-        for (final Events.AggregationFunction agg : Events.AggregationFunction.values()) {
-            if (aggregate.equalsIgnoreCase(agg.name())) {
-                aggregateFunction = agg;
-                break;
-            }
-        }
-        if (aggregateFunction == null) {
-            throw new IllegalArgumentException("invalid aggregate function: " + aggregate);
-        }
-
-        final Map<Long, Double> results = this.cantor.events().aggregate(
-                namespace,
-                dimension,
-                bean.getStart(),
-                bean.getEnd(),
-                bean.getMetadataQuery(),
-                bean.getDimensionQuery(),
-                bucketMillis,
-                aggregateFunction
-        );
-        return Response.ok(parser.toJson(results)).build();
-    }
-
     @PUT
     @Path("/{namespace}")
     @Operation(summary = "Create an event namespace")
@@ -262,29 +203,6 @@ public class EventsResource {
         logger.info("received request to expire events since {} in namespace {}", endTimestampMillis, namespace);
         this.cantor.events().expire(namespace, endTimestampMillis);
         return Response.ok().build();
-    }
-
-    @DELETE
-    @Path("/delete/{namespace}")
-    @Operation(summary = "Delete events")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200",
-                         description = "All specified events were deleted",
-                         content = @Content(schema = @Schema(implementation = HttpModels.CountResponse.class))),
-            @ApiResponse(responseCode = "500", description = serverErrorMessage)
-    })
-    public Response dropEvents(@Parameter(description = "Namespace identifier") @PathParam("namespace") final String namespace,
-                               @BeanParam final EventsDataSourceBean bean) throws IOException {
-        logger.info("received request to drop namespace {}", namespace);
-        final int eventsDeleted = this.cantor.events().delete(
-                namespace,
-                bean.getStart(),
-                bean.getEnd(),
-                bean.getMetadataQuery(),
-                bean.getDimensionQuery());
-        final Map<String, Integer> countResponse = new HashMap<>();
-        countResponse.put(jsonFieldCount, eventsDeleted);
-        return Response.ok(parser.toJson(countResponse)).build();
     }
 
     protected static class EventsDataSourceBean {

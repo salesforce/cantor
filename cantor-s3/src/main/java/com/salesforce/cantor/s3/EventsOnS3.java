@@ -134,29 +134,6 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     }
 
     @Override
-    public int delete(final String namespace,
-                      final long startTimestampMillis,
-                      final long endTimestampMillis,
-                      final Map<String, String> metadataQuery,
-                      final Map<String, String> dimensionsQuery) throws IOException {
-//        throw new UnsupportedOperationException("delete is not supported");
-        return -1;
-    }
-
-    @Override
-    public Map<Long, Double> aggregate(final String namespace,
-                                       final String dimension,
-                                       final long startTimestampMillis,
-                                       final long endTimestampMillis,
-                                       final Map<String, String> metadataQuery,
-                                       final Map<String, String> dimensionsQuery,
-                                       final int aggregateIntervalMillis,
-                                       final AggregationFunction aggregationFunction) throws IOException {
-//        throw new UnsupportedOperationException("aggregate is not supported");
-        return Collections.emptyMap();
-    }
-
-    @Override
     public Set<String> metadata(final String namespace,
                                 final String metadataKey,
                                 final long startTimestampMillis,
