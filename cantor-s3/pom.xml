@@ -86,6 +86,7 @@
             <artifactId>cantor-common</artifactId>
             <type>test-jar</type>
             <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
         <!--S3 MOCK-->
         <dependency>
