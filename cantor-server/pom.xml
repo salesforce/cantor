@@ -10,7 +10,7 @@
     <parent>
         <artifactId>cantor-parent</artifactId>
         <groupId>com.salesforce.cantor</groupId>
-        <version>0.3.17-SNAPSHOT</version>
+        <version>0.3.18-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -89,6 +89,14 @@
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
             <version>${testng.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!--CANTOR COMMON TEST JAR-->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-common</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
             <scope>test</scope>
         </dependency>
     </dependencies>
