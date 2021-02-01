@@ -182,8 +182,6 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         final List<Events.Event> results = getEvents().get(this.namespace, 0, timestamp + 1, true);
         logger.info("took {}ms to get 3k events", System.currentTimeMillis() - afterStoreTimestamp);
         assertEquals(results.size(), storedEvents.size());
-        assertEquals(firstEvent, events.first(namespace, firstEvent.getTimestampMillis(), lastEvent.getTimestampMillis(), null, null, true));
-        assertEquals(lastEvent, events.last(namespace, firstEvent.getTimestampMillis(), lastEvent.getTimestampMillis(), null, null, true));
         for (int i = 0; i < storedEvents.size(); ++i) {
             assertEquals(results.get(i).getTimestampMillis(), storedEvents.get(i).getTimestampMillis());
             assertEquals(results.get(i).getPayload(), storedEvents.get(i).getPayload());

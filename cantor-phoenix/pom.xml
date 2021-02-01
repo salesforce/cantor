@@ -68,8 +68,9 @@
         <dependency>
             <groupId>com.salesforce.cantor</groupId>
             <artifactId>cantor-common</artifactId>
-            <type>test-jar</type>
             <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
