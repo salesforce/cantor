@@ -110,28 +110,6 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
     }
 
     @Override
-    public void delete(final DeleteRequest request, final StreamObserver<DeleteResponse> responseObserver) {
-        if (Context.current().isCancelled()) {
-            sendCancelledError(responseObserver, Context.current().cancellationCause());
-            return;
-        }
-        try {
-            final DeleteResponse.Builder responseBuilder = DeleteResponse.newBuilder();
-            final int results = getEvents().delete(
-                    request.getNamespace(),
-                    request.getStartTimestampMillis(),
-                    request.getEndTimestampMillis(),
-                    request.getMetadataQueryMap(),
-                    request.getDimensionsQueryMap()
-            );
-            responseBuilder.setResults(results);
-            sendResponse(responseObserver, responseBuilder.build());
-        } catch (IOException e) {
-            sendError(responseObserver, e);
-        }
-    }
-
-    @Override
     public void store(final StoreRequest request, final StreamObserver<VoidResponse> responseObserver) {
         if (Context.current().isCancelled()) {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
@@ -148,30 +126,6 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
             }
             getEvents().store(request.getNamespace(), batch);
             sendResponse(responseObserver, VoidResponse.getDefaultInstance());
-        } catch (IOException e) {
-            sendError(responseObserver, e);
-        }
-    }
-
-    @Override
-    public void aggregate(final AggregateRequest request, final StreamObserver<AggregateResponse> responseObserver) {
-        if (Context.current().isCancelled()) {
-            sendCancelledError(responseObserver, Context.current().cancellationCause());
-            return;
-        }
-        try {
-            final Map<Long, Double> results = getEvents().aggregate(
-                    request.getNamespace(),
-                    request.getDimension(),
-                    request.getStartTimestampMillis(),
-                    request.getEndTimestampMillis(),
-                    request.getMetadataQueryMap(),
-                    request.getDimensionsQueryMap(),
-                    request.getAggregationIntervalMillis(),
-                    Events.AggregationFunction.valueOf(request.getAggregationFunction().name())
-            );
-            final AggregateResponse response = AggregateResponse.newBuilder().putAllResults(results).build();
-            sendResponse(responseObserver, response);
         } catch (IOException e) {
             sendError(responseObserver, e);
         }

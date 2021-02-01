@@ -8,7 +8,6 @@
 package com.salesforce.cantor.misc.archivable.impl;
 
 import com.salesforce.cantor.Events;
-import com.salesforce.cantor.misc.archivable.CantorArchiver;
 import com.salesforce.cantor.misc.archivable.EventsArchiver;
 
 import java.io.IOException;
@@ -53,42 +52,6 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
     }
 
     @Override
-    public int delete(final String namespace,
-                      final long startTimestampMillis,
-                      final long endTimestampMillis,
-                      final Map<String, String> metadataQuery,
-                      final Map<String, String> dimensionsQuery) throws IOException {
-        // choosing not to archive explicitly deleted events; will not delete events already archived
-        return getDelegate().delete(namespace,
-                        startTimestampMillis,
-                        endTimestampMillis,
-                        metadataQuery,
-                        dimensionsQuery
-                );
-    }
-
-    @Override
-    public final Map<Long, Double> aggregate(final String namespace,
-                                             final String dimension,
-                                             final long startTimestampMillis,
-                                             final long endTimestampMillis,
-                                             final Map<String, String> metadataQuery,
-                                             final Map<String, String> dimensionsQuery,
-                                             final int aggregateIntervalMillis,
-                                             final AggregationFunction aggregationFunction) throws IOException {
-        getArchiver().restore(getDelegate(), namespace, startTimestampMillis, endTimestampMillis);
-        return getDelegate().aggregate(namespace,
-                        dimension,
-                        startTimestampMillis,
-                        endTimestampMillis,
-                        metadataQuery,
-                        dimensionsQuery,
-                        aggregateIntervalMillis,
-                        aggregationFunction
-                );
-    }
-
-    @Override
     public Set<String> metadata(final String namespace,
                                 final String metadataKey,
                                 final long startTimestampMillis,
@@ -109,6 +72,6 @@ public class ArchivableEvents extends AbstractBaseArchivableNamespaceable<Events
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
         // archiving all before deletion
         getArchiver().archive(getDelegate(), namespace, endTimestampMillis);
-        getDelegate().delete(namespace, 0, endTimestampMillis, null, null);
+        getDelegate().expire(namespace, endTimestampMillis);
     }
 }

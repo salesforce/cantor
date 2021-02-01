@@ -55,47 +55,6 @@ public class ShardedEvents extends AbstractBaseShardedNamespaceable<Events> impl
     }
 
     @Override
-    public int delete(final String namespace,
-                      final long startTimestampMillis,
-                      final long endTimestampMillis,
-                      final Map<String, String> metadataQuery,
-                      final Map<String, String> dimensionsQuery) throws IOException {
-        checkDelete(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        return getShard(namespace)
-                .delete(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-    }
-
-    @Override
-    public final Map<Long, Double> aggregate(final String namespace,
-                                             final String dimension,
-                                             final long startTimestampMillis,
-                                             final long endTimestampMillis,
-                                             final Map<String, String> metadataQuery,
-                                             final Map<String, String> dimensionsQuery,
-                                             final int aggregateIntervalMillis,
-                                             final AggregationFunction aggregationFunction) throws IOException {
-        checkAggregate(namespace,
-                dimension,
-                startTimestampMillis,
-                endTimestampMillis,
-                metadataQuery,
-                dimensionsQuery,
-                aggregateIntervalMillis,
-                aggregationFunction
-        );
-        return getShard(namespace)
-                .aggregate(namespace,
-                        dimension,
-                        startTimestampMillis,
-                        endTimestampMillis,
-                        metadataQuery,
-                        dimensionsQuery,
-                        aggregateIntervalMillis,
-                        aggregationFunction
-                );
-    }
-
-    @Override
     public Set<String> metadata(final String namespace,
                                 final String metadataKey,
                                 final long startTimestampMillis,

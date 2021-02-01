@@ -78,50 +78,6 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
     }
 
     @Override
-    public int delete(final String namespace,
-                      final long startTimestampMillis,
-                      final long endTimestampMillis,
-                      final Map<String, String> metadataQuery,
-                      final Map<String, String> dimensionsQuery) throws IOException {
-        checkDelete(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        return doDelete(namespace,
-                startTimestampMillis,
-                endTimestampMillis,
-                nullToEmpty(metadataQuery),
-                nullToEmpty(dimensionsQuery)
-        );
-    }
-
-    @Override
-    public Map<Long, Double> aggregate(final String namespace,
-                                       final String dimension,
-                                       final long startTimestampMillis,
-                                       final long endTimestampMillis,
-                                       final Map<String, String> metadataQuery,
-                                       final Map<String, String> dimensionsQuery,
-                                       final int aggregateIntervalMillis,
-                                       final AggregationFunction aggregationFunction) throws IOException {
-        checkAggregate(namespace,
-                dimension,
-                startTimestampMillis,
-                endTimestampMillis,
-                metadataQuery,
-                dimensionsQuery,
-                aggregateIntervalMillis,
-                aggregationFunction
-        );
-        return doAggregate(namespace,
-                dimension,
-                startTimestampMillis,
-                endTimestampMillis,
-                nullToEmpty(metadataQuery),
-                nullToEmpty(dimensionsQuery),
-                aggregateIntervalMillis,
-                aggregationFunction
-        );
-    }
-
-    @Override
     public Set<String> metadata(final String namespace,
                                 final String metadataKey,
                                 final long startTimestampMillis,
@@ -674,86 +630,6 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
 
         final String sql = sqlBuilder.toString();
         return executeUpdate(sql, parameters.toArray());
-    }
-
-    private Map<Long, Double> doAggregate(final String namespace,
-                                          final String dimension,
-                                          final long startTimestampMillis,
-                                          final long endTimestampMillis,
-                                          final Map<String, String> metadataQuery,
-                                          final Map<String, String> dimensionsQuery,
-                                          final int aggregateIntervalMillis,
-                                          final AggregationFunction aggregationFunction) throws IOException {
-
-        final String sqlFormat = "SELECT %s, %s FROM %s WHERE %s BETWEEN ? AND ? ";
-        final Set<String> dimensions = new HashSet<>(dimensionsQuery.keySet());
-        // make sure the dimension exists
-        dimensions.add(dimension);
-        final List<String> chunkTables = getChunkTableNames(
-                namespace,
-                startTimestampMillis,
-                endTimestampMillis,
-                metadataQuery.keySet(),
-                dimensions
-        );
-        // nothing found
-        if (chunkTables.isEmpty()) {
-            return Collections.emptyMap();
-        }
-
-        final Map<Long, Double> results = new LinkedHashMap<>();
-        final List<Object> parameters = new ArrayList<>();
-        final List<String> sqls = new ArrayList<>();
-        for (final String chunkTableName : chunkTables) {
-            final StringBuilder sqlBuilder = new StringBuilder(String.format(sqlFormat,
-                    quote(getEventTimestampColumnName()),
-                    quote(getDimensionKeyColumnName(dimension)),
-                    getTableFullName(namespace, chunkTableName),
-                    quote(getEventTimestampColumnName())
-            ));
-            parameters.add(startTimestampMillis);
-            parameters.add(endTimestampMillis);
-
-            // construct the sql query and parameters for metadata and dimensions
-            sqlBuilder.append(getMetadataQuerySql(metadataQuery, parameters));
-            sqlBuilder.append(getDimensionQuerySql(dimensionsQuery, parameters));
-
-            sqls.add(sqlBuilder.toString());
-        }
-
-        final String selectSql = String.join(" UNION ALL ", sqls);
-        final String sql = String.format("SELECT (%s - (%s %% %d)) AS TIMESTAMP_FLOOR, " +
-                "%s(%s) AS AGGREGATE_VALUE " +
-                "FROM (%s) AS `T` " +
-                "GROUP BY TIMESTAMP_FLOOR ORDER BY TIMESTAMP_FLOOR ",
-                quote(getEventTimestampColumnName()),
-                quote(getEventTimestampColumnName()),
-                aggregateIntervalMillis,
-                aggregationFunction.toString(),
-                quote(getDimensionKeyColumnName(dimension)),
-                selectSql
-        );
-
-        try (final Connection connection = getConnection()) {
-            try (final PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-                addParameters(preparedStatement, parameters.toArray());
-                try (final ResultSet resultSet = preparedStatement.executeQuery()) {
-                    while (resultSet.next()) {
-                        final long timestampMillis = resultSet.getLong(1);
-                        final double value = resultSet.getDouble(2);
-                        if (!results.containsKey(timestampMillis)) {
-                            results.put(timestampMillis, value);
-                        } else {
-                            // TODO: THIS IS A BUG! aggregation has to be done across all chunk tables
-                        }
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            logger.warn("caught exception executing query sql '{}': {}", sql, e.getMessage());
-            throw new IOException(e);
-        }
-        return results;
     }
 
     private Set<String> doMetadata(final String namespace,

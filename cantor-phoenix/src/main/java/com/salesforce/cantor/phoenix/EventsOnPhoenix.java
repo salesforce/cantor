@@ -695,15 +695,6 @@ public class EventsOnPhoenix extends AbstractBaseEventsOnJdbc implements Events 
 
     /** @inheritdoc */
     @Override
-    public Map<Long, Double> aggregate(String namespace, String dimension, long startTimestampMillis,
-                                       long endTimestampMillis, Map<String, String> metadataQuery,
-                                       Map<String, String> dimensionsQuery, int aggregateIntervalMillis,
-                                       AggregationFunction aggregationFunction) throws IOException {
-        return Collections.emptyMap();
-    }
-
-    /** @inheritdoc */
-    @Override
     public void expire(String namespace, long endTimestampMillis) throws IOException {
     }
 

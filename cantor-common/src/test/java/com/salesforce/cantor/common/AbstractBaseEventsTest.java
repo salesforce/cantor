@@ -120,9 +120,6 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         for (final Map.Entry<String, Double> entry : dimensions.entrySet()) {
             assertEquals(returnedDimensions.get(entry.getKey()), entry.getValue());
         }
-
-        assertEquals(events.delete(this.namespace, timestamp, timestamp + 1, null, null), 1);
-        assertTrue(events.get(this.namespace, timestamp, timestamp + 1, null, null).isEmpty());
     }
 
     @Test
@@ -155,15 +152,6 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         // should not find anything now, because there is no 'metadata-key-<match-count>'
         metadataQuery.put("metadata-key-" + matchCount, "~.*-pattern-.*");
         assertEquals(events.get(this.namespace, timestamp - 100, timestamp + 101, metadataQuery, null).size(), 0);
-
-        final Map<String, String> deleteMetadataQuery = new HashMap<>();
-        for (int i = 0; i < matchCount; ++i) {
-            deleteMetadataQuery.put("metadata-key-" + i, "~.*--pattern--[0-9]{3}--.*");
-        }
-
-        // should delete all events matching the pattern
-        assertEquals(events.delete(this.namespace, timestamp - 100, timestamp + 101, deleteMetadataQuery, null), matchCount);
-        assertTrue(events.get(this.namespace, timestamp - 100, timestamp + 101, deleteMetadataQuery, null).isEmpty());
     }
 
     @Test
@@ -194,8 +182,6 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         final List<Events.Event> results = getEvents().get(this.namespace, 0, timestamp + 1, true);
         logger.info("took {}ms to get 3k events", System.currentTimeMillis() - afterStoreTimestamp);
         assertEquals(results.size(), storedEvents.size());
-        assertEquals(firstEvent, events.first(namespace, firstEvent.getTimestampMillis(), lastEvent.getTimestampMillis(), null, null, true));
-        assertEquals(lastEvent, events.last(namespace, firstEvent.getTimestampMillis(), lastEvent.getTimestampMillis(), null, null, true));
         for (int i = 0; i < storedEvents.size(); ++i) {
             assertEquals(results.get(i).getTimestampMillis(), storedEvents.get(i).getTimestampMillis());
             assertEquals(results.get(i).getPayload(), storedEvents.get(i).getPayload());
@@ -336,161 +322,6 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         assertThrows(IOException.class,
                 () -> events.store(randomNamespace, timestamp, null, null)
         );
-    }
-
-    @Test
-    public void testAggregations() throws Exception {
-        final Events events = getEvents();
-
-        assertTrue(events.aggregate(this.namespace,
-                "invalid", 0, Long.MAX_VALUE, null, null, 10, Events.AggregationFunction.COUNT
-        ).isEmpty());
-
-        int count = 0;
-        double sum = 0.0;
-        double trueSum = 0.0;
-        double min = Double.MAX_VALUE;
-        double max = Double.MIN_VALUE;
-        long startTimestampMillis = System.currentTimeMillis();
-
-        final Map<String, String> boolMetadata = new HashMap<>();
-        boolMetadata.put("bool-meta1", String.valueOf(true));
-        boolMetadata.put("bool-meta2", String.valueOf(true));
-
-        final int total = ThreadLocalRandom.current().nextInt(500, 1000);
-        logger.info("storing {} random events", total);
-        for (int i = 0; i < total; ++i) {
-            final double value = ThreadLocalRandom.current().nextDouble();
-            final boolean bool = ThreadLocalRandom.current().nextBoolean();
-            sum += value;
-            trueSum += bool ? value : 0;
-            min = Math.min(min, value);
-            max = Math.max(max, value);
-            count++;
-
-            final Map<String, Double> dimensions = new HashMap<>();
-            dimensions.put("value", value);
-            dimensions.put("bool-dim", bool ? 1.0D : 0.0D);
-            final Map<String, String> metadata = bool ? boolMetadata : Collections.emptyMap();
-            events.store(this.namespace, startTimestampMillis + i, metadata, dimensions);
-        }
-
-        // test sum
-        final Map<Long, Double> sumResults = events.aggregate(
-                this.namespace,
-                "value",
-                startTimestampMillis,
-                startTimestampMillis + count,
-                null,
-                null,
-                ThreadLocalRandom.current().nextInt(1, count),
-                Events.AggregationFunction.SUM
-        );
-        checkSum(sumResults, sum);
-        // test sum with meta query
-        final Map<Long, Double> metaTrueSumResult = events.aggregate(
-                this.namespace,
-                "value",
-                startTimestampMillis,
-                startTimestampMillis + count,
-                boolMetadata,
-                null,
-                ThreadLocalRandom.current().nextInt(1, count),
-                Events.AggregationFunction.SUM
-        );
-        checkSum(metaTrueSumResult, trueSum);
-        // test sum with dim query
-        final Map<Long, Double> dimTrueSumResult = events.aggregate(
-                this.namespace,
-                "value",
-                startTimestampMillis,
-                startTimestampMillis + count,
-                null,
-                Collections.singletonMap("bool-dim", String.valueOf(1.0D)),
-                ThreadLocalRandom.current().nextInt(1, count),
-                Events.AggregationFunction.SUM
-        );
-        checkSum(dimTrueSumResult, trueSum);
-        // test sum with meta AND dim query
-        final Map<Long, Double> bothTrueSumResult = events.aggregate(
-                this.namespace,
-                "value",
-                startTimestampMillis,
-                startTimestampMillis + count,
-                boolMetadata,
-                Collections.singletonMap("bool-dim", String.valueOf(1.0D)),
-                ThreadLocalRandom.current().nextInt(1, count),
-                Events.AggregationFunction.SUM
-        );
-        checkSum(bothTrueSumResult, trueSum);
-
-        // test average
-        final Map<Long, Double> avgResults = events.aggregate(
-                this.namespace,
-                "value",
-                startTimestampMillis,
-                startTimestampMillis + count,
-                null,
-                null,
-                ThreadLocalRandom.current().nextInt(1, count),
-                Events.AggregationFunction.AVG
-        );
-        double returnedAvgSum = 0.0;
-        for (final Map.Entry<Long, Double> entry : avgResults.entrySet()) {
-            returnedAvgSum += entry.getValue();
-        }
-        assertTrue(Math.abs(sum / count - returnedAvgSum / avgResults.size()) < 0.5);
-
-        // test min
-        final Map<Long, Double> minResults = events.aggregate(
-                this.namespace,
-                "value",
-                startTimestampMillis,
-                startTimestampMillis + count,
-                null,
-                null,
-                ThreadLocalRandom.current().nextInt(1, count),
-                Events.AggregationFunction.MIN
-        );
-        double returnedMin = Double.MAX_VALUE;
-        for (final Map.Entry<Long, Double> entry : minResults.entrySet()) {
-            returnedMin = Math.min(entry.getValue(), returnedMin);
-        }
-        assertEquals(returnedMin, min);
-
-        // test max
-        final Map<Long, Double> maxResults = events.aggregate(
-                this.namespace,
-                "value",
-                startTimestampMillis,
-                startTimestampMillis + count,
-                null,
-                null,
-                ThreadLocalRandom.current().nextInt(1, count),
-                Events.AggregationFunction.MAX
-        );
-        double returnedMax = Double.MIN_VALUE;
-        for (final Map.Entry<Long, Double> entry : maxResults.entrySet()) {
-            returnedMax = Math.max(entry.getValue(), returnedMax);
-        }
-        assertEquals(returnedMax, max);
-
-        // test count
-        final Map<Long, Double> countResults = events.aggregate(
-                this.namespace,
-                "value",
-                startTimestampMillis,
-                startTimestampMillis + count,
-                null,
-                null,
-                ThreadLocalRandom.current().nextInt(1, count),
-                Events.AggregationFunction.COUNT
-        );
-        int returnedCount = 0;
-        for (final Map.Entry<Long, Double> entry : countResults.entrySet()) {
-            returnedCount += entry.getValue();
-        }
-        assertEquals(returnedCount, count);
     }
 
     @Test

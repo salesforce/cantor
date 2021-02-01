@@ -15,7 +15,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 
 public class MetricCollectingEvents extends BaseMetricCollectingCantor implements Events {
    private final Events delegate;
@@ -56,37 +55,6 @@ public class MetricCollectingEvents extends BaseMetricCollectingCantor implement
                            final int limit) throws IOException {
         return metrics(() -> this.delegate.get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, ascending, limit),
                 "get", namespace, super::size);
-    }
-
-    @Override
-    public int delete(final String namespace,
-                      final long startTimestampMillis,
-                      final long endTimestampMillis,
-                      final Map<String, String> metadataQuery,
-                      final Map<String, String> dimensionsQuery) throws IOException {
-        return metrics(() -> this.delegate.delete(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery),
-                "delete", namespace, Function.identity());
-    }
-
-    @Override
-    public Map<Long, Double> aggregate(final String namespace,
-                                       final String dimension,
-                                       final long startTimestampMillis,
-                                       final long endTimestampMillis,
-                                       final Map<String, String> metadataQuery,
-                                       final Map<String, String> dimensionsQuery,
-                                       final int aggregateIntervalMillis,
-                                       final AggregationFunction aggregationFunction) throws IOException {
-        return metrics(() -> this.delegate
-                .aggregate(namespace,
-                        dimension,
-                        startTimestampMillis,
-                        endTimestampMillis,
-                        metadataQuery,
-                        dimensionsQuery,
-                        aggregateIntervalMillis,
-                        aggregationFunction
-                ), "aggregate", namespace, m -> m != null ? m.size() : 0);
     }
 
     @Override
