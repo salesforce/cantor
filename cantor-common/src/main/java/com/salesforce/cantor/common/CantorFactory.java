@@ -151,6 +151,7 @@ public class CantorFactory {
 
             checkArgument(this.delegates.containsKey(scope), "invalid scope: " + scope);
 
+            // invoke the proxied method and pass all parameters
             if (args.length == 1) {
                 return method.invoke(this.delegates.get(scope), namespace);
             }
@@ -163,7 +164,12 @@ public class CantorFactory {
                 final Collection<String> namespaces = entry.getValue().namespaces();
                 for (final String namespace : namespaces) {
                     // attach scope to namespaces
-                    results.add(String.format("%s.%s", entry.getKey(), namespace));
+                    final String scope = entry.getKey();
+                    if (NamespaceableProvider.DEFAULT_SCOPE.equals(scope)) {
+                        results.add(namespace);
+                    } else {
+                        results.add(String.format("%s.%s", scope, namespace));
+                    }
                 }
             }
             return results;
