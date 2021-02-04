@@ -155,7 +155,10 @@ public class CantorFactory {
             if (args.length == 1) {
                 return method.invoke(this.delegates.get(scope), namespace);
             }
-            return method.invoke(this.delegates.get(scope), namespace, Arrays.copyOfRange(args, 1, args.length));
+            final Object[] newArgs = new Object[args.length];
+            newArgs[0] = namespace;
+            System.arraycopy(args, 1, newArgs, 1, args.length - 1);
+            return method.invoke(this.delegates.get(scope), newArgs);
         }
 
         private Object doNamespaces() throws IOException {
