@@ -142,8 +142,8 @@ public class CantorFactory {
             // by convention, the first argument to all methods is the namespace
             final String scopedNamespace = (String) args[0];
 
-            // if there is no scope in the namespace, pick the default instance
-            if (!scopedNamespace.contains(scopeDelimiter)) {
+            // if there is no scope in the namespace (i.e., no '.' or starts with it), pick the default instance
+            if (!scopedNamespace.contains(scopeDelimiter) || scopedNamespace.startsWith(scopeDelimiter)) {
                 return method.invoke(this.delegates.get(NamespaceableProvider.DEFAULT_SCOPE), args);
             }
             final String scope = scopedNamespace.substring(0, scopedNamespace.indexOf(scopeDelimiter));
