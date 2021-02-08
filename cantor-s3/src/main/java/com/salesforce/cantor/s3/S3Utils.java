@@ -222,7 +222,7 @@ public class S3Utils {
                 new SelectObjectContentEventVisitor() {
                     @Override
                     public void visit(final SelectObjectContentEvent.StatsEvent event) {
-                        logger.debug("s3 select query stats: bucket='{}' key='{}' bytes-scanned='{}' bytes-processed='{}' bytes-returned='{}'",
+                        logger.info("s3 select query stats: bucket='{}' key='{}' bytes-scanned='{}' bytes-processed='{}' bytes-returned='{}'",
                                 request.getBucketName(),
                                 request.getKey(),
                                 event.getDetails().getBytesProcessed(),
