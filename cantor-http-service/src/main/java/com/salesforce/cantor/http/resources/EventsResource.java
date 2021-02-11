@@ -52,7 +52,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -113,7 +112,7 @@ public class EventsResource {
                 bean.getStart(),
                 bean.getEnd(),
                 bean.getMetadataQuery(),
-                bean.getDimensionQuery(),
+                bean.getDimensionsquery(),
                 bean.isIncludePayloads(),
                 bean.isAscending(),
                 bean.getLimit()
@@ -143,7 +142,7 @@ public class EventsResource {
                 bean.getStart(),
                 bean.getEnd(),
                 bean.getMetadataQuery(),
-                bean.getDimensionQuery()
+                bean.getDimensionsquery()
         );
         return Response.ok(parser.toJson(metadataValueSet)).build();
     }
@@ -219,8 +218,8 @@ public class EventsResource {
         private List<String> acceptedMetadataQuery;
 
         @Parameter(description = "Dimension and its value that an event should have to match (operators: [..,>,<,=,~,<=,>=])")
-        @QueryParam("dimension_query")
-        private List<String> acceptedDimensionQuery;
+        @QueryParam("dimensions_query")
+        private List<String> acceptedDimensionsQuery;
 
         private static Map<String, String> queryToMap(final List<String> queryList) {
             if (queryList.isEmpty()) {
@@ -258,8 +257,8 @@ public class EventsResource {
         /**
          * Dimension query converted to Cantor query format
          */
-        Map<String, String> getDimensionQuery() {
-            return queryToMap(this.acceptedDimensionQuery);
+        Map<String, String> getDimensionsquery() {
+            return queryToMap(this.acceptedDimensionsQuery);
         }
 
         /*
@@ -283,8 +282,8 @@ public class EventsResource {
             return acceptedMetadataQuery;
         }
 
-        public List<String> getAcceptedDimensionQuery() {
-            return acceptedDimensionQuery;
+        public List<String> getAcceptedDimensionsQuery() {
+            return acceptedDimensionsQuery;
         }
 
         public void setStart(final long start) {
@@ -299,8 +298,8 @@ public class EventsResource {
             this.acceptedMetadataQuery = acceptedMetadataQuery;
         }
 
-        public void setAcceptedDimensionQuery(final List<String> acceptedDimensionQuery) {
-            this.acceptedDimensionQuery = acceptedDimensionQuery;
+        public void setAcceptedDimensionsQuery(final List<String> acceptedDimensionsQuery) {
+            this.acceptedDimensionsQuery = acceptedDimensionsQuery;
         }
     }
 
