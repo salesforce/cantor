@@ -1,5 +1,3 @@
-# Cantor
-
 Cantor is a data serving layer: it offers persistence for a number of basic data structures on top of a variety of 
 storage solutions (e.g., MySQL and S3). Cantor exposes an HTTP and gRPC API, and includes thin client libraries for 
 Java and Python.
