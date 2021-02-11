@@ -533,7 +533,7 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
 
         // construct the sql query and parameters for metadata and dimensions
         sqlBuilder.append(getMetadataQuerySql(metadataQuery, parameters));
-        sqlBuilder.append(getDimensionQuerySql(dimensionsQuery, parameters));
+        sqlBuilder.append(getDimensionsQuerySql(dimensionsQuery, parameters));
 
         sqlBuilder.append(" ORDER BY ").append(getEventTimestampColumnName()).append(ascending ? " ASC " : " DESC ");
         if (limit > 0) {
@@ -626,7 +626,7 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
 
         // construct the sql query and parameters for metadata and dimensions
         sqlBuilder.append(getMetadataQuerySql(metadataQuery, parameters));
-        sqlBuilder.append(getDimensionQuerySql(dimensionsQuery, parameters));
+        sqlBuilder.append(getDimensionsQuerySql(dimensionsQuery, parameters));
 
         final String sql = sqlBuilder.toString();
         return executeUpdate(sql, parameters.toArray());
@@ -665,7 +665,7 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
 
             // construct the sql query and parameters for metadata and dimensions
             sqlBuilder.append(getMetadataQuerySql(metadataQuery, parameters));
-            sqlBuilder.append(getDimensionQuerySql(dimensionsQuery, parameters));
+            sqlBuilder.append(getDimensionsQuerySql(dimensionsQuery, parameters));
 
             final String sql = sqlBuilder.toString();
 
@@ -740,7 +740,7 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
     // '>=': greater than or equals - 'cpu' => '>=90'
     // '<': less than - 'cpu' => '<90'
     // '<=': less than or equals - 'cpu' => '<=90'
-    private String getDimensionQuerySql(final Map<String, String> dimensionsQuery, final List<Object> parameters) {
+    private String getDimensionsQuerySql(final Map<String, String> dimensionsQuery, final List<Object> parameters) {
         if (dimensionsQuery.isEmpty()) {
             return " AND 1 ";
         }

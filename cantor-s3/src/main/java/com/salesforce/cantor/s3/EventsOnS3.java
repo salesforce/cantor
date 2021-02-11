@@ -429,7 +429,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         return String.format("SELECT * FROM s3object[*] s WHERE %s %s %s",
                 timestampClause,
                 getMetadataQuerySql(metadataQuery, false),
-                getDimensionQuerySql(dimensionsQuery, false)
+                getDimensionsQuerySql(dimensionsQuery, false)
         );
     }
 
@@ -443,7 +443,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                 metadataKey,
                 timestampClause,
                 getMetadataQuerySql(metadataQuery, false),
-                getDimensionQuerySql(dimensionsQuery, false)
+                getDimensionsQuerySql(dimensionsQuery, false)
         );
     }
 
@@ -557,7 +557,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     // '>=': greater than or equals - 'cpu' => '>=90'
     // '<': less than - 'cpu' => '<90'
     // '<=': less than or equals - 'cpu' => '<=90'
-    private String getDimensionQuerySql(final Map<String, String> dimensionsQuery, final boolean invert) {
+    private String getDimensionsQuerySql(final Map<String, String> dimensionsQuery, final boolean invert) {
         if (dimensionsQuery.isEmpty()) {
             return "";
         }
