@@ -101,32 +101,6 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
     }
 
-    public static void main(String[] args) throws IOException {
-        final Executor executor = Executors.newCachedThreadPool();
-        for (int thread = 0; thread < 10; ++thread) {
-            int finalThread = thread;
-            executor.execute(() -> {
-                try {
-                    run(finalThread);
-                } catch (IOException e) {
-                    logger.error("exception", e);
-                }
-            });
-        }
-    }
-
-    public static void run(int thread) throws IOException {
-        final EventsOnS3 e = new EventsOnS3(null, "foo-" + thread);
-        for (int i = 0; i < 100000000; ++i) {
-            final Map<String, String> m = new HashMap<>();
-            m.put(Integer.toString(i), Integer.toString(i));
-            final Map<String, Double> d = new HashMap<>();
-            d.put(Integer.toString(i), (double)i);
-            e.store("foo-" + thread, i, m, d, String.valueOf(i).getBytes());
-            logger.info("stored {}", i);
-        }
-    }
-
     @Override
     public void store(final String namespace, final Collection<Event> batch) throws IOException {
         checkStore(namespace, batch);
