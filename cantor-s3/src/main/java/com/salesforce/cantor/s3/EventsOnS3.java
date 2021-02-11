@@ -55,7 +55,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private final String bufferDirectory;
 
     // cantor-events-<namespace>/<startTimestamp>-<endTimestamp>
-    private static final String objectKeyPrefix = "cantor-events-%s/";
+    private static final String objectKeyPrefix = "cantor-events";
 
     // date directoryFormatter for flush cycle name calculation
     private static final DateFormat cycleNameFormatter = new SimpleDateFormat("YYYY-MM-dd_HH-mm-ss");
@@ -88,17 +88,16 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
         this.bufferDirectory = bufferDirectory;
 
-        // schedule flush cycle to start immediately
-        if (!isInitialized.getAndSet(true)) {
-            rollover();
-            executor.scheduleAtFixedRate(this::flush, 0, flushIntervalSeconds, TimeUnit.SECONDS);
-        }
-
         // initialize s3 transfer manager
         final TransferManagerBuilder builder = TransferManagerBuilder.standard();
         builder.setS3Client(this.s3Client);
         this.s3TransferManager = builder.build();
 
+        // schedule flush cycle to start immediately
+        if (!isInitialized.getAndSet(true)) {
+            rollover();
+            executor.scheduleAtFixedRate(this::flush, 0, flushIntervalSeconds, TimeUnit.SECONDS);
+        }
     }
 
     @Override
@@ -175,7 +174,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
     @Override
     protected String getObjectKeyPrefix(final String namespace) {
-        return String.format(objectKeyPrefix, namespace);
+        return String.format("%s/%s", objectKeyPrefix, trim(namespace));
     }
 
     private LoadingCache<String, AtomicLong> payloadOffset = CacheBuilder.newBuilder()
@@ -234,7 +233,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             final String currentCycleName = getRolloverCycleName();
             final String cyclePath = getPath(currentCycleName);
             final String filePath = String.format("%s/%s/%s.%s",
-                    cyclePath, trim(namespace), directoryFormatter.format(event.getTimestampMillis()), currentCycleName
+                    cyclePath, getObjectKeyPrefix(namespace), directoryFormatter.format(event.getTimestampMillis()), currentCycleName
             );
             final String payloadFilePath = filePath + ".b64";
             final String eventsFilePath = filePath + ".json";
@@ -453,10 +452,10 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         final Set<String> prefixes = new HashSet<>();
         long start = startTimestampMillis;
         while (start <= endTimestampMillis) {
-            prefixes.add(String.format("%s/%s", trim(namespace), directoryFormatter.format(start)));
+            prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatter.format(start)));
             start += TimeUnit.MINUTES.toMillis(1);
         }
-        prefixes.add(String.format("%s/%s", trim(namespace), directoryFormatter.format(endTimestampMillis)));
+        prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatter.format(endTimestampMillis)));
         final Set<String> matchingKeys = new ConcurrentSkipListSet<>();
         final ExecutorService executor = Executors.newWorkStealingPool(64);
         final CompletionService<List<Event>> completionService = new ExecutorCompletionService<>(executor);
@@ -615,7 +614,9 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private static String rollover() {
         // cycle name is: <timestamp>-<guid>
         final String rolloverCycleName = String.format("%s.%s",
-                cycleNameFormatter.format(System.currentTimeMillis()), UUID.randomUUID().toString().replaceAll("-", ""));
+                cycleNameFormatter.format(System.currentTimeMillis()),
+                UUID.randomUUID().toString().replaceAll("-", "")
+        );
         logger.info("starting new cycle: {}", rolloverCycleName);
         return currentFlushCycleGuid.getAndSet(rolloverCycleName);
     }

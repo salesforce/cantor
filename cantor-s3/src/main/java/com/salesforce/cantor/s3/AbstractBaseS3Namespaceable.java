@@ -209,7 +209,7 @@ public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
     protected static String trim(final String namespace) {
         final String cleanName = namespace.replaceAll("[^A-Za-z0-9_\\-]", "").toLowerCase();
         return String.format("%s-%s",
-                cleanName.substring(0, Math.min(16, cleanName.length())),
+                cleanName.substring(0, Math.min(64, cleanName.length())),
                 Math.abs(namespace.hashCode())
         );
     }
