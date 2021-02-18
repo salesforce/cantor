@@ -60,10 +60,9 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     // date directoryFormatter for flush cycle name calculation
     private static final DateFormat cycleNameFormatter = new SimpleDateFormat("YYYY-MM-dd_HH-mm-ss");
     // date directoryFormatter for converting an event timestamp to a hierarchical directory structure
-    private static final DateFormat directoryFormatter = new SimpleDateFormat("YYYY/MM/dd/HH/mm");
-    private static final DateFormat directoryFormatterHourly = new SimpleDateFormat("YYYY/MM/dd/HH/");
-    private static final DateFormat directoryFormatterDayly = new SimpleDateFormat("YYYY/MM/dd/");
-    private static final DateFormat directoryFormatterMonthly = new SimpleDateFormat("YYYY/MM/");
+    private static final DateFormat directoryFormatterMin = new SimpleDateFormat("YYYY/MM/dd/HH/mm");
+    private static final DateFormat directoryFormatterHour = new SimpleDateFormat("YYYY/MM/dd/HH/");
+    private static final DateFormat directoryFormatterDay = new SimpleDateFormat("YYYY/MM/dd/");
     private final TransferManager s3TransferManager;
 
     public EventsOnS3(final AmazonS3 s3Client,
@@ -233,7 +232,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             final String currentCycleName = getRolloverCycleName();
             final String cyclePath = getPath(currentCycleName);
             final String filePath = String.format("%s/%s/%s.%s",
-                    cyclePath, getObjectKeyPrefix(namespace), directoryFormatter.format(event.getTimestampMillis()), currentCycleName
+                    cyclePath, getObjectKeyPrefix(namespace), directoryFormatterMin.format(event.getTimestampMillis()), currentCycleName
             );
             final String payloadFilePath = filePath + ".b64";
             final String eventsFilePath = filePath + ".json";
@@ -272,7 +271,6 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         final CompletionService<List<Event>> completionService =
                 new ExecutorCompletionService<>(Executors.newWorkStealingPool(64));
         final List<Future<List<Event>>> futures = new ArrayList<>();
-        final Map<String, Pattern> metadataPatterns = generateRegex(metadataQuery);
         // iterate over all s3 objects that match this request
         for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
             // only query json files
@@ -281,7 +279,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             }
             futures.add(completionService.submit(() -> doGetOnObject(
                     objectKey, startTimestampMillis, endTimestampMillis,
-                    metadataQuery, dimensionsQuery, includePayloads, metadataPatterns
+                    metadataQuery, dimensionsQuery, includePayloads
                     ))
             );
         }
@@ -353,8 +351,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                                       final long endTimestampMillis,
                                       final Map<String, String> metadataQuery,
                                       final Map<String, String> dimensionsQuery,
-                                      final boolean includePayloads,
-                                      final Map<String, Pattern> metadataPatterns) throws IOException {
+                                      final boolean includePayloads) throws IOException {
 
         final List<Event> results = new ArrayList<>();
         final String query = generateGetQuery(startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
@@ -377,13 +374,9 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                 }
                 final byte[] payload = Base64.getDecoder().decode(new String(payloadBase64Bytes));
                 final Event eventWithPayload = new Event(event.getTimestampMillis(), event.getMetadata(), event.getDimensions(), payload);
-                if (matches(eventWithPayload, metadataPatterns)) {
-                    results.add(eventWithPayload);
-                }
+                results.add(eventWithPayload);
             } else {
-                if (matches(event, metadataPatterns)) {
-                    results.add(event);
-                }
+                results.add(event);
             }
 
         }
@@ -428,8 +421,8 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         final String timestampClause = String.format("s.timestampMillis BETWEEN %d AND %d", startTimestampMillis, endTmestampMillis);
         return String.format("SELECT * FROM s3object[*] s WHERE %s %s %s",
                 timestampClause,
-                getMetadataQuerySql(metadataQuery, false),
-                getDimensionsQuerySql(dimensionsQuery, false)
+                getMetadataQuerySql(metadataQuery),
+                getDimensionsQuerySql(dimensionsQuery)
         );
     }
 
@@ -442,8 +435,8 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         return String.format("SELECT s.metadata.\"%s\" FROM s3object[*] s WHERE %s %s %s",
                 metadataKey,
                 timestampClause,
-                getMetadataQuerySql(metadataQuery, false),
-                getDimensionsQuerySql(dimensionsQuery, false)
+                getMetadataQuerySql(metadataQuery),
+                getDimensionsQuerySql(dimensionsQuery)
         );
     }
 
@@ -452,10 +445,18 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         final Set<String> prefixes = new HashSet<>();
         long start = startTimestampMillis;
         while (start <= endTimestampMillis) {
-            prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatter.format(start)));
-            start += TimeUnit.MINUTES.toMillis(1);
+            if (start + TimeUnit.DAYS.toMillis(1) <= endTimestampMillis) {
+                prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatterDay.format(start)));
+                start += TimeUnit.DAYS.toMillis(1);
+            } else if (start + TimeUnit.HOURS.toMillis(1) <= endTimestampMillis) {
+                prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatterHour.format(start)));
+                start += TimeUnit.HOURS.toMillis(1);
+            } else {
+                prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatterMin.format(start)));
+                start += TimeUnit.MINUTES.toMillis(1);
+            }
         }
-        prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatter.format(endTimestampMillis)));
+        prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatterMin.format(endTimestampMillis)));
         final Set<String> matchingKeys = new ConcurrentSkipListSet<>();
         final ExecutorService executor = Executors.newWorkStealingPool(64);
         final CompletionService<List<Event>> completionService = new ExecutorCompletionService<>(executor);
@@ -477,53 +478,13 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         return matchingKeys;
     }
 
-    // do full regex evaluation server side as s3 select only supports limited regex
-    private boolean matches(final Event event, final Map<String, Pattern> metadataPatterns) {
-        for (final Map.Entry<String, Pattern> metaRegex : metadataPatterns.entrySet()) {
-            final String metadataValue = event.getMetadata().get(metaRegex.getKey().substring(2));
-            if (metadataValue == null) {
-                return false;
-            }
-
-            final Matcher regex = metaRegex.getValue().matcher(metadataValue);
-            if (metaRegex.getKey().startsWith("_~") && !regex.matches()) {
-                return false;
-            } else if (metaRegex.getKey().startsWith("!~") && regex.matches()) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    // full regex is not supported by s3 select, so some evaluation must be done server side
-    private Map<String, Pattern> generateRegex(final Map<String, String> metadataQuery) {
-        final Map<String, Pattern> regexes = new HashMap<>();
-        for (final Map.Entry<String, String> entry : metadataQuery.entrySet()) {
-            try {
-                final String maybeRegex = entry.getValue();
-                // add prefix to key for easy differentiation later
-                if (maybeRegex.startsWith("~")) {
-                    final String fullRegex = maybeRegex.substring(1).replaceAll("(\\.?)\\*", ".*");
-                    regexes.put("_~" + entry.getKey(), Pattern.compile(fullRegex));
-                } else if (maybeRegex.startsWith("!~")) {
-                    final String fullRegex = maybeRegex.substring(2).replaceAll("(\\.?)\\*", ".*");
-                    regexes.put("!~" + entry.getKey(), Pattern.compile(fullRegex));
-                }
-            } catch (final PatternSyntaxException pse) {
-                //TODO: we could add logic to explicitly look for limit regex, but it's simpler to just let it fall into this exception
-                logger.warn("invalid regex pattern caught; will allow as limited regex may cause this exception", pse);
-            }
-        }
-        return regexes;
-    }
-
     // the metadata query object can contain these patterns:
     // '' (just a string): equals - 'user-id' => 'user-1'
     // '=': equals - 'user-id' => '=user-1'
     // '!=': not equals - 'user-id' => '!=user-1'
     // '~': limited regex like - 'user-id' => '~user-*'
-    // '!~': inverted limited  regex like - 'user-id' => '!~user-*'
-    private String getMetadataQuerySql(final Map<String, String> metadataQuery, final boolean invert) {
+    // '!~': inverted limited regex like - 'user-id' => '!~user-*'
+    private String getMetadataQuerySql(final Map<String, String> metadataQuery) {
         if (metadataQuery.isEmpty()) {
             return "";
         }
@@ -532,20 +493,26 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             final String metadataName = prefixMetadata(entry.getKey());
             final String query = entry.getValue();
             // s3 select only supports limited regex
-            if (query.startsWith("~") || query.startsWith("!~")) {
-                sql.append(" AND ").append(String.format(" %s LIKE %s", metadataName, quote("%")));
+            if (query.startsWith("~")) {
+                sql.append(" AND ").append(metadataName).append(" LIKE ").append(quote(regexToSql(query.substring(1))));
+            } else if (query.startsWith("!~")) {
+                sql.append(" AND ").append(metadataName).append(" NOT LIKE ").append(quote(regexToSql(query.substring(2))));
             } else if (query.startsWith("=")) {
-                final String operation = (invert) ? " != " : " = ";
-                sql.append(" AND ").append(metadataName).append(operation).append(quote(query.substring(1)));
+                sql.append(" AND ").append(metadataName).append("=").append(quote(query.substring(1)));
             } else if (query.startsWith("!=")) {
-                final String operation = (invert) ? " = " : " != ";
-                sql.append(" AND ").append(metadataName).append(operation).append(quote(query.substring(2)));
+                sql.append(" AND ").append(metadataName).append("!=").append(quote(query.substring(2)));
             } else {
-                final String operation = (invert) ? " != " : " = ";
-                sql.append(" AND ").append(metadataName).append(operation).append(quote(query));
+                sql.append(" AND ").append(metadataName).append("=").append(quote(query));
             }
         }
         return sql.toString();
+    }
+
+    private String regexToSql(final String regex) {
+        return regex
+                .replace(".*", "%")
+                .replace("_", "\\\\_")
+                ;
     }
 
     // the dimension query object can contain these patterns:
@@ -557,7 +524,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     // '>=': greater than or equals - 'cpu' => '>=90'
     // '<': less than - 'cpu' => '<90'
     // '<=': less than or equals - 'cpu' => '<=90'
-    private String getDimensionsQuerySql(final Map<String, String> dimensionsQuery, final boolean invert) {
+    private String getDimensionsQuerySql(final Map<String, String> dimensionsQuery) {
         if (dimensionsQuery.isEmpty()) {
             return "";
         }
@@ -573,26 +540,19 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                     .append(" AND ")
                     .append(Double.valueOf(query.substring(query.indexOf("..") + 2)));
             } else if (query.startsWith(">=")) {
-                final String operation = (invert) ? " < " : " >= ";
-                sql.append(" AND ").append(dimensionName).append(operation).append(query.substring(2));
+                sql.append(" AND ").append(dimensionName).append(">=").append(query.substring(2));
             } else if (query.startsWith("<=")) {
-                final String operation = (invert) ? " > " : " <= ";
-                sql.append(" AND ").append(dimensionName).append(operation).append(query.substring(2));
+                sql.append(" AND ").append(dimensionName).append("<=").append(query.substring(2));
             } else if (query.startsWith(">")) {
-                final String operation = (invert) ? " <= " : " > ";
-                sql.append(" AND ").append(dimensionName).append(operation).append(query.substring(1));
+                sql.append(" AND ").append(dimensionName).append(">").append(query.substring(1));
             } else if (query.startsWith("<")) {
-                final String operation = (invert) ? " >= " : " < ";
-                sql.append(" AND ").append(dimensionName).append(operation).append(query.substring(1));
+                sql.append(" AND ").append(dimensionName).append("<").append(query.substring(1));
             } else if (query.startsWith("!=")) {
-                final String operation = (invert) ? " = " : " != ";
-                sql.append(" AND ").append(dimensionName).append(operation).append(query.substring(2));
+                sql.append(" AND ").append(dimensionName).append("!=").append(query.substring(2));
             } else if (query.startsWith("=")) {
-                final String operation = (invert) ? " != " : " = ";
-                sql.append(" AND ").append(dimensionName).append(operation).append(query.substring(1));
+                sql.append(" AND ").append(dimensionName).append("=").append(query.substring(1));
             } else {
-                final String operation = (invert) ? " != " : " = ";
-                sql.append(" AND ").append(dimensionName).append(operation).append(query);
+                sql.append(" AND ").append(dimensionName).append("=").append(query);
             }
         }
         return sql.toString();
