@@ -186,8 +186,9 @@ public class EventsResource {
     })
     public Response dropNamespace(@Parameter(description = "Namespace identifier") @PathParam("namespace") final String namespace) throws IOException {
         logger.info("received request to drop namespace {}", namespace);
-        this.cantor.events().drop(namespace);
-        return Response.ok().build();
+        logger.warn("drop requests from http endpoint have been temporarily disabled");
+//        this.cantor.events().drop(namespace);
+        return Response.ok("drop requests from http endpoint have been temporarily disabled").build();
     }
 
     @DELETE
