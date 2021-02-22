@@ -97,7 +97,7 @@
         <connection>scm:git:git:github.com/salesforce/cantor.git</connection>
         <developerConnection>scm:git:git@github.com:salesforce/cantor.git</developerConnection>
         <url>https://github.com/salesforce/cantor</url>
-        <tag>v0.4.5</tag>
+        <tag>HEAD</tag>
     </scm>
 
     <modules>
