@@ -52,17 +52,20 @@ abstract class AbstractBaseLoggableNamespaceable<T extends Namespaceable> implem
                   final String namespace,
                   final Object... parameters) throws IOException {
         final long startNanos = System.nanoTime();
+        R result = null;
         try {
-            return callable.call();
+            result = callable.call();
+            return result;
         } catch (Exception e) {
             throw new IOException(e);
         } finally {
-            logger.info("'{}.{}('{}', {}); time spent: {}ms",
+            logger.info("'{}.{}('{}', {}); time spent: {}ms; bytes returned: {}",
                     getClass().getSimpleName(),
                     methodName,
                     namespace,
                     parameters,
-                    ((System.nanoTime() - startNanos) / 1_000_000)  // nanos to millis
+                    ((System.nanoTime() - startNanos) / 1_000_000),  // nanos to millis
+                    (result != null) ? result.toString().getBytes().length : -1
             );
         }
     }
