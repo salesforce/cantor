@@ -7,7 +7,7 @@
 
 package com.salesforce.cantor.grpc;
 
-import com.google.protobuf.ByteString;
+import com.salesforce.cantor.renamed.com.google.protobuf.ByteString;
 import com.salesforce.cantor.Events;
 import com.salesforce.cantor.grpc.events.*;
 import com.salesforce.cantor.grpc.events.EventsServiceGrpc.EventsServiceBlockingStub;

@@ -7,7 +7,7 @@
 
 package com.salesforce.cantor.grpc;
 
-import com.google.protobuf.ByteString;
+import com.salesforce.cantor.renamed.com.google.protobuf.ByteString;
 import com.salesforce.cantor.Objects;
 import com.salesforce.cantor.grpc.objects.*;
 import com.salesforce.cantor.grpc.objects.ObjectsServiceGrpc.ObjectsServiceBlockingStub;
