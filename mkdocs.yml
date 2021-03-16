@@ -14,7 +14,6 @@ theme:
 # Navigations
 nav:
   - "Introduction": "index.md"
-  - "Motivation": "motivation.md"
   - "Overview":
     - "Components": "components.md"
     - "Namespaces": "namespaces.md"
@@ -23,9 +22,9 @@ nav:
     - "Events": "events.md"
   - "Getting started":
     - "Embedded": "embedded.md"
-    - "MySQL implementation": "mysql.md"
-    - "H2 implementation": "h2.md"
-    - "Server": "server.md"
+    # - "MySQL implementation": "mysql.md"
+    # - "H2 implementation": "h2.md"
+    # - "Server": "server.md"
   - "License": "license.md"
 
 # Github repository
