@@ -29,7 +29,11 @@
     </properties>
 
     <dependencies>
-        <!--CANTOR GRPC PROTOS-->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-grpc-client-dependencies</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.salesforce.cantor</groupId>
             <artifactId>cantor-grpc-protos</artifactId>

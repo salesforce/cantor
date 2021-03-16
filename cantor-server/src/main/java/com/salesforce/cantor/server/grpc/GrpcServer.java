@@ -7,7 +7,7 @@
 
 package com.salesforce.cantor.server.grpc;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.salesforce.cantor.renamed.com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.grpc.EventsGrpcService;
 import com.salesforce.cantor.grpc.ObjectsGrpcService;
@@ -15,8 +15,8 @@ import com.salesforce.cantor.grpc.SetsGrpcService;
 import com.salesforce.cantor.server.CantorEnvironment;
 import com.salesforce.cantor.server.Constants;
 import com.salesforce.cantor.server.utils.CantorFactory;
-import io.grpc.Server;
-import io.grpc.ServerBuilder;
+import com.salesforce.cantor.renamed.io.grpc.Server;
+import com.salesforce.cantor.renamed.io.grpc.ServerBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

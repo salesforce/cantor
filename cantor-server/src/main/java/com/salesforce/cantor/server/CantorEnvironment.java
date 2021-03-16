@@ -7,7 +7,7 @@
 
 package com.salesforce.cantor.server;
 
-import com.google.common.base.Strings;
+import com.salesforce.cantor.renamed.com.google.common.base.Strings;
 import com.typesafe.config.Config;
 
 import java.util.Collections;
