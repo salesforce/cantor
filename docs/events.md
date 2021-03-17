@@ -2,53 +2,55 @@
 
 Cantor `Events` are multi-dimensional time-series data points; where each data point has a *timestamp* (in milliseconds) along with some arbitrary key/value pairs as *metadata* (where values are strings), some arbitrary key/value pairs as *dimensions* (where values are doubles), and optionally a byte array *payload* attached to an event.
 
-An event looks roughly like this:
+An event looks like this:
 ```json
 {
-    "timestampMillis": 0,
+    "timestampMillis": 1616011054775,
     "metadata": {
-        "additionalProp1": "string",
-        "additionalProp2": "string",
-        "additionalProp3": "string"
+        "metadataKey1": "a",
+        "metadataKey2": "b",
+        "metadataKey3": "c"
 	},
     "dimensions": {
-	    "additionalProp1": 0,
-	    "additionalProp2": 0,
-	    "additionalProp3": 0
+	    "dimensionsKey1": 0.1,
+	    "dimensionsKey2": 0.2,
+	    "dimensionsKey3": 0.3
 	},
     "payload": "QmFzZTY0IGVuY29kZWQ="
 }
 ```
 
-## Usage
 
-### HTTP API
+## HTTP API
 
 To make HTTP calls in local testing environment, use this base URL: [http://localhost:8084](http://localhost:8084).
 
-For convenience, you can use [Cantor Swagger UI](http://localhost:8084) linked on each of the API endpoints to compose the full custom URL for your API calls.
+For convenience, you can use [Cantor Swagger UI](http://localhost:8084), which comes with your local cantor instance, to compose the full custom URL for your API calls. Full URL to each API endpoint's Swagger UI page is linked on each endpoint below.
 
 Most of the API calls contain both *required* and *optional* parameters. Required parameters are shown as part of endpoint's path, while optional parameters, if existed, are given below.
 
-#### [GET /api/events](http://localhost:8084/#/Events%20Resource/getNamespaces_3)
+### [GET /api/events](http://localhost:8084/#/Events%20Resource/getNamespaces_3)
+
 Get all event namespaces.
 
 **Sample Code:**
+
 ```bash
 curl -X GET "http://localhost:8084/api/events" -H "accept: application/json"
 ```
-#### [GET /api/events/{namespace}](http://localhost:8084/#/Events%20Resource/getEvents_1)
-Get a list of events under a specific namespace.
+### [GET /api/events/{namespace}](http://localhost:8084/#/Events%20Resource/getEvents_1)
+
+Get all events under a specific namespace.
 
 **Optional Paramemter(s):**
 
 - `start`: `integer`
 
-    UTC format in milliseconds.
+    UNIX Time.
 
 - `end`: `integer`
 
-    UTC format in milliseconds.
+    UNIX Time.
 
 - `metadata_query`: `string array`
 
@@ -76,15 +78,15 @@ Get a list of events under a specific namespace.
 
 **Sample Code:**
 
-This mock API call returns a list of events under namespace `test-namespace` between starting timestamp `10` and ending timestamp `20`, where alll values for the metadata key `host` starts with `na4-` (`["host=~na4-\*"]`) and alll values for the dimension key `cpu` is larger than or equal to 0.3 (`["cpu>=0.3"]`).
+This mock API call returns a list of events under namespace `test-namespace` between starting timestamp `1616011054000` and ending timestamp `1616011055000`, where alll values for the metadata key `host` starts with `na4-` (`["host=~na4-\*"]`) and alll values for the dimension key `cpu` is larger than or equal to 0.3 (`["cpu>=0.3"]`).
 
 ```bash
-curl -X GET "http://localhost:8084/api/events/test-namespace?start=10&end=20&metadata_query=host%3D~na4-%2A&dimensions_query=cpu%3C%3D0.5&ascending=true" -H "accept: application/json"
+curl -X GET "http://localhost:8084/api/events/test-namespace?start=1616011054000&end=1616011055000&metadata_query=host%3D~na4-%2A&dimensions_query=cpu%3C%3D0.5&ascending=true" -H "accept: application/json"
 ```
 
-#### [GET /api/events/{namespace}/metadata/{metadata}](http://localhost:8084/#/Events%20Resource/getMetadata_1)
+### [GET /api/events/{namespace}/metadata/{metadata}](http://localhost:8084/#/Events%20Resource/getMetadata_1)
 
-Get all existing metadata values, given an event metadata key, under a specific event namespace.
+Get all existing metadata values, for an event metadata key, under a specific event namespace.
 
 **Optional Paramemter(s):**
 
@@ -110,13 +112,28 @@ Get all existing metadata values, given an event metadata key, under a specific 
 
 **Sample Code:**
 
-This mock API call returns all possible metadata values for the metadata key `mkey` under namespace `test-namespace`, between starting timestamp `100` and ending timestamp `200`, with the metadata query `["host=~\*-search"]` and dimensions query `["heap<8000"]`.
+This mock API call returns all possible metadata values for the metadata key `os` under namespace `test-namespace`, between starting timestamp `1616011054000` and ending timestamp `1616011055000`, with the metadata query `["host=~\*-search"]` and dimensions query `["mem<0.8"]`.
 
 ```bash
-curl -X GET "http://localhost:8084/api/events/test-namespace/metadata/mkey?start=100&end=200&metadata_query=host%3D~%2A-search&dimensions_query=heap%3C8000" -H "accept: application/json"
+curl -X GET "http://localhost:8084/api/events/test-namespace/metadata/os?start=1616011054000&end=1616011055000&metadata_query=host%3D~%2A-search&dimensions_query=mem%3C0.8" -H "accept: application/json"
 ```
+### [POST ​/api​/events​/{namespace}](http://localhost:8084/#/Events%20Resource/storeMultipleEvents_1)
 
-### Java client
+Add events under an event namespace.
+
+### [PUT /api​/events​/{namespace}](http://localhost:8084/#/Events%20Resource/createNamespace_2)
+
+Create an event namespace.
+
+### [DELETE ​/api​/events​/{namespace}](http://localhost:8084/#/Events%20Resource/dropNamespace_2)
+
+Does nothing; temporarily disabled.
+
+### [DELETE /api​/events​/expire​/{namespace}​/{endTimestampMillis}](http://localhost:8084/#/Events%20Resource/expire_1)
+
+Expire old events.
+
+## Java client
 
 **Sample Code:**
 ```java
@@ -137,7 +154,7 @@ dimensionsQuery.put("zero", ">=0.0")  // query for events where the value for di
 cantor.events().get(namespace, timestamp - 1, timestamp + 1, dimensionsQuery, null)
 ```
 
-### gRPC client
+## gRPC client
 
 ## Use Case
 
