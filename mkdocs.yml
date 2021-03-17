@@ -15,11 +15,12 @@ theme:
 nav:
   - "Introduction": "index.md"
   - "Overview":
+    - "Motivations": "motivations.md"
     - "Components": "components.md"
     - "Namespaces": "namespaces.md"
+    - "Events": "events.md"
     - "Objects": "objects.md"
     - "Sets": "sets.md"
-    - "Events": "events.md"
   - "Getting started":
     - "Embedded": "embedded.md"
     # - "MySQL implementation": "mysql.md"

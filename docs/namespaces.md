@@ -1,1 +1,3 @@
-# Namespaces
+There are four main interfaces exposed for users to interact with: the `Events` interface for timeseries data; the `Objects` interface for key/value pairs; the `Sets` interface for persisted sorted sets.
+
+All methods expect a `namespace` parameter which can be used to slice data into multiple physically separate databases. A `namespace` must be first created by making a call to the `create(namespace)` method. It is also possible to drop the whole namespace by calling `drop(namespace)` after which point any call to that namespace will result in IOException.
