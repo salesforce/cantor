@@ -25,9 +25,9 @@ An event looks like this:
 
 To make HTTP calls in local testing environment, use this base URL: [http://localhost:8084](http://localhost:8084).
 
-For convenience, you can use [Cantor Swagger UI](http://localhost:8084), which comes with your local cantor instance, to compose the full custom URL for your API calls. Full URL to each API endpoint's Swagger UI page is linked on each endpoint below.
+For convenience, you can use [Cantor Swagger UI](http://localhost:8084), which comes with your local cantor instance, to compose the full custom URL for your API calls. Full URL to each API endpoint's Swagger UI page is linked on each endpoint below. Remember to spin up your local cantor instance before you click on any API endpoint link.
 
-Most of the API calls contain both *required* and *optional* parameters. Required parameters are shown as part of endpoint's path, while optional parameters, if existed, are given below.
+Most of the `Events` API endpoints need required and/or optional URL parameters. Required URL parameters are shown as part of endpoint's path, while optional URL parameters, if existed, are given below. Only one endpoint (i.e. `POST ​/api​/events​/{namespace}`) needs data parameters.
 
 ### [GET /api/events](http://localhost:8084/#/Events%20Resource/getNamespaces_3)
 
@@ -42,7 +42,7 @@ curl -X GET "http://localhost:8084/api/events" -H "accept: application/json"
 
 Get all events under a specific namespace.
 
-**Optional Paramemter(s):**
+**Optional URL Paramemter(s):**
 
 - `start`: `integer`
 
@@ -88,7 +88,7 @@ curl -X GET "http://localhost:8084/api/events/test-namespace?start=1616011054000
 
 Get all existing metadata values, for an event metadata key, under a specific event namespace.
 
-**Optional Paramemter(s):**
+**Optional URL Paramemter(s):**
 
 - `start`: `integer`
 
@@ -119,19 +119,83 @@ curl -X GET "http://localhost:8084/api/events/test-namespace/metadata/os?start=1
 ```
 ### [POST ​/api​/events​/{namespace}](http://localhost:8084/#/Events%20Resource/storeMultipleEvents_1)
 
-Add events under an event namespace.
+Add event(s) under an event namespace.
+
+**Data Paramemter(s):**
+
+Include events to be added, e.g.
+
+```json
+[
+    {
+        "timestampMillis": 1616011054774,
+        "metadata": {
+            "metadataKey1": "a"
+        },
+        "payload": "QmFzZTY0IGVuY29kZWQ="
+    },
+    {
+        "timestampMillis": 1616011054775,
+        "dimensions": {
+            "dimensionsKey2": 0.5
+        }
+    },
+    {
+        "timestampMillis": 1616011054776,
+        "metadata": {
+            "metadataKey3": "a"
+        },
+        "dimensions": {
+            "dimensionsKey1": 0.1,
+            "dimensionsKey3": 0.18
+        }
+    }
+]
+```
+
+**Sample Code:**
+
+This mock API call stores an event (schema defined under Definition on this page) under the event namespace `test-namespace`.
+
+```bash
+curl -X POST "http://localhost:8084/api/events/test-namespace" -H "accept: */*" -H "Content-Type: application/json" -d "[{\"timestampMillis\":1616011054774,\"metadata\":{\"metadataKey1\":\"a\"},\"payload\":\"QmFzZTY0IGVuY29kZWQ=\"},{\"timestampMillis\":1616011054775,\"dimensions\":{\"dimensionsKey2\":0.5}},{\"timestampMillis\":1616011054776,\"metadata\":{\"metadataKey3\":\"a\"},\"dimensions\":{\"dimensionsKey1\":0.1,\"dimensionsKey3\":0.18}}]"
+```
 
 ### [PUT /api​/events​/{namespace}](http://localhost:8084/#/Events%20Resource/createNamespace_2)
 
 Create an event namespace.
 
+**Sample Code:**
+
+This mock API call adds the event namespace `test-namespace`.
+
+```bash
+curl -X PUT "http://localhost:8084/api/events/test-namespace" -H "accept: */*"
+```
+
 ### [DELETE ​/api​/events​/{namespace}](http://localhost:8084/#/Events%20Resource/dropNamespace_2)
 
-Does nothing; temporarily disabled.
+Drop an event namespace.
+
+**Sample Code:**
+
+This mock API call drops the event namespace `test-namespace`.
+
+```bash
+curl -X DELETE "http://localhost:8084/api/events/test-namespace" -H "accept: */*"
+```
 
 ### [DELETE /api​/events​/expire​/{namespace}​/{endTimestampMillis}](http://localhost:8084/#/Events%20Resource/expire_1)
 
-Expire old events.
+Expire old events under a specific event namespace.
+
+**Sample Code:**
+
+This mock API call sets all events under the event namespace `test-namespace` to expire after UNIX time `1616020000`, which is March 17, 2021, at 8:43pm in UTC.
+
+```bash
+curl -X DELETE "http://localhost:8084/api/events/expire/test-namespace/1616020000" -H "accept: */*"
+```
 
 ## Java client
 
