@@ -3,6 +3,7 @@
 Cantor `Events` are multi-dimensional time-series data points; where each data point has a *timestamp* (in milliseconds) along with some arbitrary key/value pairs as *metadata* (where values are strings), some arbitrary key/value pairs as *dimensions* (where values are doubles), and optionally a byte array *payload* attached to an event.
 
 An event looks like this:
+
 ```json
 {
     "timestampMillis": 1616011054775,
@@ -19,7 +20,6 @@ An event looks like this:
     "payload": "QmFzZTY0IGVuY29kZWQ="
 }
 ```
-
 
 ## HTTP API
 
@@ -38,6 +38,7 @@ Get all event namespaces.
 ```bash
 curl -X GET "http://localhost:8084/api/events" -H "accept: application/json"
 ```
+
 ### [GET /api/events/{namespace}](http://localhost:8084/#/Events%20Resource/getEvents_1)
 
 Get all events under a specific namespace.
@@ -117,6 +118,7 @@ This mock API call returns all possible metadata values for the metadata key `os
 ```bash
 curl -X GET "http://localhost:8084/api/events/test-namespace/metadata/os?start=1616011054000&end=1616011055000&metadata_query=host%3D~%2A-search&dimensions_query=mem%3C0.8" -H "accept: application/json"
 ```
+
 ### [POST ​/api​/events​/{namespace}](http://localhost:8084/#/Events%20Resource/storeMultipleEvents_1)
 
 Add event(s) under an event namespace.
@@ -197,28 +199,145 @@ This mock API call sets all events under the event namespace `test-namespace` to
 curl -X DELETE "http://localhost:8084/api/events/expire/test-namespace/1616020000" -H "accept: */*"
 ```
 
-## Java client
+## Java gRPC API
+
+### [namespaces()]((https://github.com/salesforce/cantor/blob/master/cantor-grpc-client/src/main/java/com/salesforce/cantor/grpc/EventsOnGrpc.java#L27-L33))
+
+Get all event namespaces.
+
+**Method Signature:** `Collection<String> namespaces() throws IOException`
 
 **Sample Code:**
-```java
-Cantor cantor = ...  // initialize an instance of Cantor
-String namespace = ...  // choose a namespace
-long timestamp = ...  // timestamp of the event
-Map<String, Double> dimensions = ...  // map of string to double for dimensions
-dimensions.put("zero", 0.0)  // add values
-Map<String, String> metadata = ...  // map of string to string for metadata
-metadata.put("key", "value")  // add values
-byte[] payload = ...  // byte array as the payload of the event
 
-cantor.events().create(namespace)  // create the namespace
-cantor.events().store(namespace, timestamp, metadata, dimensions, payload)
-// ...
-Map<String, String> dimensionsQuery = ...  // dimension query object
-dimensionsQuery.put("zero", ">=0.0")  // query for events where the value for dimension "zero" is greater than or equal to 0
-cantor.events().get(namespace, timestamp - 1, timestamp + 1, dimensionsQuery, null)
+```java
+import com.salesforce.cantor.grpc.CantorOnGrpc;
+import java.io.IOException;
+​
+class Scratch {
+    public static void main(String[] args) throws IOException {
+        CantorOnGrpc cantor = new CantorOnGrpc("localhost:7443");
+        cantor.events().namespace();
+    }
+}
 ```
 
-## gRPC client
+### [create()](https://github.com/salesforce/cantor/blob/master/cantor-grpc-client/src/main/java/com/salesforce/cantor/grpc/EventsOnGrpc.java#L35-L45)
+
+Create an event namespace.
+
+**Method Signature:** `void create(final String namespace) throws IOException`
+
+**Sample Code:**
+
+This following code creates an event namespace `dev-namespace`.
+
+```java
+import com.salesforce.cantor.grpc.CantorOnGrpc;
+import java.io.IOException;
+​
+class Scratch {
+    public static void main(String[] args) throws IOException {
+        CantorOnGrpc cantor = new CantorOnGrpc("localhost:7443");
+        cantor.events().create("dev-namespace");
+    }
+}
+```
+
+### [store()](https://github.com/salesforce/cantor/blob/master/cantor-grpc-client/src/main/java/com/salesforce/cantor/grpc/EventsOnGrpc.java#L59-L80)
+
+Add event(s) under an event namespace.
+
+**Method Signature:** `void store(final String namespace, final Collection<Event> batch) throws IOException`
+
+**Sample Code:**
+
+- TODO: add and explain the various store() methods
+
+```java
+import com.salesforce.cantor.grpc.CantorOnGrpc;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+​
+class Scratch {
+    public static void main(String[] args) throws IOException {
+        CantorOnGrpc cantor = new CantorOnGrpc("localhost:7443");
+        // remember to create the event namespace first
+        cantor.events().store("dev-namespace", System.currentTimeMillis(), Collections.singletonMap("test-meta", "testing"), null, "Hello!".getBytes(StandardCharsets.UTF_8));
+    }
+}
+```
+
+### [get()](https://github.com/salesforce/cantor/blob/master/cantor-grpc-client/src/main/java/com/salesforce/cantor/grpc/EventsOnGrpc.java#L82-L119)
+
+Get all events under a specific namespace.
+
+**Method Signature:**
+```java
+List<Event> get(final String namespace,
+                final long startTimestampMillis,
+                final long endTimestampMillis,
+                final Map<String, String> metadataQuery,
+                final Map<String, String> dimensionsQuery,
+                final boolean includePayloads,
+                final boolean ascending,
+                final int limit) throws IOException
+```
+
+**Sample Code:**
+
+```java
+import com.salesforce.cantor.grpc.CantorOnGrpc;
+​import java.io.IOException;
+
+class Scratch {
+    public static void main(String[] args) throws IOException {
+        CantorOnGrpc cantor = new CantorOnGrpc("localhost:7443");
+        System.out.println(cantor.events().get("dev-namespace", System.currentTimeMillis() - 60000, System.currentTimeMillis(), false));
+    }
+}
+```
+
+### [drop()](https://github.com/salesforce/cantor/blob/master/cantor-grpc-client/src/main/java/com/salesforce/cantor/grpc/EventsOnGrpc.java#L47-L57)
+
+Drop an event namespace.
+
+**Method Signature:** `void drop(final String namespace) throws IOException`
+
+**Sample Code:**
+
+```java
+import com.salesforce.cantor.grpc.CantorOnGrpc;
+import java.io.IOException;​
+
+class Scratch {
+    public static void main(String[] args) throws IOException {
+        CantorOnGrpc cantor = new CantorOnGrpc("localhost:7443");
+        cantor.events().drop("dev-namespace");
+    }
+}
+```
+### Code Snippet
+
+This is a code snippet that sums up all methods mentioned above:
+
+```java
+import com.salesforce.cantor.grpc.CantorOnGrpc;
+​
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+​
+class Scratch {
+    public static void main(String[] args) throws IOException {
+        CantorOnGrpc cantor = new CantorOnGrpc("localhost:7443");
+        cantor.events().create("dev-namespace");
+        cantor.events().store("dev-namespace", System.currentTimeMillis(), Collections.singletonMap("test-meta", "testing"), null, "Hello!".getBytes(StandardCharsets.UTF_8));
+        System.out.println(cantor.events().get("dev-namespace", System.currentTimeMillis() - 60000, System.currentTimeMillis(), false));
+        cantor.events().drop("dev-namespace");
+    }
+}
+```
 
 ## Use Case
 
