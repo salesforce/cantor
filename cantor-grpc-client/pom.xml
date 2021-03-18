@@ -30,10 +30,10 @@
     </properties>
 
     <dependencies>
-        <!--SHADED DEPENDENCIES-->
+        <!--SHADED GRPC DEPENDENCIES-->
         <dependency>
             <groupId>com.salesforce.cantor</groupId>
-            <artifactId>cantor-grpc-client-dependencies</artifactId>
+            <artifactId>cantor-grpc-dependencies</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!--TEST SCOPE-->

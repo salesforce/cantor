@@ -11,9 +11,9 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>cantor-grpc-client-dependencies</artifactId>
+    <artifactId>cantor-grpc-dependencies</artifactId>
     <packaging>jar</packaging>
-    <name>cantor-grpc-client-dependencies</name>
+    <name>cantor-grpc-dependencies</name>
 
     <description>Cantor gRPC client shaded dependencies</description>
 

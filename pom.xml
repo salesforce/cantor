@@ -106,7 +106,7 @@
         <module>cantor-jdbc</module>
         <module>cantor-functions</module>
         <module>cantor-grpc-protos</module>
-        <module>cantor-grpc-client-dependencies</module>
+        <module>cantor-grpc-dependencies</module>
         <module>cantor-grpc-client</module>
         <module>cantor-grpc-service</module>
         <module>cantor-http-service</module>
@@ -150,7 +150,7 @@
             </dependency>
             <dependency>
                 <groupId>com.salesforce.cantor</groupId>
-                <artifactId>cantor-grpc-client-dependencies</artifactId>
+                <artifactId>cantor-grpc-dependencies</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
