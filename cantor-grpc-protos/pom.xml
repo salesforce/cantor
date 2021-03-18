@@ -41,16 +41,11 @@
             <artifactId>cantor-common</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <!--GRPC-->
+        <!--SHADE GRPC DEPENDENCIES-->
         <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-protobuf</artifactId>
-            <version>${grpc.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-stub</artifactId>
-            <version>${grpc.version}</version>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-grpc-dependencies</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <!--TEST SCOPE-->

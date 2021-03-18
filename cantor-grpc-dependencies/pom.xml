@@ -30,21 +30,22 @@
     </properties>
 
     <dependencies>
-        <!--CANTOR BASE-->
-        <dependency>
-            <groupId>com.salesforce.cantor</groupId>
-            <artifactId>cantor-grpc-protos</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <!--GRPC-->
+        <!--REQUIRED BY CANTOR-GRPC-CLIENT-->
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-netty-shaded</artifactId>
             <version>${grpc.version}</version>
         </dependency>
+        <!--REQUIRED BY CANTOR-GRPC-CLIENT, CANTOR-PROTOS-->
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-protobuf</artifactId>
+            <version>${grpc.version}</version>
+        </dependency>
+        <!--REQUIRED BY CANTOR-GRPC-CLIENT, CANTOR-PROTOS-->
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-stub</artifactId>
             <version>${grpc.version}</version>
         </dependency>
     </dependencies>
