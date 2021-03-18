@@ -70,8 +70,12 @@
                                     <shadedPattern>com.salesforce.cantor.renamed.io.grpc</shadedPattern>
                                 </relocation>
                                 <relocation>
-                                    <pattern>com.google</pattern>
-                                    <shadedPattern>com.salesforce.cantor.renamed.com.google</shadedPattern>
+                                    <pattern>com.google.protobuf</pattern>
+                                    <shadedPattern>com.salesforce.cantor.renamed.com.google.protobuf</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.google.common</pattern>
+                                    <shadedPattern>com.salesforce.cantor.renamed.com.google.common</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>
