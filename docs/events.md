@@ -221,7 +221,7 @@ import java.io.IOException;
 class Scratch {
     public static void main(String[] args) throws IOException {
         CantorOnGrpc cantor = new CantorOnGrpc("localhost:7443");
-        cantor.events().namespace();
+        System.out.println(cantor.events().namespace());
     }
 }
 ```
@@ -298,7 +298,7 @@ class Scratch {
 
 Get all events under a specific namespace.
 
-**Possible Argument(s):**
+**Argument(s):**
 
 - `startTimestampMillis`: Start timestamp in UNIX time.
 

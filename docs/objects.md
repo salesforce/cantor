@@ -124,6 +124,114 @@ curl -X DELETE "http://localhost:8084/api/objects/dev/key1" -H "accept: applicat
 
 ## Java gRPC API
 
+### namespaces()
+
+Get all object namespaces.
+
+**Method Signature(s):** 
+
+- `Collection<String> namespaces() throws IOException`
+
+**Sample Code:**
+
+```java
+import com.salesforce.cantor.grpc.CantorOnGrpc;
+import java.io.IOException;
+​
+class Scratch {
+    public static void main(String[] args) throws IOException {
+        CantorOnGrpc cantor = new CantorOnGrpc("localhost:7443");
+        System.out.println(cantor.objects().namespace());
+    }
+}
+```
+
+### create()
+
+Create an object namespace.
+
+**Method Signature(s):**
+
+- `void create(String namespace) throws IOException`
+
+**Sample Code:**
+
+This following code creates an object namespace `dev`.
+
+```java
+import com.salesforce.cantor.grpc.CantorOnGrpc;
+import java.io.IOException;
+​
+class Scratch {
+    public static void main(String[] args) throws IOException {
+        CantorOnGrpc cantor = new CantorOnGrpc("localhost:7443");
+        cantor.objects().create("dev");
+    }
+}
+```
+
+### drop()
+
+Drop an object namespace.
+
+**Method Signature(s):** 
+
+- `void drop(String namespace) throws IOException`
+
+**Sample Code:**
+
+This following code drops an object namespace `dev`.
+
+```java
+import com.salesforce.cantor.grpc.CantorOnGrpc;
+import java.io.IOException;​
+
+class Scratch {
+    public static void main(String[] args) throws IOException {
+        CantorOnGrpc cantor = new CantorOnGrpc("localhost:7443");
+        cantor.objects().drop("dev");
+    }
+}
+```
+
+### keys()
+
+Returns paginated list of key entries in a namespace; the returned list is not ordered.
+
+**Argument(s):**
+
+- `start`: Start offset.
+
+- `count`: Maximum number of key entries to return; -1 for infinite entries.
+
+**Method Signature(s):** 
+
+- `Collection<String> keys(String namespace, int start, int count) throws IOException`
+
+**Sample Code:**
+
+This following code prints the first 20 object keys under the namespace `dev`.
+
+```java
+import com.salesforce.cantor.grpc.CantorOnGrpc;
+import java.io.IOException;
+​
+class Scratch {
+    public static void main(String[] args) throws IOException {
+        CantorOnGrpc cantor = new CantorOnGrpc("localhost:7443");
+        System.out.println(cantor.objects().keys("dev", 0, 20));
+    }
+}
+```
+
+### store()
+
+### get()
+
+### delete()
+
+### size()
+
 Here is an example of how to use *Objects* in Java:
 
 ```java
