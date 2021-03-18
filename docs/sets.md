@@ -1,10 +1,21 @@
 ## Definition
 
-The `Sets` interface defines a series of actions surrounding sorted sets. Each set is identified with a unique string as the set name, and a number of entries, each associated with a numerical value as the weight of the entry. Functions on sets allow users to create and drop namespaces, as well as slice and paginate sets based on the weight of the entries.
+The `Sets` interface defines a series of actions surrounding sorted sets of strings. Each set is identified with a unique string as the set name, and a number of string entries, each associated with a numerical value as the weight of the entry. Functions on sets allow users to create and drop namespaces, as well as slice and paginate sets based on the weight of the entries.
 
-## Usage
+A set looks like this:
+```json
+{
+	"set1": {
+		"entry1": 0.73,
+		"entry2": 0.16,
+		"entry3": 0.45
+	}
+}
+```
 
+## HTTP API
 
+## Java gRPC API
 
 ## Use case
 

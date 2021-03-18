@@ -1,8 +1,8 @@
 ## Definition
 
-The `Objects` interface defines key/value pairs, where keys are unique strings and the values are arbitrary byte arrays.
+The `Objects` interface defines key/value pairs. An object has a key, which is a unique string in the namespace, and a value, which is arbitrary byte arrays.
 
-An `Object` looks like this:
+An object looks like this:
 
 ```json
 {

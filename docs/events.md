@@ -2,7 +2,7 @@
 
 Cantor `Events` are multi-dimensional time-series data points; where each data point has a *timestamp* (in milliseconds) along with some arbitrary key/value pairs as *metadata* (where values are strings), some arbitrary key/value pairs as *dimensions* (where values are doubles), and optionally a byte array *payload* attached to an event.
 
-An `Event` looks like this:
+An event looks like this:
 
 ```json
 {
