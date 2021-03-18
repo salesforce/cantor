@@ -92,7 +92,7 @@ Add or overwrite an object in a namespace.
 
 **Sample Code:**
 
-This HTTP call adds or overwrite the object with key `key1` under namespace `dev` with the value `QmFzZTY0IGVuY29kZWQ=`.
+This HTTP call adds or overwrite the object with key `obj1` under namespace `dev` with the value `QmFzZTY0IGVuY29kZWQ=`.
 
 ```bash
 curl -X PUT "http://localhost:8084/api/objects/dev/key1" -H "accept: */*" -H "Content-Type: text/plain" -d "[\"QmFzZTY0IGVuY29kZWQ=\"]"
@@ -124,7 +124,7 @@ curl -X DELETE "http://localhost:8084/api/objects/dev/key1" -H "accept: applicat
 
 ## Java gRPC API
 
-### namespaces()
+### **namespaces()**
 
 Get all object namespaces.
 
@@ -146,7 +146,7 @@ class Scratch {
 }
 ```
 
-### create()
+### **create()**
 
 Create an object namespace.
 
@@ -156,7 +156,7 @@ Create an object namespace.
 
 **Sample Code:**
 
-This following code creates an object namespace `dev`.
+The following code creates an object namespace `dev`.
 
 ```java
 import com.salesforce.cantor.grpc.CantorOnGrpc;
@@ -170,7 +170,7 @@ class Scratch {
 }
 ```
 
-### drop()
+### **drop()**
 
 Drop an object namespace.
 
@@ -180,7 +180,7 @@ Drop an object namespace.
 
 **Sample Code:**
 
-This following code drops an object namespace `dev`.
+The following code drops an object namespace `dev`.
 
 ```java
 import com.salesforce.cantor.grpc.CantorOnGrpc;
@@ -194,7 +194,7 @@ class Scratch {
 }
 ```
 
-### keys()
+### **keys()**
 
 Returns paginated list of key entries in a namespace; the returned list is not ordered.
 
@@ -210,7 +210,7 @@ Returns paginated list of key entries in a namespace; the returned list is not o
 
 **Sample Code:**
 
-This following code prints the first 20 object keys under the namespace `dev`.
+The following code prints the first 20 object keys under the namespace `dev`.
 
 ```java
 import com.salesforce.cantor.grpc.CantorOnGrpc;
@@ -224,28 +224,110 @@ class Scratch {
 }
 ```
 
-### store()
+### **store()**
 
-### get()
+Add or overwrite an object in a namespace.
 
-### delete()
+**Method Signature(s):**
 
-### size()
+For storing a single object:
 
-Here is an example of how to use *Objects* in Java:
+- `void store(String namespace, String key, byte[] bytes) throws IOException`
+
+For storing multiple objects:
+
+- `void store(String namespace, Map<String, byte[]> batch) throws IOException`
+
+**Sample Code:**
+
+The following code adds or overwrite the object with key `obj1` under namespace `dev` with the byte array derived from string `object data`.
 
 ```java
-Cantor cantor = ...  // initialize an instance of Cantor
-String namespace = ...  // choose a namespace
-String key = ...  // key to lookup value later on
-byte[] value = ...  // the byte array to be stored
-
-cantor.objects().create(namespace)  // create the namespace 
-cantor.objects().store(namespace, key, value)  // store the key/value pair in the namespace
-// ...
-byte[] retured = cantor.objects().get(namespace, key)  // retrieve the object 
-cantor.objects().delete(namespace, key)  // remove the object 
+import com.salesforce.cantor.grpc.CantorOnGrpc;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+​
+class Scratch {
+    public static void main(String[] args) throws IOException {
+        CantorOnGrpc cantor = new CantorOnGrpc("localhost:7443");
+        cantor.objects.store("dev", Collections.singletonMap("obj1", "object data".getBytes(StandardCharsets.UTF_8)));
+    }
+}
 ```
+
+### **get()**
+
+Get an object's content by its key.
+
+**Method Signature(s):**
+
+- `byte[] get(String namespace, String key) throws IOException` Returns bytes associated to the given key.
+
+- `Map<String, byte[]> get(String namespace, Collection<String> keys) throws IOException` Returns batch of key/values for the list of key entries.
+
+**Sample Code:**
+
+The following code retrieve the content of object with key`obj1` under namespace `dev`.
+
+```java
+import com.salesforce.cantor.grpc.CantorOnGrpc;
+import java.io.IOException;
+​
+class Scratch {
+    public static void main(String[] args) throws IOException {
+        CantorOnGrpc cantor = new CantorOnGrpc("localhost:7443");
+        System.out.println(cantor.objects.get("dev", "obj1"));
+    }
+}
+```
+
+### **delete()**
+
+Delete object(s) by key(s).
+
+**Method Signature(s):**
+
+- `boolean delete(String namespace, String key) throws IOException` Delete the object; return true if object was found and removed successfully, false otherwise.
+
+- `void delete(String namespace, Collection<String> keys) throws IOException` Delete batch of objects.
+
+**Sample Code:**
+
+```java
+import com.salesforce.cantor.grpc.CantorOnGrpc;
+import java.io.IOException;
+​
+class Scratch {
+    public static void main(String[] args) throws IOException {
+        CantorOnGrpc cantor = new CantorOnGrpc("localhost:7443");
+        System.out.println(cantor.objects.delete("dev", "obj1"));
+    }
+}
+```
+
+### **size()**
+
+Returns number of key/value pairs in the given namespace.
+
+**Method Signature(s):**
+
+- `int size(String namespace) throws IOException`
+
+**Sample Code:**
+
+```java
+import com.salesforce.cantor.grpc.CantorOnGrpc;
+import java.io.IOException;
+​
+class Scratch {
+    public static void main(String[] args) throws IOException {
+        CantorOnGrpc cantor = new CantorOnGrpc("localhost:7443");
+        System.out.println(cantor.objects.size("dev"));
+    }
+}
+```
+
 ## Use Case
 
 Use cases for the objects are effectively endless, storing key/value pairs is extremely common. Since values are arbitrary byte arrays, any content can be stored and retrieved using objects. Combining objects and sets can provide a large amount of utility, without spending a lot of time writing storage code. For example, create a set for the script name “email_admins.sh” with entries for each version, then store the script versions in objects.
