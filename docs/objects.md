@@ -20,7 +20,7 @@ Most of the `Objects` API endpoints need required and/or optional URL parameters
 
 ### [GET /api/objects](http://localhost:8084/#/Objects%20Resource/getNamespaces_1)
 
-Get all objects namespaces.
+Get all object namespaces.
 
 **Sample Code:**
 
