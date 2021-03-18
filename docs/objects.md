@@ -6,7 +6,7 @@ An `Object` looks like this:
 
 ```json
 {
-	"key1": "QmFzZTY0IGVuY29kZWQ="
+	"obj1": "QmFzZTY0IGVuY29kZWQ="
 }
 ```
 
@@ -95,7 +95,7 @@ Add or overwrite an object in a namespace.
 This HTTP call adds or overwrite the object with key `obj1` under namespace `dev` with the value `QmFzZTY0IGVuY29kZWQ=`.
 
 ```bash
-curl -X PUT "http://localhost:8084/api/objects/dev/key1" -H "accept: */*" -H "Content-Type: text/plain" -d "[\"QmFzZTY0IGVuY29kZWQ=\"]"
+curl -X PUT "http://localhost:8084/api/objects/dev/obj1" -H "accept: */*" -H "Content-Type: text/plain" -d "[\"QmFzZTY0IGVuY29kZWQ=\"]"
 ```
 
 ### [DELETE ​/api​/objects​/{namespace}](http://localhost:8084/#/Objects%20Resource/drop_1)
@@ -116,10 +116,10 @@ Delete an object by its key.
 
 **Sample Code:**
 
-This HTTP call deletes the object with key `key1` under the namespace `dev`.
+This HTTP call deletes the object with key `obj1` under the namespace `dev`.
 
 ```bash
-curl -X DELETE "http://localhost:8084/api/objects/dev/key1" -H "accept: application/json"
+curl -X DELETE "http://localhost:8084/api/objects/dev/obj1" -H "accept: application/json"
 ```
 
 ## Java gRPC API
