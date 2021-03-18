@@ -7,7 +7,7 @@
 
 package com.salesforce.cantor.server.utils;
 
-import com.salesforce.cantor.renamed.com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.salesforce.cantor.Cantor;
 import com.salesforce.cantor.h2.CantorOnH2;
 import com.salesforce.cantor.h2.H2DataSourceProperties;
