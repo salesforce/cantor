@@ -14,7 +14,7 @@
     
     
       
-        <title>H2 Implementation - Cantor</title>
+        <title>Motivations - Cantor</title>
       
     
     
@@ -61,11 +61,6 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
-        
-        <a href="#h2-implementation" class="md-skip">
-          Skip to content
-        </a>
-      
     </div>
     <div data-md-component="announce">
       
@@ -91,7 +86,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              H2 Implementation
+              Motivations
             
           </span>
         </div>
@@ -210,12 +205,14 @@
 
   
   
+    
+  
   
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
       
-        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_2" type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_2" type="checkbox" id="__nav_2" checked>
       
       <label class="md-nav__link" for="__nav_2">
         Overview
@@ -231,11 +228,18 @@
             
   
   
+    
   
-    <li class="md-nav__item">
-      <a href="../motivations/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         Motivations
       </a>
+      
     </li>
   
 
@@ -370,33 +374,32 @@
               </div>
             
             
-              
-              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
-                <div class="md-sidebar__scrollwrap">
-                  <div class="md-sidebar__inner">
-                    
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-    
-  
-  
-</nav>
-                  </div>
-                </div>
-              </div>
-            
           
           <div class="md-content" data-md-component="content">
             <article class="md-content__inner md-typeset">
               
                 
-                  <a href="https://github.com/salesforce/cantor/edit/master/docs/h2.md" title="Edit this page" class="md-content__button md-icon">
+                  <a href="https://github.com/salesforce/cantor/edit/master/docs/motivations.md" title="Edit this page" class="md-content__button md-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z"/></svg>
                   </a>
                 
                 
-                <h1 id="h2-implementation">H2 Implementation</h1>
+                  <h1>Motivations</h1>
+                
+                <p>Majority of applications require some form of persistence. The data access object layer implementation usually accounts for a considerable portion of the code in these applications. This layer usually contains code to initalize and connect to some storage system; a mapping to/from the layout of the data in storage and the corresponding representation in the application; and also, composing and executing queries against the storage, handling edge cases, handling exceptions, etc. This is where Cantor can help to reduce the code and its complexity.</p>
+<p>Some of the commonly used patterns to access data are:</p>
+<ul>
+<li>
+<p>Store and retrieve single objects; for example, storing user informations. The data stored is usually relatively small, it can be a JSON object, or a serialized protobuf object, or any other form of data that can be converted to a byte array. Key/value storages such as BerkeleyDB or Redis are usually used for this purpose.</p>
+</li>
+<li>
+<p>Store and retrieve collections of data; for example, list of users in a certain group. Relational databases or indexing engines are usually used for this purpose.</p>
+</li>
+<li>
+<p>Store and retireve temporal data points; for example, metric values, or IoT events. Time-series databases such as Elastic Search, InfluxDB, OpenTSDB, or Prometheus are used for this purpose.</p>
+</li>
+</ul>
+<p>Cantor tries to provide a set of simple yet powerful abstractions that can be used to address essential needs for the above mentioned use cases. <strong>The implementation focues more on simplicity and usability than completeness, performance, or scale.</strong> This is not a suitable solution for large scale (data sets larger than few tera-bytes) applications. It is also not recommended for high throughput (more than a hundred thousand operations per second) applications.</p>
                 
               
               
@@ -411,6 +414,39 @@
       
         
 <footer class="md-footer">
+  
+    <nav class="md-footer__inner md-grid" aria-label="Footer">
+      
+        <a href=".." class="md-footer__link md-footer__link--prev" rel="prev">
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+          </div>
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              Introduction
+            </div>
+          </div>
+        </a>
+      
+      
+        <a href="../components/" class="md-footer__link md-footer__link--next" rel="next">
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              Components
+            </div>
+          </div>
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg>
+          </div>
+        </a>
+      
+    </nav>
   
   <div class="md-footer-meta md-typeset">
     <div class="md-footer-meta__inner md-grid">
