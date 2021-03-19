@@ -7,12 +7,12 @@
 
 package com.salesforce.cantor.grpc;
 
-import com.salesforce.cantor.renamed.com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.salesforce.cantor.renamed.io.grpc.Channel;
-import com.salesforce.cantor.renamed.io.grpc.ManagedChannel;
-import com.salesforce.cantor.renamed.io.grpc.ManagedChannelBuilder;
-import com.salesforce.cantor.renamed.io.grpc.StatusRuntimeException;
-import com.salesforce.cantor.renamed.io.grpc.stub.AbstractStub;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import io.grpc.Channel;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.StatusRuntimeException;
+import io.grpc.stub.AbstractStub;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

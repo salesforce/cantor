@@ -15,7 +15,7 @@
     <artifactId>cantor-parent</artifactId>
     <packaging>pom</packaging>
     <name>cantor-parent</name>
-    <version>0.4.7-SNAPSHOT</version>
+    <version>0.4.8-SNAPSHOT</version>
     <url>https://github.com/salesforce/cantor</url>
 
     <description>Generic DAO Layer</description>
@@ -106,6 +106,7 @@
         <module>cantor-jdbc</module>
         <module>cantor-functions</module>
         <module>cantor-grpc-protos</module>
+        <!--<module>cantor-grpc-client-dependencies</module>-->
         <module>cantor-grpc-client</module>
         <module>cantor-grpc-service</module>
         <module>cantor-http-service</module>
