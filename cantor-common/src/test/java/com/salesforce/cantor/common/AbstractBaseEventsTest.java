@@ -155,6 +155,39 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
     }
 
     @Test
+    public void testMetadataQueryEscape() throws Exception {
+        final Events events = getEvents();
+        final long timestamp = System.currentTimeMillis();
+
+        final Map<String, String> metadataMatched = new HashMap<>();
+        final Map<String, String> metadataNotMatched = new HashMap<>();
+        final String escapePattern = "%%%%%%_____"; // % and _ should be correctly escaped in SQL queries
+        String patternNotMatched;
+        final int matchCount = ThreadLocalRandom.current().nextInt(3, 10);
+        for (int i = 0; i < matchCount; ++i) {
+            patternNotMatched = UUID.randomUUID().toString().substring(escapePattern.length());
+            metadataMatched.put("metadata-key-" + i, UUID.randomUUID().toString() +
+                    escapePattern + UUID.randomUUID().toString());
+            metadataNotMatched.put("metadata-key-" + i, UUID.randomUUID().toString() +
+                    patternNotMatched + UUID.randomUUID().toString());
+        }
+        for (int i = 0; i < matchCount; ++i) {
+            events.store(this.namespace, timestamp + ThreadLocalRandom.current().nextInt(-100, 100),
+                    metadataMatched, null);
+            events.store(this.namespace, timestamp + ThreadLocalRandom.current().nextInt(101, 300),
+                    metadataNotMatched, null);
+        }
+
+        // Events with metadata from 'metadataMatched' should be matched; those with metadata from 'metadataNotMatched'
+        // will not be matched.
+        final Map<String, String> metadataQuery = new HashMap<>();
+        for (int i = 0; i < matchCount; ++i) {
+            metadataQuery.put("metadata-key-" + i, "~*" + escapePattern + "*");
+            assertEquals(events.get(this.namespace, timestamp - 100, timestamp + 300, metadataQuery, null).size(), matchCount);
+        }
+    }
+
+    @Test
     public void testStore3kRandomEvents() throws Exception {
         final Events events = getEvents();
         final List<Events.Event> storedEvents = new ArrayList<>();
