@@ -125,7 +125,9 @@ public class S3Utils {
         if (!s3Client.doesBucketExistV2(bucketName)) {
             throw new IOException(String.format("couldn't find bucket '%s'", bucketName));
         }
-        s3Client.putObject(bucketName, key, content, metadata);
+        final PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, key, content, metadata);
+        putObjectRequest.withCannedAcl(CannedAccessControlList.BucketOwnerFullControl);
+        s3Client.putObject(putObjectRequest);
     }
 
     public static boolean deleteObject(final AmazonS3 s3Client, final String bucketName, final String key) {

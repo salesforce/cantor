@@ -14,18 +14,18 @@ theme:
 # Navigations
 nav:
   - "Introduction": "index.md"
-  - "Motivation": "motivation.md"
   - "Overview":
+    - "Motivations": "motivations.md"
     - "Components": "components.md"
     - "Namespaces": "namespaces.md"
+    - "Events": "events.md"
     - "Objects": "objects.md"
     - "Sets": "sets.md"
-    - "Events": "events.md"
   - "Getting started":
     - "Embedded": "embedded.md"
-    - "MySQL implementation": "mysql.md"
-    - "H2 implementation": "h2.md"
-    - "Server": "server.md"
+    # - "MySQL implementation": "mysql.md"
+    # - "H2 implementation": "h2.md"
+    # - "Server": "server.md"
   - "License": "license.md"
 
 # Github repository
