@@ -36,6 +36,7 @@
             <artifactId>cantor-grpc-protos</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!--GRPC-->
         <!--REQUIRED BY CANTOR-GRPC-CLIENT-->
         <dependency>
             <groupId>io.grpc</groupId>

@@ -150,14 +150,6 @@
             </dependency>
             <dependency>
                 <groupId>com.salesforce.cantor</groupId>
-<<<<<<< HEAD
-                <artifactId>cantor-grpc-dependencies</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.salesforce.cantor</groupId>
-=======
->>>>>>> upstream/master
                 <artifactId>cantor-grpc-client</artifactId>
                 <version>${project.version}</version>
             </dependency>

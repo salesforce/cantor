@@ -41,6 +41,7 @@
             <artifactId>cantor-common</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
         <!--GRPC-->
             <groupId>io.grpc</groupId>
             <artifactId>grpc-protobuf</artifactId>
@@ -50,6 +51,7 @@
             <groupId>io.grpc</groupId>
             <artifactId>grpc-stub</artifactId>
             <version>${grpc.version}</version>
+        </dependency>
 
         <!--TEST SCOPE-->
         <!--LOGBACK-->
