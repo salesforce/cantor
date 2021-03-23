@@ -511,8 +511,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private String regexToSql(final String regex) {
         return regex
                 .replace("*", "%")
-                .replace("_", "\\_")
-                ;
+                .replace("_", "\\\\_");
     }
 
     // the dimension query object can contain these patterns:
