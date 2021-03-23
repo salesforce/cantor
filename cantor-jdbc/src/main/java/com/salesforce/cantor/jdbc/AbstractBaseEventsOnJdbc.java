@@ -706,26 +706,32 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
         final StringBuilder sql = new StringBuilder();
         for (final Map.Entry<String, String> entry : metadataQuery.entrySet()) {
             final String column = quote(getMetadataKeyColumnName(entry.getKey()));
-            final String query = entry.getValue();
-            if (query.startsWith("~")) {
+            final String parameter = entry.getValue();
+            if (parameter.startsWith("~")) {
                 sql.append(" AND ").append(getRegexQuery(column));
-                parameters.add(query.substring(1));
-            } else if (query.startsWith("!~")) {
+                String newParameter = getRegexPattern(parameter.substring(1));
+                logger.info(String.format("Original pattern: %s, new pattern: %s", parameter, newParameter));
+                parameters.add(newParameter);
+            } else if (parameter.startsWith("!~")) {
                 sql.append(" AND ").append(getNotRegexQuery(column));
-                parameters.add(query.substring(2));
-            } else if (query.startsWith("=")) {
+                String newParameter = getRegexPattern(parameter.substring(2));
+                logger.info(String.format("Original pattern: %s, new pattern: %s", parameter, newParameter));
+                parameters.add(newParameter);
+            } else if (parameter.startsWith("=")) {
                 sql.append(" AND ").append(column).append(" = ? ");
-                parameters.add(query.substring(1));
-            } else if (query.startsWith("!=")) {
+                parameters.add(parameter.substring(1));
+            } else if (parameter.startsWith("!=")) {
                 sql.append(" AND ").append(column).append(" != ? ");
-                parameters.add(query.substring(2));
+                parameters.add(parameter.substring(2));
             } else {
                 sql.append(" AND ").append(column).append(" = ? ");
-                parameters.add(query);
+                parameters.add(parameter);
             }
         }
         return sql.toString();
     }
+
+    abstract protected String getRegexPattern(String originalPattern);
 
     abstract protected String getRegexQuery(String column);
 

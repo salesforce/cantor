@@ -96,6 +96,23 @@ public class EventsOnH2 extends AbstractBaseEventsOnJdbc implements Events {
     }
 
     @Override
+    protected String getRegexPattern(final String originalPattern) {
+        String finalPattern = originalPattern.replaceAll("\\*", "\\.\\*");
+
+        // To match a prefix, regex pattern starts with "^"
+        if (!originalPattern.startsWith("*")) {
+            finalPattern = "^" + finalPattern;
+        }
+
+        // To match a postfix, regex pattern ends with "$"
+        if (!originalPattern.endsWith("*")) {
+            finalPattern = finalPattern + "$";
+        }
+
+        return finalPattern;
+    }
+
+    @Override
     protected String getRegexQuery(final String column) {
         return String.format(" REGEXP_LIKE (%s, ?) ", column);
     }

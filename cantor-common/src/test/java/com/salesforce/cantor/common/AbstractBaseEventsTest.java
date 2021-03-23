@@ -145,12 +145,12 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
 
         final Map<String, String> metadataQuery = new HashMap<>();
         for (int i = 0; i < matchCount; ++i) {
-            metadataQuery.put("metadata-key-" + i, "~.*--pattern--[0-9]{3}--.*");
+            metadataQuery.put("metadata-key-" + i, "~*--pattern--*--*");
             assertEquals(events.get(this.namespace, timestamp - 100, timestamp + 101, metadataQuery, null).size(), matchCount);
         }
 
         // should not find anything now, because there is no 'metadata-key-<match-count>'
-        metadataQuery.put("metadata-key-" + matchCount, "~.*-pattern-.*");
+        metadataQuery.put("metadata-key-" + matchCount, "~*-pattern-*");
         assertEquals(events.get(this.namespace, timestamp - 100, timestamp + 101, metadataQuery, null).size(), 0);
     }
 
@@ -266,7 +266,7 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         // check metadata query like a value with prefix
         final Map<String, String> metadataLikePrefixQuery = new HashMap<>();
         final String prefix = "a";
-        metadataLikePrefixQuery.put(metadata, "~^" + prefix + ".*");
+        metadataLikePrefixQuery.put(metadata, "~" + prefix + "*");
         final List<Events.Event> resultsLikePrefix = getEvents().get(
                 this.namespace,
                 startTimestamp, timestamp + 1,
