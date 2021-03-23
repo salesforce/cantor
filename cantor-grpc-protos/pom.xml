@@ -41,8 +41,8 @@
             <artifactId>cantor-common</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
         <!--GRPC-->
+        <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-protobuf</artifactId>
             <version>${grpc.version}</version>
