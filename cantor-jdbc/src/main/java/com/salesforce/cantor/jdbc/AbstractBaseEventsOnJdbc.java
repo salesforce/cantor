@@ -709,14 +709,10 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
             final String parameter = entry.getValue();
             if (parameter.startsWith("~")) {
                 sql.append(" AND ").append(getRegexQuery(column));
-                String newParameter = getRegexPattern(parameter.substring(1));
-                logger.info(String.format("Original pattern: %s, new pattern: %s", parameter, newParameter));
-                parameters.add(newParameter);
+                parameters.add(getRegexPattern(parameter.substring(1)));
             } else if (parameter.startsWith("!~")) {
                 sql.append(" AND ").append(getNotRegexQuery(column));
-                String newParameter = getRegexPattern(parameter.substring(2));
-                logger.info(String.format("Original pattern: %s, new pattern: %s", parameter, newParameter));
-                parameters.add(newParameter);
+                parameters.add(getRegexPattern(parameter.substring(2)));
             } else if (parameter.startsWith("=")) {
                 sql.append(" AND ").append(column).append(" = ? ");
                 parameters.add(parameter.substring(1));
