@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.salesforce.cantor.grpc.events";
+option java_outer_classname = "Events";
+option objc_class_prefix = "EventsProtos";
+
+package com.salesforce.cantor.grpc.events;
+
+message VoidResponse {}
+
+message NamespacesRequest {}
+
+message NamespacesResponse {
+    repeated string namespaces = 1;
+}
+
+message EventProto {
+    uint64 timestamp_millis = 1;
+    map<string, string> metadata = 2;
+    map<string, double> dimensions = 3;
+    bytes payload = 4;
+}
+
+// events.create()
+message CreateRequest {
+    string namespace = 1;
+}
+
+// events.drop()
+message DropRequest {
+    string namespace = 1;
+}
+
+// events.store()
+message StoreRequest {
+    string namespace = 1;
+    repeated EventProto batch = 2;
+}
+
+// events.get()
+message GetRequest {
+    string namespace = 1;
+    uint64 start_timestamp_millis = 2;
+    uint64 end_timestamp_millis = 3;
+    map<string, string> metadata_query = 4;
+    map<string, string> dimensions_query = 5;
+    bool include_payloads = 6;
+    bool ascending = 7;
+    int32 limit = 8;
+}
+
+message GetResponse {
+    repeated EventProto results = 1;
+}
+
+// events.metadata()
+message MetadataRequest {
+    string namespace = 1;
+    string metadata_key = 2;
+    uint64 start_timestamp_millis = 3;
+    uint64 end_timestamp_millis = 4;
+    map<string, string> metadata_query = 5;
+    map<string, string> dimensions_query = 6;
+}
+
+message MetadataResponse {
+    repeated string values = 1;
+}
+
+// events.expire()
+message ExpireRequest {
+    string namespace = 1;
+    uint64 end_timestamp_millis = 2;
+}
+
+service EventsService {
+    rpc namespaces (NamespacesRequest) returns (NamespacesResponse) {}
+    rpc get (GetRequest) returns (GetResponse) {}
+    rpc create (CreateRequest) returns (VoidResponse) {}
+    rpc drop (DropRequest) returns (VoidResponse) {}
+    rpc store (StoreRequest) returns (VoidResponse) {}
+    rpc metadata (MetadataRequest) returns (MetadataResponse) {}
+    rpc expire (ExpireRequest) returns (VoidResponse) {}
+}
+
