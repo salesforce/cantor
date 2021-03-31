@@ -109,14 +109,24 @@ public class EventsOnMysql extends AbstractBaseEventsOnJdbc implements Events {
         return sqlBuilder.toString();
     }
 
+    // LIKE operator only works with wildcard "%" (or "_") to match 0 or more characters in a given string;
+    // "%" and "_" characters in the original pattern given need to be escaped.
+    @Override
+    protected String getRegexPattern(final String originalPattern) {
+        return originalPattern
+                .replace("%", "\\%")
+                .replace("_", "\\_")
+                .replace("*", "%");
+    }
+
     @Override
     protected String getRegexQuery(final String column) {
-        return String.format(" %s REGEXP ? ", column);
+        return String.format(" %s LIKE ? ", column);
     }
 
     @Override
     protected String getNotRegexQuery(final String column) {
-        return String.format(" %s NOT REGEXP ? ", column);
+        return String.format(" %s NOT LIKE ? ", column);
     }
 }
 
