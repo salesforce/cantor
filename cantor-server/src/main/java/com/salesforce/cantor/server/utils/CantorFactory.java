@@ -7,8 +7,14 @@
 
 package com.salesforce.cantor.server.utils;
 
+import com.amazonaws.ClientConfiguration;
+import com.amazonaws.Protocol;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.google.common.base.Strings;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.salesforce.cantor.Cantor;
+import com.salesforce.cantor.Sets;
 import com.salesforce.cantor.h2.CantorOnH2;
 import com.salesforce.cantor.h2.H2DataSourceProperties;
 import com.salesforce.cantor.h2.H2DataSourceProvider;
@@ -19,6 +25,7 @@ import com.salesforce.cantor.misc.sharded.ShardedCantor;
 import com.salesforce.cantor.mysql.CantorOnMysql;
 import com.salesforce.cantor.mysql.MysqlDataSourceProperties;
 import com.salesforce.cantor.mysql.MysqlDataSourceProvider;
+import com.salesforce.cantor.s3.CantorOnS3;
 import com.salesforce.cantor.server.CantorEnvironment;
 import com.typesafe.config.Config;
 import org.slf4j.Logger;
@@ -30,7 +37,20 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.salesforce.cantor.server.Constants.*;
+import static com.salesforce.cantor.server.Constants.CANTOR_H2_COMPRESSED;
+import static com.salesforce.cantor.server.Constants.CANTOR_H2_IN_MEMORY;
+import static com.salesforce.cantor.server.Constants.CANTOR_H2_PASSWORD;
+import static com.salesforce.cantor.server.Constants.CANTOR_H2_PATH;
+import static com.salesforce.cantor.server.Constants.CANTOR_H2_USERNAME;
+import static com.salesforce.cantor.server.Constants.CANTOR_MYSQL_HOSTNAME;
+import static com.salesforce.cantor.server.Constants.CANTOR_MYSQL_PASSWORD;
+import static com.salesforce.cantor.server.Constants.CANTOR_MYSQL_PORT;
+import static com.salesforce.cantor.server.Constants.CANTOR_MYSQL_USERNAME;
+import static com.salesforce.cantor.server.Constants.CANTOR_S3_BUCKET_NAME;
+import static com.salesforce.cantor.server.Constants.CANTOR_S3_BUCKET_REGION;
+import static com.salesforce.cantor.server.Constants.CANTOR_S3_PROXY_HOST;
+import static com.salesforce.cantor.server.Constants.CANTOR_S3_PROXY_PORT;
+import static com.salesforce.cantor.server.Constants.CANTOR_S3_SETS_TYPE;
 
 public class CantorFactory {
     private static final Logger logger = LoggerFactory.getLogger(CantorFactory.class);
@@ -45,6 +65,31 @@ public class CantorFactory {
 
     public Cantor getCantor() throws IOException {
         final String storageType = this.cantorEnvironment.getStorageType();
+        if (storageType.equalsIgnoreCase("s3")) {
+            final Config config = this.cantorEnvironment.getConfig(storageType);
+            if (!config.hasPath(CANTOR_S3_SETS_TYPE)) {
+                throw new IllegalArgumentException("Missing configuration setting for 's3." + CANTOR_S3_SETS_TYPE + "'");
+            }
+
+            logger.info("creating s3 cantor instance with sets on {}...", config.getString(CANTOR_S3_SETS_TYPE));
+            final String bucketName = config.getString(CANTOR_S3_BUCKET_NAME);
+            if (Strings.isNullOrEmpty(bucketName)) {
+                throw new IllegalArgumentException("Bucket name invalid. Please set 's3." + CANTOR_S3_BUCKET_NAME + "'");
+            }
+
+            // no support for s3 on sets therefore another cantor type must be used
+            final Sets sets = getCantorByType(config.getString(CANTOR_S3_SETS_TYPE)).sets();
+            return new LoggableCantor(new CantorOnS3(createAwsClient(config), bucketName) {
+                @Override
+                public Sets sets() {
+                    return sets;
+                }
+            });
+        }
+        return getCantorByType(storageType);
+    }
+
+    private Cantor getCantorByType(final String storageType) throws IOException {
         if (storageType.equalsIgnoreCase("mysql")) {
             final String mysqlShards = this.cantorEnvironment.getEnvironmentVariable(ENV_MYSQL_SHARDS);
 
@@ -134,6 +179,20 @@ public class CantorFactory {
             propertiesList.add(properties);
         }
         return propertiesList;
+    }
+
+    private AmazonS3 createAwsClient(final Config config) {
+        final AmazonS3ClientBuilder amazonS3ClientBuilder = AmazonS3ClientBuilder.standard()
+                .withRegion(config.getString(CANTOR_S3_BUCKET_REGION));
+        if (config.hasPath(CANTOR_S3_PROXY_HOST)) {
+            final ClientConfiguration clientConfiguration = new ClientConfiguration();
+            clientConfiguration.setProtocol(Protocol.HTTPS);
+            clientConfiguration.setProxyHost(config.getString(CANTOR_S3_PROXY_HOST));
+            clientConfiguration.setProxyPort(config.getInt(CANTOR_S3_PROXY_PORT));
+            clientConfiguration.setMaxConnections(256);
+            amazonS3ClientBuilder.withClientConfiguration(clientConfiguration);
+        }
+        return amazonS3ClientBuilder.build();
     }
 
     private ExecutorService newExecutorService(final int concurrency) {
