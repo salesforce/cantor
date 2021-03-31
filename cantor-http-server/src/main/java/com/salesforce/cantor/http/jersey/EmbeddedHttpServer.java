@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 
 public class EmbeddedHttpServer {
-    private static final Logger logger = LoggerFactory.getLogger(GenericExceptionMapper.class);
+    private static final Logger logger = LoggerFactory.getLogger(EmbeddedHttpServer.class);
 
     Server createServer(final int port, final String basePath) {
         final ResourceConfig config = new SwaggerJaxrsConfig();

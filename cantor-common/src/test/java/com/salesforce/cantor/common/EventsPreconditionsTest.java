@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 
 import static com.salesforce.cantor.common.EventsPreconditions.*;
 import static org.testng.Assert.assertThrows;
@@ -23,6 +24,8 @@ public class EventsPreconditionsTest {
     public void testCheckTimestamps() {
         assertThrows(IllegalArgumentException.class, () -> checkTimestamps(-1, 1));
         assertThrows(IllegalArgumentException.class, () -> checkTimestamps(100, 99));
+        final long now = System.currentTimeMillis();
+        assertThrows(IllegalArgumentException.class, () -> checkTimestamps(now - TimeUnit.DAYS.toMillis(1) - 1, now));
         checkTimestamps(0, 0);
         checkTimestamps(0, 1);
     }

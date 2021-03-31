@@ -13,6 +13,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 public class EventsPreconditions extends CommonPreconditions {
 
@@ -56,6 +57,7 @@ public class EventsPreconditions extends CommonPreconditions {
     static void checkTimestamps(final long startTimestampMillis, final long endTimestampMillis) {
         checkArgument(startTimestampMillis >= 0, "invalid start timestamp");
         checkArgument(endTimestampMillis >= startTimestampMillis, "end timestamp cannot be before start timestamp");
+        checkArgument(endTimestampMillis - startTimestampMillis < TimeUnit.DAYS.toMillis(1), "query cannot be wider than 24 hours");
     }
 
     static void checkMetadata(final Map<String, String> metadata) {

@@ -194,6 +194,7 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         final int metadataCount = ThreadLocalRandom.current().nextInt(10, 30);
         final int dimensionCount = ThreadLocalRandom.current().nextInt(10, 30);
         long timestamp = System.currentTimeMillis();
+        final long firstTimestamp = timestamp;
         Events.Event firstEvent = null;
         Events.Event lastEvent = null;
         for (int i = 0; i < 3_000; ++i) {
@@ -212,7 +213,7 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         events.store(this.namespace, storedEvents);
         final long afterStoreTimestamp = System.currentTimeMillis();
         logger.info("took {}ms to store 3k events", afterStoreTimestamp - startTimestamp);
-        final List<Events.Event> results = getEvents().get(this.namespace, 0, timestamp + 1, true);
+        final List<Events.Event> results = getEvents().get(this.namespace, firstTimestamp, timestamp + 1, true);
         logger.info("took {}ms to get 3k events", System.currentTimeMillis() - afterStoreTimestamp);
         assertEquals(results.size(), storedEvents.size());
         for (int i = 0; i < storedEvents.size(); ++i) {

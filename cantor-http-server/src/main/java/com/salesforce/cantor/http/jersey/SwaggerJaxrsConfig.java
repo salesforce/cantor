@@ -28,8 +28,8 @@ import org.glassfish.jersey.server.ResourceConfig;
 )
 class SwaggerJaxrsConfig extends ResourceConfig {
     SwaggerJaxrsConfig() {
-        // propagated error handler
-        this.register(GenericExceptionMapper.class);
+        // cantor filters
+        this.packages("com.salesforce.cantor.http.filters");
 
         // cantor server resources
         this.packages("com.salesforce.cantor.http.resources");
