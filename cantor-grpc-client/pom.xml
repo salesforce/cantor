@@ -29,16 +29,12 @@
     </properties>
 
     <dependencies>
-<<<<<<< HEAD
         <!--CANTOR BASE-->
-=======
->>>>>>> 0a285d33db7ff2b08e161cb6f3c16397c40cea98
         <dependency>
             <groupId>com.salesforce.cantor</groupId>
             <artifactId>cantor-grpc-protos</artifactId>
             <version>${project.version}</version>
         </dependency>
-<<<<<<< HEAD
         <!--GRPC-->
         <dependency>
             <groupId>io.grpc</groupId>
@@ -50,8 +46,6 @@
             <artifactId>grpc-protobuf</artifactId>
             <version>${grpc.version}</version>
         </dependency>
-=======
->>>>>>> 0a285d33db7ff2b08e161cb6f3c16397c40cea98
 
         <!--TEST SCOPE-->
         <!--TESTNG -->
