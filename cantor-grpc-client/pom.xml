@@ -46,12 +46,7 @@
             <artifactId>grpc-protobuf</artifactId>
             <version>${grpc.version}</version>
         </dependency>
-        <!--SHADED DEPENDENCIES-->
-        <!--<dependency>-->
-            <!--<groupId>com.salesforce.cantor</groupId>-->
-            <!--<artifactId>cantor-grpc-client-dependencies</artifactId>-->
-            <!--<version>${project.version}</version>-->
-        <!--</dependency>-->
+
         <!--TEST SCOPE-->
         <!--TESTNG -->
         <dependency>
