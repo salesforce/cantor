@@ -46,7 +46,7 @@ public class MetricCollectingObjects extends BaseMetricCollectingCantor implemen
 
     @Override
     public byte[] get(final String namespace, final String key) throws IOException {
-        return metrics(() -> this.delegate.get(namespace, key), "get", "cantor", bytes -> bytes != null ? bytes.length : 0);
+        return metrics(() -> this.delegate.get(namespace, key), "get", namespace, bytes -> bytes != null ? bytes.length : 0);
     }
 
     @Override
