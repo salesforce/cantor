@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.salesforce.cantor.metrics.Constants.CANTOR_NAMESPACE;
+
 public class MetricCollectingEvents extends BaseMetricCollectingCantor implements Events {
    private final Events delegate;
 
@@ -26,22 +28,22 @@ public class MetricCollectingEvents extends BaseMetricCollectingCantor implement
 
     @Override
     public Collection<String> namespaces() throws IOException {
-        return metrics(this.delegate::namespaces, "namespaces", "cantor", super::size);
+        return metrics(this.delegate::namespaces, "namespaces", CANTOR_NAMESPACE, super::size);
     }
 
     @Override
     public void create(final String namespace) throws IOException {
-        metrics(() -> this.delegate.create(namespace), "create", "cantor");
+        metrics(() -> this.delegate.create(namespace), "create", CANTOR_NAMESPACE);
     }
 
     @Override
     public void drop(final String namespace) throws IOException {
-        metrics(() -> this.delegate.drop(namespace), "drop", "cantor");
+        metrics(() -> this.delegate.drop(namespace), "drop", CANTOR_NAMESPACE);
     }
 
     @Override
     public void store(final String namespace, final Collection<Event> batch) throws IOException {
-        metrics(() -> this.delegate.store(namespace, batch), "store", "cantor");
+        metrics(() -> this.delegate.store(namespace, batch), "store", CANTOR_NAMESPACE);
     }
 
     @Override
@@ -54,7 +56,7 @@ public class MetricCollectingEvents extends BaseMetricCollectingCantor implement
                            final boolean ascending,
                            final int limit) throws IOException {
         return metrics(() -> this.delegate.get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, ascending, limit),
-                "get", "cantor", super::size);
+                "get", CANTOR_NAMESPACE, super::size);
     }
 
     @Override
@@ -71,11 +73,11 @@ public class MetricCollectingEvents extends BaseMetricCollectingCantor implement
                         endTimestampMillis,
                         metadataQuery,
                         dimensionsQuery
-                ), "metadata", "cantor", super::size);
+                ), "metadata", CANTOR_NAMESPACE, super::size);
     }
 
     @Override
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
-        metrics(() -> this.delegate.expire(namespace, endTimestampMillis), "expire", "cantor");
+        metrics(() -> this.delegate.expire(namespace, endTimestampMillis), "expire", CANTOR_NAMESPACE);
     }
 }
