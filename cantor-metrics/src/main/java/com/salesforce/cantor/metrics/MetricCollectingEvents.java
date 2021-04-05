@@ -31,17 +31,17 @@ public class MetricCollectingEvents extends BaseMetricCollectingCantor implement
 
     @Override
     public void create(final String namespace) throws IOException {
-        metrics(() -> this.delegate.create(namespace), "create", namespace);
+        metrics(() -> this.delegate.create(namespace), "create", "cantor");
     }
 
     @Override
     public void drop(final String namespace) throws IOException {
-        metrics(() -> this.delegate.drop(namespace), "drop", namespace);
+        metrics(() -> this.delegate.drop(namespace), "drop", "cantor");
     }
 
     @Override
     public void store(final String namespace, final Collection<Event> batch) throws IOException {
-        metrics(() -> this.delegate.store(namespace, batch), "store", namespace);
+        metrics(() -> this.delegate.store(namespace, batch), "store", "cantor");
     }
 
     @Override
@@ -54,7 +54,7 @@ public class MetricCollectingEvents extends BaseMetricCollectingCantor implement
                            final boolean ascending,
                            final int limit) throws IOException {
         return metrics(() -> this.delegate.get(namespace, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads, ascending, limit),
-                "get", namespace, super::size);
+                "get", "cantor", super::size);
     }
 
     @Override
@@ -71,11 +71,11 @@ public class MetricCollectingEvents extends BaseMetricCollectingCantor implement
                         endTimestampMillis,
                         metadataQuery,
                         dimensionsQuery
-                ), "metadata", namespace, super::size);
+                ), "metadata", "cantor", super::size);
     }
 
     @Override
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
-        metrics(() -> this.delegate.expire(namespace, endTimestampMillis), "expire", namespace);
+        metrics(() -> this.delegate.expire(namespace, endTimestampMillis), "expire", "cantor");
     }
 }
