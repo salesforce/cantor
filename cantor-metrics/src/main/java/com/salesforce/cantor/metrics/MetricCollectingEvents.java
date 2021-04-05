@@ -16,8 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.salesforce.cantor.metrics.Constants.DEFAULT_NAMESPACE;
-
 public class MetricCollectingEvents extends BaseMetricCollectingCantor implements Events {
    private final Events delegate;
 
@@ -28,7 +26,7 @@ public class MetricCollectingEvents extends BaseMetricCollectingCantor implement
 
     @Override
     public Collection<String> namespaces() throws IOException {
-        return metrics(this.delegate::namespaces, "namespaces", DEFAULT_NAMESPACE, super::size);
+        return metrics(this.delegate::namespaces, "namespaces", "", super::size);
     }
 
     @Override
