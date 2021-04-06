@@ -26,7 +26,7 @@ public class MetricCollectingEvents extends BaseMetricCollectingCantor implement
 
     @Override
     public Collection<String> namespaces() throws IOException {
-        return metrics(this.delegate::namespaces, "namespaces", "cantor", super::size);
+        return metrics(this.delegate::namespaces, "namespaces", "", super::size);
     }
 
     @Override
