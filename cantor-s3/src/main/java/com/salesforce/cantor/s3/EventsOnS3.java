@@ -18,6 +18,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.gson.*;
 import com.salesforce.cantor.Events;
+import com.salesforce.cantor.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -30,7 +31,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.regex.*;
 
 import static com.salesforce.cantor.common.EventsPreconditions.*;
 
@@ -63,6 +63,10 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private static final DateFormat directoryFormatterMin = new SimpleDateFormat("YYYY/MM/dd/HH/mm");
     private static final DateFormat directoryFormatterHour = new SimpleDateFormat("YYYY/MM/dd/HH/");
     private static final DateFormat directoryFormatterDay = new SimpleDateFormat("YYYY/MM/dd/");
+
+    // monitors for synchronizing writes to namespaces
+    private static final Map<String, Object> namespaceLocks = new ConcurrentHashMap<>();
+
     private final TransferManager s3TransferManager;
 
     public EventsOnS3(final AmazonS3 s3Client,
@@ -223,20 +227,29 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
     // storing each event in a json lines format to conform to s3 selects preferred format,
     // and payloads encoded in base64 in a separate file
-    private synchronized void doStore(final String namespace, final Collection<Event> batch) {
+    private void doStore(final String namespace, final Collection<Event> batch) {
         for (final Event event : batch) {
-            final Map<String, String> metadata = new HashMap<>(event.getMetadata());
-            final Map<String, Double> dimensions = new HashMap<>(event.getDimensions());
-            final byte[] payload = event.getPayload();
+            appendEvent(namespace, event);
+        }
+    }
 
-            final String currentCycleName = getRolloverCycleName();
-            final String cyclePath = getPath(currentCycleName);
-            final String filePath = String.format("%s/%s/%s.%s",
-                    cyclePath, getObjectKeyPrefix(namespace), directoryFormatterMin.format(event.getTimestampMillis()), currentCycleName
-            );
-            final String payloadFilePath = filePath + ".b64";
-            final String eventsFilePath = filePath + ".json";
+    private void appendEvent(final String namespace, final Event event) {
+        final Map<String, String> metadata = new HashMap<>(event.getMetadata());
+        final Map<String, Double> dimensions = new HashMap<>(event.getDimensions());
+        final byte[] payload = event.getPayload();
 
+        final String currentCycleName = getRolloverCycleName();
+        final String cyclePath = getPath(currentCycleName);
+        final String filePath = String.format("%s/%s/%s.%s",
+                cyclePath, getObjectKeyPrefix(namespace), directoryFormatterMin.format(event.getTimestampMillis()), currentCycleName
+        );
+        final String payloadFilePath = filePath + ".b64";
+        final String eventsFilePath = filePath + ".json";
+
+        // make sure there is a lock object for this namespace
+        namespaceLocks.putIfAbsent(namespace, namespace);
+
+        synchronized (namespaceLocks.get(namespace)) {
             if (payload != null && payload.length > 0) {
                 final String payloadBase64 = Base64.getEncoder().encodeToString(payload);
                 append(payloadFilePath, payloadBase64);

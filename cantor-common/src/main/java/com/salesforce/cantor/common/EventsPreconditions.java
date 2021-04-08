@@ -57,7 +57,7 @@ public class EventsPreconditions extends CommonPreconditions {
     static void checkTimestamps(final long startTimestampMillis, final long endTimestampMillis) {
         checkArgument(startTimestampMillis >= 0, "invalid start timestamp");
         checkArgument(endTimestampMillis >= startTimestampMillis, "end timestamp cannot be before start timestamp");
-        checkArgument(endTimestampMillis - startTimestampMillis < TimeUnit.DAYS.toMillis(1), "query cannot be wider than 24 hours");
+        checkArgument(endTimestampMillis - startTimestampMillis < TimeUnit.DAYS.toMillis(7), "query cannot be wider than 7 days");
     }
 
     static void checkMetadata(final Map<String, String> metadata) {
