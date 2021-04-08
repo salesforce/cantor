@@ -32,4 +32,11 @@ public class Constants {
     public static final String CANTOR_MYSQL_PORT = "port";
     public static final String CANTOR_MYSQL_USERNAME = "username";
     public static final String CANTOR_MYSQL_PASSWORD = "password";
+
+    // s3 configuration
+    public static final String CANTOR_S3_BUCKET_NAME = "bucket";
+    public static final String CANTOR_S3_BUCKET_REGION = "region";
+    public static final String CANTOR_S3_PROXY_HOST = "proxy.host";
+    public static final String CANTOR_S3_PROXY_PORT = "proxy.port";
+    public static final String CANTOR_S3_SETS_TYPE = "sets.type";
 }
