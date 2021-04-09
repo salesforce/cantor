@@ -650,10 +650,13 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             // set object content type to plain text
             metadata.setContentType("text/plain");
         }, uploadContext -> {
+            // extract the object namespace key and attach it as a tag
             final String key = uploadContext.getKey();
             final String tag = key.substring(key.indexOf("/") + 1);
             return new ObjectTagging(Collections.singletonList(new Tag("namespace", tag.substring(0, tag.indexOf("/")))));
-        }, file -> CannedAccessControlList.BucketOwnerFullControl);
+        },
+        // ensure ownership is given to the bucket on store
+        file -> CannedAccessControlList.BucketOwnerFullControl);
         // log the upload progress
         do {
             logger.info("s3 transfer progress of '{}': {}% of {}mb state: {}",
@@ -664,6 +667,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             );
             Thread.sleep(1_000);
         } while (!upload.isDone());
+        // waiting ensures we throw exception on any s3 errors during upload
         upload.waitForCompletion();
     }
 
