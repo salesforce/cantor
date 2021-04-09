@@ -10,6 +10,9 @@ import ch.qos.logback.core.FileAppender;
 import ch.qos.logback.core.util.Duration;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
+import com.amazonaws.services.s3.model.CannedAccessControlList;
+import com.amazonaws.services.s3.model.ObjectTagging;
+import com.amazonaws.services.s3.model.Tag;
 import com.amazonaws.services.s3.transfer.MultipleFileUpload;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
@@ -18,7 +21,6 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.gson.*;
 import com.salesforce.cantor.Events;
-import com.salesforce.cantor.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -647,16 +649,26 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         final MultipleFileUpload upload = this.s3TransferManager.uploadDirectory(this.bucketName, null, toUpload, true, (file, metadata) -> {
             // set object content type to plain text
             metadata.setContentType("text/plain");
-        });
+        }, uploadContext -> {
+            // extract the object namespace key and attach it as a tag
+            final String key = uploadContext.getKey();
+            final String tag = key.substring(key.indexOf("/") + 1);
+            return new ObjectTagging(Collections.singletonList(new Tag("namespace", tag.substring(0, tag.indexOf("/")))));
+        },
+        // ensure ownership is given to the bucket on store
+        file -> CannedAccessControlList.BucketOwnerFullControl);
         // log the upload progress
         do {
-            logger.info("s3 transfer progress of '{}': {}% of {}mb",
+            logger.info("s3 transfer progress of '{}': {}% of {}mb state: {}",
                     toUpload.getAbsolutePath(),
                     (int) upload.getProgress().getPercentTransferred(),
-                    upload.getProgress().getTotalBytesToTransfer() / (1024*1024)
+                    upload.getProgress().getTotalBytesToTransfer() / (1024*1024),
+                    upload.getState()
             );
             Thread.sleep(1_000);
         } while (!upload.isDone());
+        // waiting ensures we throw exception on any s3 errors during upload
+        upload.waitForCompletion();
     }
 
     private void delete(final File dir) {
