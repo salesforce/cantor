@@ -25,7 +25,7 @@ public class EventsPreconditionsTest {
         assertThrows(IllegalArgumentException.class, () -> checkTimestamps(-1, 1));
         assertThrows(IllegalArgumentException.class, () -> checkTimestamps(100, 99));
         final long now = System.currentTimeMillis();
-        assertThrows(IllegalArgumentException.class, () -> checkTimestamps(now - TimeUnit.DAYS.toMillis(1) - 1, now));
+        assertThrows(IllegalArgumentException.class, () -> checkTimestamps(now - TimeUnit.DAYS.toMillis(7) - 1, now));
         checkTimestamps(0, 0);
         checkTimestamps(0, 1);
     }

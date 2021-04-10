@@ -9,6 +9,7 @@ package com.salesforce.cantor.server;
 
 import com.google.common.base.Strings;
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 
 import java.util.Collections;
 import java.util.List;
@@ -32,6 +33,11 @@ public class CantorEnvironment {
 
     public String getStorageType() {
         return this.config.getString(Constants.CONFIG_ROOT_PREFIX + "." + Constants.CANTOR_STORAGE_TYPE);
+    }
+
+    public Config getConfig(final String config) {
+        checkArgument(!Strings.isNullOrEmpty(config), "null/empty config path");
+        return getIfHasPath(this.config::getConfig, getConfigPath(config), ConfigFactory.empty());
     }
 
     public List<? extends Config> getConfigAsList(final String config) {

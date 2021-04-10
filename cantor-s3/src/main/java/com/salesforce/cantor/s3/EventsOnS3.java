@@ -10,6 +10,9 @@ import ch.qos.logback.core.FileAppender;
 import ch.qos.logback.core.util.Duration;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
+import com.amazonaws.services.s3.model.CannedAccessControlList;
+import com.amazonaws.services.s3.model.ObjectTagging;
+import com.amazonaws.services.s3.model.Tag;
 import com.amazonaws.services.s3.transfer.MultipleFileUpload;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
@@ -30,7 +33,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.regex.*;
 
 import static com.salesforce.cantor.common.EventsPreconditions.*;
 
@@ -63,6 +65,10 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private static final DateFormat directoryFormatterMin = new SimpleDateFormat("YYYY/MM/dd/HH/mm");
     private static final DateFormat directoryFormatterHour = new SimpleDateFormat("YYYY/MM/dd/HH/");
     private static final DateFormat directoryFormatterDay = new SimpleDateFormat("YYYY/MM/dd/");
+
+    // monitors for synchronizing writes to namespaces
+    private static final Map<String, Object> namespaceLocks = new ConcurrentHashMap<>();
+
     private final TransferManager s3TransferManager;
 
     public EventsOnS3(final AmazonS3 s3Client,
@@ -223,20 +229,29 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
     // storing each event in a json lines format to conform to s3 selects preferred format,
     // and payloads encoded in base64 in a separate file
-    private synchronized void doStore(final String namespace, final Collection<Event> batch) {
+    private void doStore(final String namespace, final Collection<Event> batch) {
         for (final Event event : batch) {
-            final Map<String, String> metadata = new HashMap<>(event.getMetadata());
-            final Map<String, Double> dimensions = new HashMap<>(event.getDimensions());
-            final byte[] payload = event.getPayload();
+            appendEvent(namespace, event);
+        }
+    }
 
-            final String currentCycleName = getRolloverCycleName();
-            final String cyclePath = getPath(currentCycleName);
-            final String filePath = String.format("%s/%s/%s.%s",
-                    cyclePath, getObjectKeyPrefix(namespace), directoryFormatterMin.format(event.getTimestampMillis()), currentCycleName
-            );
-            final String payloadFilePath = filePath + ".b64";
-            final String eventsFilePath = filePath + ".json";
+    private void appendEvent(final String namespace, final Event event) {
+        final Map<String, String> metadata = new HashMap<>(event.getMetadata());
+        final Map<String, Double> dimensions = new HashMap<>(event.getDimensions());
+        final byte[] payload = event.getPayload();
 
+        final String currentCycleName = getRolloverCycleName();
+        final String cyclePath = getPath(currentCycleName);
+        final String filePath = String.format("%s/%s/%s.%s",
+                cyclePath, getObjectKeyPrefix(namespace), directoryFormatterMin.format(event.getTimestampMillis()), currentCycleName
+        );
+        final String payloadFilePath = filePath + ".b64";
+        final String eventsFilePath = filePath + ".json";
+
+        // make sure there is a lock object for this namespace
+        namespaceLocks.putIfAbsent(namespace, namespace);
+
+        synchronized (namespaceLocks.get(namespace)) {
             if (payload != null && payload.length > 0) {
                 final String payloadBase64 = Base64.getEncoder().encodeToString(payload);
                 append(payloadFilePath, payloadBase64);
@@ -634,16 +649,26 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         final MultipleFileUpload upload = this.s3TransferManager.uploadDirectory(this.bucketName, null, toUpload, true, (file, metadata) -> {
             // set object content type to plain text
             metadata.setContentType("text/plain");
-        });
+        }, uploadContext -> {
+            // extract the object namespace key and attach it as a tag
+            final String key = uploadContext.getKey();
+            final String tag = key.substring(key.indexOf("/") + 1);
+            return new ObjectTagging(Collections.singletonList(new Tag("namespace", tag.substring(0, tag.indexOf("/")))));
+        },
+        // ensure ownership is given to the bucket on store
+        file -> CannedAccessControlList.BucketOwnerFullControl);
         // log the upload progress
         do {
-            logger.info("s3 transfer progress of '{}': {}% of {}mb",
+            logger.info("s3 transfer progress of '{}': {}% of {}mb state: {}",
                     toUpload.getAbsolutePath(),
                     (int) upload.getProgress().getPercentTransferred(),
-                    upload.getProgress().getTotalBytesToTransfer() / (1024*1024)
+                    upload.getProgress().getTotalBytesToTransfer() / (1024*1024),
+                    upload.getState()
             );
             Thread.sleep(1_000);
         } while (!upload.isDone());
+        // waiting ensures we throw exception on any s3 errors during upload
+        upload.waitForCompletion();
     }
 
     private void delete(final File dir) {

@@ -10,7 +10,7 @@
     <parent>
         <artifactId>cantor-parent</artifactId>
         <groupId>com.salesforce.cantor</groupId>
-        <version>0.4.9-SNAPSHOT</version>
+        <version>0.4.11-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -64,6 +64,12 @@
                     <artifactId>protobuf-java</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <!--CANTOR S3-->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-s3</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <!--CANTOR MISC-->
         <dependency>
