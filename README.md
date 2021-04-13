@@ -190,8 +190,75 @@ Clone the repository:
 $ git clone https://github.com/salesforce/cantor.git
 ```
 
-Compile like this:
+#### Cantor Server
+**Starting with docker** is the preferred approach:
 ```bash
-$ cd cantor/
+$ cd /path/to/cantor/
+$ ./bang.sh install_skip_tests build_docker run_docker
+```
+This will create a Cantor gRPC Server running in a docker container using the configuration file [here](https://github.com/salesforce/cantor/blob/master/env/dockers/cantor/cantor-server.conf).
+Use this configuration file to alter your setup as appropriate (See [Cantor Server Configutation Properties](#cantor-props))
+
+**Running a local instance** is the simplest and quickest way to start a Cantor gRPC Server:
+```bash
+$ cd /path/to/cantor/
 $ ./bang.sh
+or
+$ ./bang.sh install_skip_tests run_jar
+```
+This will start a local Cantor gRPC Server running using the configuration file [here](https://github.com/salesforce/cantor/blob/master/cantor-server/src/main/resources/cantor-server.conf).
+Running from the IDE is similar, though you'll need to specify the argument `cantor-server/src/main/resources/cantor-server.conf`, so
+the server knows how to startup. If you want to make changes to the server configuration then you need to edit the aforementioned 
+configuration file (See [Cantor Server Configutation Properties](#cantor-props))
+
+You can kill the application with `Ctrl-C` or if you are running in a docker container: `./bang.sh kill_docker`
+
+#### <a id="cantor-props">Cantor Server Configuration Properties</a>
+This is a [Typesafe](https://github.com/lightbend/config) property file which all properties are under the prefix `cantor.`.
+
+| Property       | Value             | Default       | Description |
+| :------------- | :----------:      | :-----------: | :---------- |
+| grpc.port      | Port Number       | 7443          | Server Port |
+| storage.type   | { h2, mysql, s3 } | h2            | Backing storage type |
+
+#### H2 Properties
+H2 takes in a list of instances that will be sharded across. Each instance has these properties:
+
+| Property   | Value        | Description |
+| :--------- | :----------: | :---------- |
+| path       | File Path    | The location of the H2 database file | 
+| in-memory  | Boolean      | Set whether to embed H2 in memory |
+| compressed | Boolean      | Set whether to use compression on the stored data |
+| username   | String       | Root Username for the database |
+| password   | String       | Root Password for the database |
+
+#### Mysql Properties
+Mysql takes in a list of instances that will be sharded across. Each instance has these properties:
+
+| Property   | Value        | Description |
+| :--------- | :----------: | :---------- |
+| hostname   | String       | The domain name or IP address where the mysql host is contactable | 
+| port       | Port Number  | The port where mysql is contactable |
+| username   | String       | Username for the database |
+| password   | String       | Password for the database |
+
+#### S3 Properties
+Unlikely H2 and MySQL only a single instance of S3 can be passed in. No sharding logic is used. The properties are:
+
+| Property   | Value         | Description |
+| :--------- | :----------:  | :---------- |
+| bucket     | String        | S3 Bucket Name | 
+| region     | String        | S3 Region |
+| sets.type  | { h2, mysql } | S3 does not support Sets, so you must specify what will be used when Sets is referenced. |
+| proxy.host | String        | If you need a proxy to connect to S3 specify this property |
+| proxy.port | Port Number   | Set the port number for the proxy if `proxy.host` is set |
+
+**Note**: If you enable s3 you must have the credentials for the specified bucket in the proper directory: `~/.aws/credentials`.
+You can also point to their location using the AWS env variable `AWS_PROFILE=/path/to/credentials`.
+
+#### Connecting to the Server
+In both the case of local and docker connecting to the server is the same. The port `7443` will be exposed by default.
+Simply use the java client `CantorOnGrpc` to connect:
+```java
+final CantorOnGrpc cantor = new CantorOnGrpc("localhost:7443");
 ```
