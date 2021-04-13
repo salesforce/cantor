@@ -89,7 +89,7 @@ public class S3Utils {
         final GetObjectRequest request = new GetObjectRequest(bucketName, key);
         if (start >= 0 && end > 0) {
             request.setRange(start, end);
-        } else if (start >= 0 && end < 0) {
+        } else if (start > 0 && end < 0) {
             request.setRange(start);
         }
         final S3Object s3Object = s3Client.getObject(request);

@@ -106,6 +106,8 @@ public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBas
                     .get(request.getNamespace(), request.getKey());
             if (value != null) {
                 resultsBuilder.setValue(ByteString.copyFrom(value));
+            } else {
+                resultsBuilder.setIsNull(true);
             }
             sendResponse(responseObserver, resultsBuilder.build());
         } catch (IOException e) {
