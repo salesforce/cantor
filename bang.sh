@@ -61,7 +61,7 @@ kill_docker() {
 
 if [ "$#" = 0 ]
 then
-    install
+    install_skip_tests
     run_jar
     exit
 fi
