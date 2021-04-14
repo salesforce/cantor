@@ -132,6 +132,21 @@ public abstract class AbstractBaseObjectsTest extends AbstractBaseCantorTest {
     }
 
     @Test
+    public void testStoreGetEmpty() throws IOException {
+        final Objects objects = getObjects();
+
+        final String key = UUID.randomUUID().toString();
+        final byte[] value = new byte[0];
+
+        assertNull(objects.get(this.namespace, key));
+        assertFalse(objects.delete(this.namespace, key));
+        objects.store(this.namespace, key, value);
+        assertEquals(value, objects.get(this.namespace, key));
+        assertTrue(objects.delete(this.namespace, key));
+        assertNull(objects.get(this.namespace, key));
+    }
+
+    @Test
     public void testStoreKeys() throws Exception {
         final Objects objects = getObjects();
 
