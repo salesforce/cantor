@@ -165,6 +165,9 @@ public class CantorFactory {
             final List<String> results = new ArrayList<>();
             for (final Map.Entry<String, T> entry : this.delegates.entrySet()) {
                 final Collection<String> namespaces = entry.getValue().namespaces();
+                if (namespaces == null) {
+                    continue;
+                }
                 for (final String namespace : namespaces) {
                     // attach scope to namespaces
                     final String scope = entry.getKey();
