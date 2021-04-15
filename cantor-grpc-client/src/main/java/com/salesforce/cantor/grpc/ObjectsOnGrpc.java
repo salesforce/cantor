@@ -108,14 +108,10 @@ public class ObjectsOnGrpc extends AbstractBaseGrpcClient<ObjectsServiceBlocking
                     .setKey(key)
                     .build();
             final GetResponse response = getStub().get(request);
-            if (response == null || response.getValue() == null) {
+            if (response == null || response.getIsNull()) {
                 return null;
             }
-            final byte[] results = response.getValue().toByteArray();
-            if (results.length == 0) {
-                return null;
-            }
-            return results;
+            return response.getValue().toByteArray();
         });
     }
 

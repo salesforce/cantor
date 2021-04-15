@@ -124,7 +124,8 @@ public class ObjectsResource {
         @ApiResponse(responseCode = "200",
                      description = "Provides single property json with the object content as base64 encoded string",
                      content = @Content(schema = @Schema(implementation = HttpModels.GetResponse.class))),
-        @ApiResponse(responseCode = "400", description = "Object with provided key doesn't exist"),
+        @ApiResponse(responseCode = "204", description = "Object exists, but has no content"),
+        @ApiResponse(responseCode = "404", description = "Object with provided key doesn't exist"),
         @ApiResponse(responseCode = "500", description = serverErrorMessage)
     })
     public Response getByKey(@Parameter(description = "Namespace identifier") @PathParam("namespace") final String namespace,
@@ -132,7 +133,11 @@ public class ObjectsResource {
         logger.info("received request to get object with key '{}' in namespace {}", key, namespace);
         final byte[] bytes = this.cantor.objects().get(namespace, key);
         if (bytes == null) {
-            return Response.status(Response.Status.BAD_REQUEST).build();
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+
+        if (bytes.length == 0) {
+            return Response.noContent().build();
         }
 
         final String encodedData = Base64.getEncoder().encodeToString(bytes);
