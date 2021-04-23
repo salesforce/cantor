@@ -2,6 +2,8 @@ package com.salesforce.cantor.s3;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
+import com.amazonaws.services.s3.model.HeadBucketRequest;
+import com.amazonaws.services.s3.model.ListObjectsV2Request;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.util.StringInputStream;
 import com.google.common.cache.*;
@@ -41,9 +43,8 @@ public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
         this.bucketName = bucketName;
         this.namespaceLookupKey = S3Utils.getCleanKeyForNamespace(String.format("all-namespaces-%s", type));
         try {
-            if (!this.s3Client.doesBucketExistV2(this.bucketName)) {
-                throw new IllegalStateException("bucket does not exist: " + this.bucketName);
-            }
+            // validate s3Client can connect; valid connection/credentials if exception isn't thrown
+            this.s3Client.headBucket(new HeadBucketRequest(this.bucketName));
         } catch (final AmazonS3Exception e) {
             logger.warn("exception creating required buckets for objects on s3:", e);
             throw new IOException("exception creating required buckets for objects on s3:", e);
