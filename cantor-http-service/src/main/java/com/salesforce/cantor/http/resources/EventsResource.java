@@ -61,7 +61,8 @@ public class EventsResource {
     private static final Pattern queryPatterns = Pattern.compile("(?<key>.*?)(?<value>(>|<|=|~|<=|>=).*)");
     // custom gson parser to auto-convert payload to byte[]
     private static final Gson parser = new GsonBuilder()
-            .registerTypeHierarchyAdapter(byte[].class, new ByteArrayHandler()).create();
+            .registerTypeHierarchyAdapter(byte[].class, new ByteArrayHandler())
+            .create();
 
     private final Cantor cantor;
 
@@ -339,12 +340,16 @@ public class EventsResource {
     private static class ByteArrayHandler implements JsonSerializer<byte[]>, JsonDeserializer<byte[]> {
 
         @Override
-        public byte[] deserialize(final JsonElement jsonElement, final Type type, final JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
+        public byte[] deserialize(final JsonElement jsonElement,
+                                  final Type ignoredType,
+                                  final JsonDeserializationContext ignoredContext) throws JsonParseException {
             return jsonElement.getAsString().getBytes();
         }
 
         @Override
-        public JsonElement serialize(final byte[] bytes, final Type type, final JsonSerializationContext jsonSerializationContext) {
+        public JsonElement serialize(final byte[] bytes,
+                                     final Type ignoredType,
+                                     final JsonSerializationContext ignoredContext) {
             final String encodedString = Base64.getEncoder().encodeToString(bytes);
             return new JsonPrimitive(encodedString);
         }
