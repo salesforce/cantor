@@ -32,8 +32,6 @@
         <resetJUL>true</resetJUL>
     </contextListener>
 
-    <logger name="io.grpc" level="DEBUG"/>
-
     <root level="INFO">
         <appender-ref ref="FILE" />
         <appender-ref ref="STDOUT" />
