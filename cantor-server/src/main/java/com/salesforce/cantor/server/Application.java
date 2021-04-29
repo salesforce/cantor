@@ -12,6 +12,7 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,6 +40,9 @@ public class Application {
         } else {
             logger.info("'cantor.grpc.port' not set. will not attempt to set up grpc server.");
         }
+
+        // redirect JUL to slf4j
+        SLF4JBridgeHandler.install();
     }
 
     private static void printUsage() {

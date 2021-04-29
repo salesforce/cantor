@@ -28,6 +28,16 @@
         </encoder>
     </appender>
 
+    <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator"/>
+
+    <logger name="io.grpc" level="DEBUG">
+        <appender-ref ref="FILE" />
+    </logger>
+
+    <logger name="com.google.protobuf" level="DEBUG">
+        <appender-ref ref="FILE" />
+    </logger>
+
     <root level="INFO">
         <appender-ref ref="FILE" />
         <appender-ref ref="STDOUT" />

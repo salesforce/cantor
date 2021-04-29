@@ -15,6 +15,7 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.stub.AbstractStub;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.IOException;
 import java.util.concurrent.Callable;
@@ -31,6 +32,9 @@ abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
                            final String target) {
         checkString(target, "null/empty target");
         this.stub = makeStubs(stubConstructor, target);
+
+        // redirect JUL to slf4j
+        SLF4JBridgeHandler.install();
     }
 
     StubType getStub() {

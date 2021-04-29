@@ -88,6 +88,11 @@
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
         </dependency>
+        <!--SLF4J BRIDGE-->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jul-to-slf4j</artifactId>
+        </dependency>
 
         <!--TEST SCOPE-->
         <!--TESTNG -->
