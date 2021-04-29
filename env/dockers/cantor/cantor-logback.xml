@@ -28,15 +28,11 @@
         </encoder>
     </appender>
 
-    <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator"/>
+    <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+        <resetJUL>true</resetJUL>
+    </contextListener>
 
-    <logger name="io.grpc" level="DEBUG">
-        <appender-ref ref="FILE" />
-    </logger>
-
-    <logger name="com.google.protobuf" level="DEBUG">
-        <appender-ref ref="FILE" />
-    </logger>
+    <logger name="io.grpc" level="DEBUG"/>
 
     <root level="INFO">
         <appender-ref ref="FILE" />
