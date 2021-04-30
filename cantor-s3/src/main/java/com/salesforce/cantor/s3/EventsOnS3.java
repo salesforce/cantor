@@ -16,9 +16,7 @@ import com.amazonaws.services.s3.model.Tag;
 import com.amazonaws.services.s3.transfer.MultipleFileUpload;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
+import com.google.common.cache.*;
 import com.google.gson.*;
 import com.salesforce.cantor.Events;
 import org.slf4j.Logger;
@@ -68,6 +66,12 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
     // monitors for synchronizing writes to namespaces
     private static final Map<String, Object> namespaceLocks = new ConcurrentHashMap<>();
+
+    // in memory cache for queries
+    private static final Cache<String, List<Event>> cache = CacheBuilder.newBuilder()
+            .maximumWeight(1024 * 1024 * 1024) // 1GB cache
+            .weigher(new ObjectWeigher())
+            .build();
 
     private final TransferManager s3TransferManager;
 
@@ -292,7 +296,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             if (!objectKey.endsWith("json")) {
                 continue;
             }
-            futures.add(completionService.submit(() -> doGetOnObject(
+            futures.add(completionService.submit(() -> doCacheableGetOnObject(
                     objectKey, startTimestampMillis, endTimestampMillis,
                     metadataQuery, dimensionsQuery, includePayloads
                     ))
@@ -361,6 +365,21 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         });
     }
 
+    private List<Event> doCacheableGetOnObject(final String objectKey,
+                                               final long startTimestampMillis,
+                                               final long endTimestampMillis,
+                                               final Map<String, String> metadataQuery,
+                                               final Map<String, String> dimensionsQuery,
+                                               final boolean includePayloads) throws IOException {
+        final String cacheKey = String.format("%s-%d-%d-%d-%d-%b",
+                objectKey.hashCode(), startTimestampMillis, endTimestampMillis, metadataQuery.hashCode(), dimensionsQuery.hashCode(), includePayloads);
+        try {
+            return cache.get(cacheKey, () -> doGetOnObject(objectKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads));
+        } catch (ExecutionException e) {
+            return doGetOnObject(objectKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads);
+        }
+    }
+
     private List<Event> doGetOnObject(final String objectKey,
                                       final long startTimestampMillis,
                                       final long endTimestampMillis,
@@ -383,7 +402,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                 final long offset = event.getDimensions().get(dimensionKeyPayloadOffset).longValue();
                 final long length = event.getDimensions().get(dimensionKeyPayloadLength).longValue();
                 final String payloadFilename = objectKey.replace("json", "b64");
-                final byte[] payloadBase64Bytes = S3Utils.getObjectBytes(this.s3Client, this.bucketName, payloadFilename, offset, offset + length - 1);
+                final byte[] payloadBase64Bytes = S3Utils.getCacheableObjectBytes(this.s3Client, this.bucketName, payloadFilename, offset, offset + length - 1);
                 if (payloadBase64Bytes == null || payloadBase64Bytes.length == 0) {
                     throw new IOException("failed to retrieve payload for event");
                 }
@@ -679,5 +698,16 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             }
         }
         dir.delete();
+    }
+
+    private static class ObjectWeigher implements Weigher<String, List<Event>> {
+        @Override
+        public int weigh(final String keyIgnored, final List<Event> value) {
+            int weight = 0;
+            for (Event e : value) {
+                weight += e.toString().length();
+            }
+            return weight;
+        }
     }
 }
