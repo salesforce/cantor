@@ -46,6 +46,11 @@
             <artifactId>grpc-protobuf</artifactId>
             <version>${grpc.version}</version>
         </dependency>
+        <!--SLF4J BRIDGE-->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jul-to-slf4j</artifactId>
+        </dependency>
 
         <!--TEST SCOPE-->
         <!--TESTNG -->
