@@ -314,6 +314,8 @@ public interface Events extends Namespaceable {
                          Map<String, String> dimensionsQuery) throws IOException;
 
     /**
+     * Get a list of events values where each event only contains the specified dimension, for events in the given
+     * namespace, with timestamp between the start and end, metadata and dimensions matching the given queries.
      *
      * @param namespace the namespace identifier
      * @param dimensionKey the given dimension key
