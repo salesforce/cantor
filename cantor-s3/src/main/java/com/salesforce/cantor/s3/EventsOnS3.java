@@ -52,8 +52,12 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private static final Logger siftingLogger = initSiftingLogger();
     private static final AtomicBoolean isInitialized = new AtomicBoolean(false);
 
-    private static final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-    private final String bufferDirectory;
+    private static final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+
+    // executor service to parallelize calls to s3
+    private static final Executor executorService = Executors.newCachedThreadPool(
+            new ThreadFactoryBuilder().setNameFormat("cantor-events-on-s3-worker-%d").build()
+    );
 
     // cantor-events-<namespace>/<startTimestamp>-<endTimestamp>
     private static final String objectKeyPrefix = "cantor-events";
@@ -74,11 +78,14 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             .weigher(new ObjectWeigher())
             .build();
 
-    private static final Executor workStealingExecutor = Executors.newCachedThreadPool(
-//            128, // exactly 16 concurrent worker threads
-            new ThreadFactoryBuilder().setNameFormat("cantor-events-on-s3-worker-%d").build());
+    // in memory cache for keys call
+    private static final Cache<String, Set<String>> keysCache = CacheBuilder.newBuilder()
+            .maximumSize(1024)
+            .build();
 
     private final TransferManager s3TransferManager;
+
+    private final String bufferDirectory;
 
     public EventsOnS3(final AmazonS3 s3Client,
                       final String bucketName) throws IOException {
@@ -110,7 +117,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         // schedule flush cycle to start immediately
         if (!isInitialized.getAndSet(true)) {
             rollover();
-            executor.scheduleAtFixedRate(this::flush, 0, flushIntervalSeconds, TimeUnit.SECONDS);
+            scheduledExecutor.scheduleAtFixedRate(this::flush, 0, flushIntervalSeconds, TimeUnit.SECONDS);
         }
     }
 
@@ -292,8 +299,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
         final List<Event> results = new CopyOnWriteArrayList<>();
         // parallel calls to s3
-        final CompletionService<List<Event>> completionService =
-                new ExecutorCompletionService<>(workStealingExecutor);
+        final CompletionService<List<Event>> completionService = new ExecutorCompletionService<>(executorService);
         final List<Future<List<Event>>> futures = new ArrayList<>();
         // iterate over all s3 objects that match this request
         for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
@@ -333,8 +339,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
         final Set<String> results = new CopyOnWriteArraySet<>();
         // parallel calls to s3
-        final CompletionService<Set<String>> completionService =
-                new ExecutorCompletionService<>(workStealingExecutor);
+        final CompletionService<Set<String>> completionService = new ExecutorCompletionService<>(executorService);
         final List<Future<Set<String>>> futures = new ArrayList<>();
         // iterate over all s3 objects that match this request
         for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
@@ -481,6 +486,16 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
     private Set<String> getMatchingKeys(final String namespace, final long startTimestampMillis, final long endTimestampMillis)
             throws IOException {
+        final String cacheKey = String.format("%d-%d-%d", namespace.hashCode(), startTimestampMillis, endTimestampMillis);
+        try {
+            return keysCache.get(cacheKey, () -> doGetMatchingKeys(namespace, startTimestampMillis, endTimestampMillis));
+        } catch (ExecutionException e) {
+            return doGetMatchingKeys(namespace, startTimestampMillis, endTimestampMillis);
+        }
+    }
+
+    private Set<String> doGetMatchingKeys(final String namespace, final long startTimestampMillis, final long endTimestampMillis)
+            throws IOException {
         final Set<String> prefixes = new HashSet<>();
         long start = startTimestampMillis;
         while (start <= endTimestampMillis) {
@@ -497,7 +512,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         }
         prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatterMin.format(endTimestampMillis)));
         final Set<String> matchingKeys = new ConcurrentSkipListSet<>();
-        final CompletionService<List<Event>> completionService = new ExecutorCompletionService<>(workStealingExecutor);
+        final CompletionService<List<Event>> completionService = new ExecutorCompletionService<>(executorService);
         final List<Future<?>> futures = new ArrayList<>();
         for (final String prefix : prefixes) {
             futures.add(completionService.submit(() -> {
