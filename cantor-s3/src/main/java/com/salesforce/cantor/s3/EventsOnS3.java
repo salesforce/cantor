@@ -67,7 +67,6 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     // date directoryFormatter for converting an event timestamp to a hierarchical directory structure
     private static final DateFormat directoryFormatterMin = new SimpleDateFormat("YYYY/MM/dd/HH/mm");
     private static final DateFormat directoryFormatterHour = new SimpleDateFormat("YYYY/MM/dd/HH/");
-    private static final DateFormat directoryFormatterDay = new SimpleDateFormat("YYYY/MM/dd/");
 
     // monitors for synchronizing writes to namespaces
     private static final Map<String, Object> namespaceLocks = new ConcurrentHashMap<>();
@@ -313,10 +312,10 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                     ))
             );
         }
-        // iterate over all calls, wait max of 5 seconds per call to return
+        // iterate over all calls, wait max of 30 seconds per call to return
         for (int i = 0; i < futures.size(); ++i) {
             try {
-                results.addAll(completionService.take().get(5, TimeUnit.SECONDS));
+                results.addAll(completionService.take().get(30, TimeUnit.SECONDS));
             } catch (Exception e) {
                 logger.warn("exception on get call to s3", e);
                 throw new IOException(e);
@@ -352,10 +351,10 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                     metadataQuery, dimensionsQuery))
             );
         }
-        // iterate over all calls, wait max of 5 seconds per call to return
+        // iterate over all calls, wait max of 30 seconds per call to return
         for (int i = 0; i < futures.size(); ++i) {
             try {
-                results.addAll(completionService.take().get(5, TimeUnit.SECONDS));
+                results.addAll(completionService.take().get(30, TimeUnit.SECONDS));
             } catch (Exception e) {
                 logger.warn("exception on metadata call to s3", e);
                 throw new IOException(e);
@@ -499,10 +498,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         final Set<String> prefixes = new HashSet<>();
         long start = startTimestampMillis;
         while (start <= endTimestampMillis) {
-            if (start + TimeUnit.DAYS.toMillis(1) <= endTimestampMillis) {
-                prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatterDay.format(start)));
-                start += TimeUnit.DAYS.toMillis(1);
-            } else if (start + TimeUnit.HOURS.toMillis(1) <= endTimestampMillis) {
+            if (start + TimeUnit.HOURS.toMillis(1) <= endTimestampMillis) {
                 prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatterHour.format(start)));
                 start += TimeUnit.HOURS.toMillis(1);
             } else {
@@ -522,7 +518,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         }
         for (int i = 0; i < futures.size(); ++i) {
             try {
-                completionService.take().get(5, TimeUnit.SECONDS);
+                completionService.take().get(30, TimeUnit.SECONDS);
             } catch (Exception e) {
                 logger.warn("exception on get call to s3", e);
                 throw new IOException(e);
