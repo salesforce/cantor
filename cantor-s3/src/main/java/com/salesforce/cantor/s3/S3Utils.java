@@ -115,17 +115,16 @@ public class S3Utils {
             request.setRange(start);
         }
         final S3Object s3Object = s3Client.getObject(request);
-        final ByteArrayOutputStream buffer;
         try (final InputStream inputStream = s3Object.getObjectContent()) {
-            buffer = new ByteArrayOutputStream();
+            final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
             final byte[] data = new byte[streamingChunkSize];
             int read;
             while ((read = inputStream.read(data, 0, data.length)) != -1) {
                 buffer.write(data, 0, read);
             }
+            buffer.flush();
+            return buffer.toByteArray();
         }
-        buffer.flush();
-        return buffer.toByteArray();
     }
 
     public static InputStream getObjectStream(final AmazonS3 s3Client,
@@ -135,7 +134,6 @@ public class S3Utils {
             logger.warn(String.format("couldn't find S3 object with key '%s' in bucket '%s'", key, bucketName));
             return null;
         }
-
         return s3Client.getObject(bucketName, key).getObjectContent();
     }
 
