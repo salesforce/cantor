@@ -56,7 +56,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
     // executor service to parallelize calls to s3
     private static final Executor executorService = Executors.newCachedThreadPool(
-            new ThreadFactoryBuilder().setNameFormat("cantor-events-on-s3-worker-%d").build()
+            new ThreadFactoryBuilder().setNameFormat("cantor-s3-events-worker-%d").build()
     );
 
     // cantor-events-<namespace>/<startTimestamp>-<endTimestamp>
@@ -398,30 +398,30 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
         final List<Event> results = new ArrayList<>();
         final String query = generateGetQuery(startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        final InputStream jsonLines = S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query);
-        final Scanner lineReader = new Scanner(jsonLines);
-        // json events are stored in json lines format, so one json object per line
-        while (lineReader.hasNext()) {
-            final Event event = parser.fromJson(lineReader.nextLine(), Event.class);
-            // if include payloads is true, find the payload offset and length, do a range call to s3 to pull
-            // the base64 representation of the payload bytes
-            if (includePayloads
-                    && event.getDimensions().containsKey(dimensionKeyPayloadOffset)
-                    && event.getDimensions().containsKey(dimensionKeyPayloadLength)) {
-                final long offset = event.getDimensions().get(dimensionKeyPayloadOffset).longValue();
-                final long length = event.getDimensions().get(dimensionKeyPayloadLength).longValue();
-                final String payloadFilename = objectKey.replace("json", "b64");
-                final byte[] payloadBase64Bytes = S3Utils.getCacheableObjectBytes(this.s3Client, this.bucketName, payloadFilename, offset, offset + length - 1);
-                if (payloadBase64Bytes == null || payloadBase64Bytes.length == 0) {
-                    throw new IOException("failed to retrieve payload for event");
+        try (InputStream jsonLines = S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query)) {
+            final Scanner lineReader = new Scanner(jsonLines);
+            // json events are stored in json lines format, so one json object per line
+            while (lineReader.hasNext()) {
+                final Event event = parser.fromJson(lineReader.nextLine(), Event.class);
+                // if include payloads is true, find the payload offset and length, do a range call to s3 to pull
+                // the base64 representation of the payload bytes
+                if (includePayloads
+                        && event.getDimensions().containsKey(dimensionKeyPayloadOffset)
+                        && event.getDimensions().containsKey(dimensionKeyPayloadLength)) {
+                    final long offset = event.getDimensions().get(dimensionKeyPayloadOffset).longValue();
+                    final long length = event.getDimensions().get(dimensionKeyPayloadLength).longValue();
+                    final String payloadFilename = objectKey.replace("json", "b64");
+                    final byte[] payloadBase64Bytes = S3Utils.getCacheableObjectBytes(this.s3Client, this.bucketName, payloadFilename, offset, offset + length - 1);
+                    if (payloadBase64Bytes == null || payloadBase64Bytes.length == 0) {
+                        throw new IOException("failed to retrieve payload for event");
+                    }
+                    final byte[] payload = Base64.getDecoder().decode(new String(payloadBase64Bytes));
+                    final Event eventWithPayload = new Event(event.getTimestampMillis(), event.getMetadata(), event.getDimensions(), payload);
+                    results.add(eventWithPayload);
+                } else {
+                    results.add(event);
                 }
-                final byte[] payload = Base64.getDecoder().decode(new String(payloadBase64Bytes));
-                final Event eventWithPayload = new Event(event.getTimestampMillis(), event.getMetadata(), event.getDimensions(), payload);
-                results.add(eventWithPayload);
-            } else {
-                results.add(event);
             }
-
         }
         return results;
     }
@@ -435,13 +435,14 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
         final Set<String> results = new HashSet<>();
         final String query = generateMetadataQuery(metadataKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        final InputStream jsonLines = S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query);
-        final Scanner lineReader = new Scanner(jsonLines);
-        // json events are stored in json lines format, so one json object per line
-        while (lineReader.hasNext()) {
-            final Map<String, String> metadata = parser.fromJson(lineReader.nextLine(), Map.class);
-            if (metadata.containsKey(metadataKey)) {
-                results.add(metadata.get(metadataKey));
+        try (InputStream jsonLines = S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query)) {
+            final Scanner lineReader = new Scanner(jsonLines);
+            // json events are stored in json lines format, so one json object per line
+            while (lineReader.hasNext()) {
+                final Map<String, String> metadata = parser.fromJson(lineReader.nextLine(), Map.class);
+                if (metadata.containsKey(metadataKey)) {
+                    results.add(metadata.get(metadataKey));
+                }
             }
         }
         return results;
