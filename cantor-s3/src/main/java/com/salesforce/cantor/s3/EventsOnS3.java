@@ -17,6 +17,7 @@ import com.amazonaws.services.s3.transfer.MultipleFileUpload;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import com.google.common.cache.*;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.gson.*;
 import com.salesforce.cantor.Events;
 import org.slf4j.Logger;
@@ -72,6 +73,10 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             .maximumWeight(1024 * 1024 * 1024) // 1GB cache
             .weigher(new ObjectWeigher())
             .build();
+
+    private static final Executor workStealingExecutor = Executors.newCachedThreadPool(
+//            128, // exactly 16 concurrent worker threads
+            new ThreadFactoryBuilder().setNameFormat("cantor-events-on-s3-worker-%d").build());
 
     private final TransferManager s3TransferManager;
 
@@ -288,7 +293,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         final List<Event> results = new CopyOnWriteArrayList<>();
         // parallel calls to s3
         final CompletionService<List<Event>> completionService =
-                new ExecutorCompletionService<>(Executors.newWorkStealingPool(64));
+                new ExecutorCompletionService<>(workStealingExecutor);
         final List<Future<List<Event>>> futures = new ArrayList<>();
         // iterate over all s3 objects that match this request
         for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
@@ -329,7 +334,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         final Set<String> results = new CopyOnWriteArraySet<>();
         // parallel calls to s3
         final CompletionService<Set<String>> completionService =
-                new ExecutorCompletionService<>(Executors.newWorkStealingPool(64));
+                new ExecutorCompletionService<>(workStealingExecutor);
         final List<Future<Set<String>>> futures = new ArrayList<>();
         // iterate over all s3 objects that match this request
         for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
@@ -492,8 +497,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         }
         prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatterMin.format(endTimestampMillis)));
         final Set<String> matchingKeys = new ConcurrentSkipListSet<>();
-        final ExecutorService executor = Executors.newWorkStealingPool(64);
-        final CompletionService<List<Event>> completionService = new ExecutorCompletionService<>(executor);
+        final CompletionService<List<Event>> completionService = new ExecutorCompletionService<>(workStealingExecutor);
         final List<Future<?>> futures = new ArrayList<>();
         for (final String prefix : prefixes) {
             futures.add(completionService.submit(() -> {
