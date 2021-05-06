@@ -8,13 +8,11 @@
 package com.salesforce.cantor.server;
 
 import com.salesforce.cantor.server.grpc.GrpcServer;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
+import java.util.TimeZone;
 
 public class Application {
     private static final Logger logger = LoggerFactory.getLogger(Application.class);
@@ -24,6 +22,9 @@ public class Application {
             printUsage();
             return;
         }
+
+        // set system wide default timezone to utc
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
 
         final String configPath = args[0];
         logger.info("loading configs from {}", configPath);

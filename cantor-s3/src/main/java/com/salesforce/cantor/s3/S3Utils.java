@@ -116,14 +116,15 @@ public class S3Utils {
         }
         final S3Object s3Object = s3Client.getObject(request);
         try (final InputStream inputStream = s3Object.getObjectContent()) {
-            final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-            final byte[] data = new byte[streamingChunkSize];
-            int read;
-            while ((read = inputStream.read(data, 0, data.length)) != -1) {
-                buffer.write(data, 0, read);
+            try (final ByteArrayOutputStream buffer = new ByteArrayOutputStream()) {
+                final byte[] data = new byte[streamingChunkSize];
+                int read;
+                while ((read = inputStream.read(data, 0, data.length)) != -1) {
+                    buffer.write(data, 0, read);
+                }
+                buffer.flush();
+                return buffer.toByteArray();
             }
-            buffer.flush();
-            return buffer.toByteArray();
         }
     }
 
@@ -226,34 +227,35 @@ public class S3Utils {
         public static InputStream queryObjectJson(final AmazonS3 s3Client,
                                                   final String bucket,
                                                   final String key,
-                                                  final String query) {
+                                                  final String query) throws IOException {
             return queryObject(s3Client, generateJsonRequest(bucket, key, query));
         }
 
         public static InputStream queryObjectCsv(final AmazonS3 s3Client,
                                                  final String bucket,
                                                  final String key,
-                                                 final String query) {
+                                                 final String query) throws IOException {
             return queryObject(s3Client, generateCsvRequest(bucket, key, query));
         }
 
         public static InputStream queryObject(final AmazonS3 s3Client,
-                                              final SelectObjectContentRequest request) {
-            final SelectObjectContentResult result = s3Client.selectObjectContent(request);
-            return result.getPayload().getRecordsInputStream(
-                new SelectObjectContentEventVisitor() {
-                    @Override
-                    public void visit(final SelectObjectContentEvent.StatsEvent event) {
-                        logger.debug("s3 select query stats: bucket='{}' key='{}' bytes-scanned='{}' bytes-processed='{}' bytes-returned='{}'",
-                                request.getBucketName(),
-                                request.getKey(),
-                                event.getDetails().getBytesProcessed(),
-                                event.getDetails().getBytesScanned(),
-                                event.getDetails().getBytesReturned()
-                        );
-                    }
-                }
-            );
+                                              final SelectObjectContentRequest request) throws IOException {
+            try (final SelectObjectContentResult result = s3Client.selectObjectContent(request)) {
+                return result.getPayload().getRecordsInputStream(
+                        new SelectObjectContentEventVisitor() {
+                            @Override
+                            public void visit(final SelectObjectContentEvent.StatsEvent event) {
+                                logger.debug("s3 select query stats: bucket='{}' key='{}' bytes-scanned='{}' bytes-processed='{}' bytes-returned='{}'",
+                                        request.getBucketName(),
+                                        request.getKey(),
+                                        event.getDetails().getBytesProcessed(),
+                                        event.getDetails().getBytesScanned(),
+                                        event.getDetails().getBytesReturned()
+                                );
+                            }
+                        }
+                );
+            }
         }
 
         /**
@@ -315,5 +317,5 @@ public class S3Utils {
             return value.length;
         }
     }
-
 }
+
