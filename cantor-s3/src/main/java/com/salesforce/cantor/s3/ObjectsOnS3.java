@@ -138,7 +138,6 @@ public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements Streamin
         if (!this.s3Client.doesObjectExist(this.bucketName, objectName)) {
             throw new IOException(String.format("couldn't find objectName '%s' for namespace '%s'", objectName, namespace));
         }
-
         return S3Utils.getObjectStream(this.s3Client, this.bucketName, objectName);
     }
 

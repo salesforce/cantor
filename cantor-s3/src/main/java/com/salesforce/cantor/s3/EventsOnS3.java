@@ -16,9 +16,8 @@ import com.amazonaws.services.s3.model.Tag;
 import com.amazonaws.services.s3.transfer.MultipleFileUpload;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
+import com.google.common.cache.*;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.gson.*;
 import com.salesforce.cantor.Events;
 import org.slf4j.Logger;
@@ -53,8 +52,12 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private static final Logger siftingLogger = initSiftingLogger();
     private static final AtomicBoolean isInitialized = new AtomicBoolean(false);
 
-    private static final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-    private final String bufferDirectory;
+    private static final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+
+    // executor service to parallelize calls to s3
+    private static final Executor executorService = Executors.newCachedThreadPool(
+            new ThreadFactoryBuilder().setNameFormat("cantor-s3-events-worker-%d").build()
+    );
 
     // cantor-events-<namespace>/<startTimestamp>-<endTimestamp>
     private static final String objectKeyPrefix = "cantor-events";
@@ -64,12 +67,24 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     // date directoryFormatter for converting an event timestamp to a hierarchical directory structure
     private static final DateFormat directoryFormatterMin = new SimpleDateFormat("YYYY/MM/dd/HH/mm");
     private static final DateFormat directoryFormatterHour = new SimpleDateFormat("YYYY/MM/dd/HH/");
-    private static final DateFormat directoryFormatterDay = new SimpleDateFormat("YYYY/MM/dd/");
 
     // monitors for synchronizing writes to namespaces
     private static final Map<String, Object> namespaceLocks = new ConcurrentHashMap<>();
 
+    // in memory cache for queries
+    private static final Cache<String, List<Event>> cache = CacheBuilder.newBuilder()
+            .maximumWeight(1024 * 1024 * 1024) // 1GB cache
+            .weigher(new ObjectWeigher())
+            .build();
+
+    // in memory cache for keys call
+    private static final Cache<String, Set<String>> keysCache = CacheBuilder.newBuilder()
+            .maximumSize(1024)
+            .build();
+
     private final TransferManager s3TransferManager;
+
+    private final String bufferDirectory;
 
     public EventsOnS3(final AmazonS3 s3Client,
                       final String bucketName) throws IOException {
@@ -101,7 +116,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         // schedule flush cycle to start immediately
         if (!isInitialized.getAndSet(true)) {
             rollover();
-            executor.scheduleAtFixedRate(this::flush, 0, flushIntervalSeconds, TimeUnit.SECONDS);
+            scheduledExecutor.scheduleAtFixedRate(this::flush, 0, flushIntervalSeconds, TimeUnit.SECONDS);
         }
     }
 
@@ -283,8 +298,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
         final List<Event> results = new CopyOnWriteArrayList<>();
         // parallel calls to s3
-        final CompletionService<List<Event>> completionService =
-                new ExecutorCompletionService<>(Executors.newWorkStealingPool(64));
+        final CompletionService<List<Event>> completionService = new ExecutorCompletionService<>(executorService);
         final List<Future<List<Event>>> futures = new ArrayList<>();
         // iterate over all s3 objects that match this request
         for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
@@ -292,16 +306,16 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             if (!objectKey.endsWith("json")) {
                 continue;
             }
-            futures.add(completionService.submit(() -> doGetOnObject(
+            futures.add(completionService.submit(() -> doCacheableGetOnObject(
                     objectKey, startTimestampMillis, endTimestampMillis,
                     metadataQuery, dimensionsQuery, includePayloads
                     ))
             );
         }
-        // iterate over all calls, wait max of 5 seconds per call to return
+        // iterate over all calls, wait max of 30 seconds per call to return
         for (int i = 0; i < futures.size(); ++i) {
             try {
-                results.addAll(completionService.take().get(5, TimeUnit.SECONDS));
+                results.addAll(completionService.take().get(30, TimeUnit.SECONDS));
             } catch (Exception e) {
                 logger.warn("exception on get call to s3", e);
                 throw new IOException(e);
@@ -324,8 +338,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
         final Set<String> results = new CopyOnWriteArraySet<>();
         // parallel calls to s3
-        final CompletionService<Set<String>> completionService =
-                new ExecutorCompletionService<>(Executors.newWorkStealingPool(64));
+        final CompletionService<Set<String>> completionService = new ExecutorCompletionService<>(executorService);
         final List<Future<Set<String>>> futures = new ArrayList<>();
         // iterate over all s3 objects that match this request
         for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
@@ -338,10 +351,10 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                     metadataQuery, dimensionsQuery))
             );
         }
-        // iterate over all calls, wait max of 5 seconds per call to return
+        // iterate over all calls, wait max of 30 seconds per call to return
         for (int i = 0; i < futures.size(); ++i) {
             try {
-                results.addAll(completionService.take().get(5, TimeUnit.SECONDS));
+                results.addAll(completionService.take().get(30, TimeUnit.SECONDS));
             } catch (Exception e) {
                 logger.warn("exception on metadata call to s3", e);
                 throw new IOException(e);
@@ -361,6 +374,21 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         });
     }
 
+    private List<Event> doCacheableGetOnObject(final String objectKey,
+                                               final long startTimestampMillis,
+                                               final long endTimestampMillis,
+                                               final Map<String, String> metadataQuery,
+                                               final Map<String, String> dimensionsQuery,
+                                               final boolean includePayloads) throws IOException {
+        final String cacheKey = String.format("%s-%d-%d-%d-%d-%b",
+                objectKey.hashCode(), startTimestampMillis, endTimestampMillis, metadataQuery.hashCode(), dimensionsQuery.hashCode(), includePayloads);
+        try {
+            return cache.get(cacheKey, () -> doGetOnObject(objectKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads));
+        } catch (ExecutionException e) {
+            return doGetOnObject(objectKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads);
+        }
+    }
+
     private List<Event> doGetOnObject(final String objectKey,
                                       final long startTimestampMillis,
                                       final long endTimestampMillis,
@@ -370,30 +398,31 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
         final List<Event> results = new ArrayList<>();
         final String query = generateGetQuery(startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        final InputStream jsonLines = S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query);
-        final Scanner lineReader = new Scanner(jsonLines);
-        // json events are stored in json lines format, so one json object per line
-        while (lineReader.hasNext()) {
-            final Event event = parser.fromJson(lineReader.nextLine(), Event.class);
-            // if include payloads is true, find the payload offset and length, do a range call to s3 to pull
-            // the base64 representation of the payload bytes
-            if (includePayloads
-                    && event.getDimensions().containsKey(dimensionKeyPayloadOffset)
-                    && event.getDimensions().containsKey(dimensionKeyPayloadLength)) {
-                final long offset = event.getDimensions().get(dimensionKeyPayloadOffset).longValue();
-                final long length = event.getDimensions().get(dimensionKeyPayloadLength).longValue();
-                final String payloadFilename = objectKey.replace("json", "b64");
-                final byte[] payloadBase64Bytes = S3Utils.getObjectBytes(this.s3Client, this.bucketName, payloadFilename, offset, offset + length - 1);
-                if (payloadBase64Bytes == null || payloadBase64Bytes.length == 0) {
-                    throw new IOException("failed to retrieve payload for event");
+        try (final InputStream jsonLines = S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query)) {
+            try (final Scanner lineReader = new Scanner(jsonLines)) {
+                // json events are stored in json lines format, so one json object per line
+                while (lineReader.hasNext()) {
+                    final Event event = parser.fromJson(lineReader.nextLine(), Event.class);
+                    // if include payloads is true, find the payload offset and length, do a range call to s3 to pull
+                    // the base64 representation of the payload bytes
+                    if (includePayloads
+                            && event.getDimensions().containsKey(dimensionKeyPayloadOffset)
+                            && event.getDimensions().containsKey(dimensionKeyPayloadLength)) {
+                        final long offset = event.getDimensions().get(dimensionKeyPayloadOffset).longValue();
+                        final long length = event.getDimensions().get(dimensionKeyPayloadLength).longValue();
+                        final String payloadFilename = objectKey.replace("json", "b64");
+                        final byte[] payloadBase64Bytes = S3Utils.getCacheableObjectBytes(this.s3Client, this.bucketName, payloadFilename, offset, offset + length - 1);
+                        if (payloadBase64Bytes == null || payloadBase64Bytes.length == 0) {
+                            throw new IOException("failed to retrieve payload for event");
+                        }
+                        final byte[] payload = Base64.getDecoder().decode(new String(payloadBase64Bytes));
+                        final Event eventWithPayload = new Event(event.getTimestampMillis(), event.getMetadata(), event.getDimensions(), payload);
+                        results.add(eventWithPayload);
+                    } else {
+                        results.add(event);
+                    }
                 }
-                final byte[] payload = Base64.getDecoder().decode(new String(payloadBase64Bytes));
-                final Event eventWithPayload = new Event(event.getTimestampMillis(), event.getMetadata(), event.getDimensions(), payload);
-                results.add(eventWithPayload);
-            } else {
-                results.add(event);
             }
-
         }
         return results;
     }
@@ -407,13 +436,15 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
         final Set<String> results = new HashSet<>();
         final String query = generateMetadataQuery(metadataKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
-        final InputStream jsonLines = S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query);
-        final Scanner lineReader = new Scanner(jsonLines);
-        // json events are stored in json lines format, so one json object per line
-        while (lineReader.hasNext()) {
-            final Map<String, String> metadata = parser.fromJson(lineReader.nextLine(), Map.class);
-            if (metadata.containsKey(metadataKey)) {
-                results.add(metadata.get(metadataKey));
+        try (final InputStream jsonLines = S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query)) {
+            try (final Scanner lineReader = new Scanner(jsonLines)) {
+                // json events are stored in json lines format, so one json object per line
+                while (lineReader.hasNext()) {
+                    final Map<String, String> metadata = parser.fromJson(lineReader.nextLine(), Map.class);
+                    if (metadata.containsKey(metadataKey)) {
+                        results.add(metadata.get(metadataKey));
+                    }
+                }
             }
         }
         return results;
@@ -457,13 +488,20 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
     private Set<String> getMatchingKeys(final String namespace, final long startTimestampMillis, final long endTimestampMillis)
             throws IOException {
+        final String cacheKey = String.format("%d-%d-%d", namespace.hashCode(), startTimestampMillis, endTimestampMillis);
+        try {
+            return keysCache.get(cacheKey, () -> doGetMatchingKeys(namespace, startTimestampMillis, endTimestampMillis));
+        } catch (ExecutionException e) {
+            return doGetMatchingKeys(namespace, startTimestampMillis, endTimestampMillis);
+        }
+    }
+
+    private Set<String> doGetMatchingKeys(final String namespace, final long startTimestampMillis, final long endTimestampMillis)
+            throws IOException {
         final Set<String> prefixes = new HashSet<>();
         long start = startTimestampMillis;
         while (start <= endTimestampMillis) {
-            if (start + TimeUnit.DAYS.toMillis(1) <= endTimestampMillis) {
-                prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatterDay.format(start)));
-                start += TimeUnit.DAYS.toMillis(1);
-            } else if (start + TimeUnit.HOURS.toMillis(1) <= endTimestampMillis) {
+            if (start + TimeUnit.HOURS.toMillis(1) <= endTimestampMillis) {
                 prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatterHour.format(start)));
                 start += TimeUnit.HOURS.toMillis(1);
             } else {
@@ -473,8 +511,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         }
         prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatterMin.format(endTimestampMillis)));
         final Set<String> matchingKeys = new ConcurrentSkipListSet<>();
-        final ExecutorService executor = Executors.newWorkStealingPool(64);
-        final CompletionService<List<Event>> completionService = new ExecutorCompletionService<>(executor);
+        final CompletionService<List<Event>> completionService = new ExecutorCompletionService<>(executorService);
         final List<Future<?>> futures = new ArrayList<>();
         for (final String prefix : prefixes) {
             futures.add(completionService.submit(() -> {
@@ -484,7 +521,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         }
         for (int i = 0; i < futures.size(); ++i) {
             try {
-                completionService.take().get(5, TimeUnit.SECONDS);
+                completionService.take().get(30, TimeUnit.SECONDS);
             } catch (Exception e) {
                 logger.warn("exception on get call to s3", e);
                 throw new IOException(e);
@@ -679,5 +716,16 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             }
         }
         dir.delete();
+    }
+
+    private static class ObjectWeigher implements Weigher<String, List<Event>> {
+        @Override
+        public int weigh(final String keyIgnored, final List<Event> value) {
+            int weight = 0;
+            for (Event e : value) {
+                weight += e.toString().length();
+            }
+            return weight;
+        }
     }
 }
