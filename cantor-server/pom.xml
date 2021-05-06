@@ -10,7 +10,7 @@
     <parent>
         <artifactId>cantor-parent</artifactId>
         <groupId>com.salesforce.cantor</groupId>
-        <version>0.4.13-SNAPSHOT</version>
+        <version>0.4.14-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -87,6 +87,11 @@
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
+        </dependency>
+        <!--SLF4J BRIDGE-->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jul-to-slf4j</artifactId>
         </dependency>
 
         <!--TEST SCOPE-->

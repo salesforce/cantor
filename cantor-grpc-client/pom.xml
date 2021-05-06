@@ -20,7 +20,7 @@
     <parent>
         <groupId>com.salesforce.cantor</groupId>
         <artifactId>cantor-parent</artifactId>
-        <version>0.4.13-SNAPSHOT</version>
+        <version>0.4.14-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -45,6 +45,11 @@
             <groupId>io.grpc</groupId>
             <artifactId>grpc-protobuf</artifactId>
             <version>${grpc.version}</version>
+        </dependency>
+        <!--SLF4J BRIDGE-->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jul-to-slf4j</artifactId>
         </dependency>
 
         <!--TEST SCOPE-->
