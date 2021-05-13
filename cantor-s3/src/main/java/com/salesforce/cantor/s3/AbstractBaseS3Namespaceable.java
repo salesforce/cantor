@@ -1,11 +1,9 @@
 package com.salesforce.cantor.s3;
 
-import com.amazonaws.AmazonServiceException;
 import com.amazonaws.SdkClientException;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.amazonaws.services.s3.model.HeadBucketRequest;
-import com.amazonaws.services.s3.model.ListObjectsV2Request;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.util.StringInputStream;
 import com.google.common.cache.*;
@@ -55,15 +53,13 @@ public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
         this.namespaceCache = CacheBuilder.newBuilder()
             .build(new CacheLoader<String, Optional<String>>() {
                 final Map<String, String> cachedNamespaces = new HashMap<>();
-
                 @Override
                 public Optional<String> load(final String namespace) throws IOException {
-                    if (cachedNamespaces.containsKey(namespace)) {
-                        return Optional.of(cachedNamespaces.get(namespace));
+                    if (this.cachedNamespaces.containsKey(namespace)) {
+                        return Optional.of(this.cachedNamespaces.get(namespace));
                     }
-
-                    refreshNamespaces(cachedNamespaces);
-                    return Optional.ofNullable(cachedNamespaces.get(namespace));
+                    refreshNamespaces(this.cachedNamespaces);
+                    return Optional.ofNullable(this.cachedNamespaces.get(namespace));
                 }
             });
         // refresh the namespace cache every 30 seconds
@@ -119,17 +115,17 @@ public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
     }
 
     private Collection<String> doGetNamespaces() throws IOException {
-        final InputStream namespacesCsv = S3Utils.getObjectStream(this.s3Client, this.bucketName, this.namespaceLookupKey);
-        if (namespacesCsv == null) {
-            return Collections.emptyList();
-        }
-
-        try(final BufferedReader namespaceReader = new BufferedReader(new InputStreamReader(namespacesCsv))) {
-            return namespaceReader
-                    .lines() // get list of csv objects
-                    .skip(1) // skip the header
-                    .map(namespaceCsv -> namespaceCsv.split(",")[0]) // get the first element which is the namespace
-                    .collect(Collectors.toList());
+        try (final InputStream namespacesCsv = S3Utils.getObjectStream(this.s3Client, this.bucketName, this.namespaceLookupKey)) {
+            if (namespacesCsv == null) {
+                return Collections.emptyList();
+            }
+            try(final BufferedReader namespaceReader = new BufferedReader(new InputStreamReader(namespacesCsv))) {
+                return namespaceReader
+                        .lines() // get list of csv objects
+                        .skip(1) // skip the header
+                        .map(namespaceCsv -> namespaceCsv.split(",")[0]) // get the first element which is the namespace
+                        .collect(Collectors.toList());
+            }
         }
     }
 
@@ -165,19 +161,17 @@ public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
 
         logger.debug("deleting namespace record from namespaces object '{}.{}'", this.bucketName, this.namespaceLookupKey);
         final String remainingNamespacesQuery = String.format("select * from s3object s where NOT s.namespace = '%s'", namespace);
-        final InputStream namespacesCsv = S3Utils.S3Select.queryObjectCsv(this.s3Client, this.bucketName, this.namespaceLookupKey, remainingNamespacesQuery);
-
+        final String namespacesCsv = S3Utils.S3Select.queryObjectCsv(this.s3Client, this.bucketName, this.namespaceLookupKey, remainingNamespacesQuery);
         // read csv file one element at a time
-        final ByteArrayOutputStream csvForNamespaces = new ByteArrayOutputStream();
-        try (final BufferedReader namespaceEntry = new BufferedReader(new InputStreamReader(namespacesCsv))) {
+        try (final ByteArrayOutputStream csvForNamespaces = new ByteArrayOutputStream()) {
             csvForNamespaces.write("namespace,key".getBytes(StandardCharsets.UTF_8));
-            final Iterator<String> entries = namespaceEntry.lines().iterator();
-            while (entries.hasNext()) {
-                final String entry = "\n" + entries.next();
-                csvForNamespaces.write(entry.getBytes(StandardCharsets.UTF_8));
+            for (final String entry : namespacesCsv.split("\n")) {
+                final String line = "\n" + entry;
+                csvForNamespaces.write(line.getBytes(StandardCharsets.UTF_8));
             }
-            final ByteArrayInputStream updatedNamespaces = new ByteArrayInputStream(csvForNamespaces.toByteArray());
-            S3Utils.putObject(this.s3Client, this.bucketName, this.namespaceLookupKey, updatedNamespaces, new ObjectMetadata());
+            try (final ByteArrayInputStream updatedNamespaces = new ByteArrayInputStream(csvForNamespaces.toByteArray())) {
+                S3Utils.putObject(this.s3Client, this.bucketName, this.namespaceLookupKey, updatedNamespaces, new ObjectMetadata());
+            }
         }
         this.namespaceCache.invalidate(namespace);
     }
@@ -190,21 +184,21 @@ public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
 
     private void refreshNamespaces(final Map<String, String> cachedNamespaces) throws IOException {
         cachedNamespaces.clear();
-        final InputStream namespacesCsv = S3Utils.getObjectStream(s3Client, bucketName, namespaceLookupKey);
-        if (namespacesCsv == null) {
-            return;
-        }
-
-        try(final BufferedReader namespaceReader = new BufferedReader(new InputStreamReader(namespacesCsv))) {
-            // get list of csv objects and skip the header
-            final Iterator<String> namespaceCsv = namespaceReader.lines().skip(1).iterator();
-            while(namespaceCsv.hasNext()) {
-                final String entry = namespaceCsv.next();
-                final String[] entries = entry.split(",");
-                if (entries.length != 2) {
-                    throw new IOException("Invalid entry in lookup table: " + entry);
+        try (final InputStream namespacesCsv = S3Utils.getObjectStream(s3Client, bucketName, namespaceLookupKey)) {
+            if (namespacesCsv == null) {
+                return;
+            }
+            try(final BufferedReader namespaceReader = new BufferedReader(new InputStreamReader(namespacesCsv))) {
+                // get list of csv objects and skip the header
+                final Iterator<String> namespaceCsv = namespaceReader.lines().skip(1).iterator();
+                while(namespaceCsv.hasNext()) {
+                    final String entry = namespaceCsv.next();
+                    final String[] entries = entry.split(",");
+                    if (entries.length != 2) {
+                        throw new IOException("Invalid entry in lookup table: " + entry);
+                    }
+                    cachedNamespaces.put(entries[0], entries[1]);
                 }
-                cachedNamespaces.put(entries[0], entries[1]);
             }
         }
     }

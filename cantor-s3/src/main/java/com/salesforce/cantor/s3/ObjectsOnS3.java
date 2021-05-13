@@ -24,8 +24,8 @@ import static com.salesforce.cantor.common.ObjectsPreconditions.*;
 public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements StreamingObjects {
     private static final Logger logger = LoggerFactory.getLogger(ObjectsOnS3.class);
 
-    // cantor-object-[<namespace>]-<key>
-    private static final String objectKeyFormat = "cantor-object-[%s]-%s";
+    // cantor-objects-<namespace>/<startTimestamp>-<endTimestamp>
+    private static final String objectKeyPrefix = "cantor-objects";
 
     public ObjectsOnS3(final AmazonS3 s3Client, final String bucketName) throws IOException {
         super(s3Client, bucketName, "objects");
@@ -111,11 +111,6 @@ public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements Streamin
         }
     }
 
-    @Override
-    protected String getObjectKeyPrefix(final String namespace) {
-        return getObjectKey(namespace, "");
-    }
-
     private void doStore(final String namespace, final String key, final InputStream stream, final long length) throws IOException {
         checkNamespace(namespace);
         final String objectName = getObjectKey(namespace, key);
@@ -138,7 +133,6 @@ public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements Streamin
         if (!this.s3Client.doesObjectExist(this.bucketName, objectName)) {
             throw new IOException(String.format("couldn't find objectName '%s' for namespace '%s'", objectName, namespace));
         }
-
         return S3Utils.getObjectStream(this.s3Client, this.bucketName, objectName);
     }
 
@@ -155,6 +149,12 @@ public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements Streamin
     }
 
     private String getObjectKey(final String namespace, final String key) {
-        return String.format(objectKeyFormat, namespace, key);
+        return String.format("%s/%s", getObjectKeyPrefix(namespace), key);
     }
+
+    @Override
+    protected String getObjectKeyPrefix(final String namespace) {
+        return String.format("%s/%s", objectKeyPrefix, trim(namespace));
+    }
+
 }

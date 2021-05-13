@@ -39,15 +39,14 @@ public class GrpcServer {
         );
 
         final Cantor cantor = cantorProvider.getCantor();
-        this.server = ServerBuilder.forPort(port)
+        this.server = ServerBuilder
+                .forPort(port)
                 .maxInboundMessageSize(64 * 1024 * 1024) // 64MB
                 .addService(new ObjectsGrpcService(cantor))
                 .addService(new SetsGrpcService(cantor))
                 .addService(new EventsGrpcService(cantor))
-                .executor(
-                        Executors.newFixedThreadPool(
-                                64, // exactly 64 concurrent worker threads
-                                new ThreadFactoryBuilder().setNameFormat("cantor-grpc-worker-%d").build())
+                .executor(Executors.newCachedThreadPool(
+                        new ThreadFactoryBuilder().setNameFormat("cantor-grpc-worker-%d").build())
                 )
                 .build();
 

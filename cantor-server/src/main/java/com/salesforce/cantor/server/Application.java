@@ -16,6 +16,7 @@ import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.TimeZone;
 
 public class Application {
     private static final Logger logger = LoggerFactory.getLogger(Application.class);
@@ -25,6 +26,9 @@ public class Application {
             printUsage();
             return;
         }
+
+        // set system wide default timezone to utc
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
 
         final String configPath = args[0];
         logger.info("loading configs from {}", configPath);

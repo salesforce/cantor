@@ -2,11 +2,13 @@ package com.salesforce.cantor.s3;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.*;
+import com.google.common.cache.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 /**
@@ -17,6 +19,12 @@ public class S3Utils {
 
     // read objects in 4MB chunks
     private static final int streamingChunkSize = 4 * 1024 * 1024;
+
+    // in memory object cache
+    private static final Cache<String, byte[]> cache = CacheBuilder.newBuilder()
+            .maximumWeight(1024 * 1024 * 1024) // 1GB cache
+            .weigher(new ObjectWeigher())
+            .build();
 
     public static Collection<String> getKeys(final AmazonS3 s3Client,
                                              final String bucketName,
@@ -76,6 +84,20 @@ public class S3Utils {
         return getObjectBytes(s3Client, bucketName, key, 0, -1);
     }
 
+
+    public static byte[] getCacheableObjectBytes(final AmazonS3 s3Client,
+                                                 final String bucketName,
+                                                 final String key,
+                                                 final long start,
+                                                 final long end) throws IOException {
+        final String cacheKey = String.format("%s-%s-%d-%d", bucketName, key, start, end);
+        try {
+            return cache.get(cacheKey, () -> getObjectBytes(s3Client, bucketName, key, start, end));
+        } catch (ExecutionException e) {
+            return getObjectBytes(s3Client, bucketName, key, start, end);
+        }
+    }
+
     public static byte[] getObjectBytes(final AmazonS3 s3Client,
                                         final String bucketName,
                                         final String key,
@@ -93,17 +115,17 @@ public class S3Utils {
             request.setRange(start);
         }
         final S3Object s3Object = s3Client.getObject(request);
-        final ByteArrayOutputStream buffer;
         try (final InputStream inputStream = s3Object.getObjectContent()) {
-            buffer = new ByteArrayOutputStream();
-            final byte[] data = new byte[streamingChunkSize];
-            int read;
-            while ((read = inputStream.read(data, 0, data.length)) != -1) {
-                buffer.write(data, 0, read);
+            try (final ByteArrayOutputStream buffer = new ByteArrayOutputStream()) {
+                final byte[] data = new byte[streamingChunkSize];
+                int read;
+                while ((read = inputStream.read(data, 0, data.length)) != -1) {
+                    buffer.write(data, 0, read);
+                }
+                buffer.flush();
+                return buffer.toByteArray();
             }
         }
-        buffer.flush();
-        return buffer.toByteArray();
     }
 
     public static InputStream getObjectStream(final AmazonS3 s3Client,
@@ -113,7 +135,6 @@ public class S3Utils {
             logger.warn(String.format("couldn't find S3 object with key '%s' in bucket '%s'", key, bucketName));
             return null;
         }
-
         return s3Client.getObject(bucketName, key).getObjectContent();
     }
 
@@ -203,37 +224,47 @@ public class S3Utils {
      */
     public static class S3Select {
 
-        public static InputStream queryObjectJson(final AmazonS3 s3Client,
+        public static String queryObjectJson(final AmazonS3 s3Client,
                                                   final String bucket,
                                                   final String key,
-                                                  final String query) {
+                                                  final String query) throws IOException {
             return queryObject(s3Client, generateJsonRequest(bucket, key, query));
         }
 
-        public static InputStream queryObjectCsv(final AmazonS3 s3Client,
+        public static String queryObjectCsv(final AmazonS3 s3Client,
                                                  final String bucket,
                                                  final String key,
-                                                 final String query) {
+                                                 final String query) throws IOException {
             return queryObject(s3Client, generateCsvRequest(bucket, key, query));
         }
 
-        public static InputStream queryObject(final AmazonS3 s3Client,
-                                              final SelectObjectContentRequest request) {
-            final SelectObjectContentResult result = s3Client.selectObjectContent(request);
-            return result.getPayload().getRecordsInputStream(
-                new SelectObjectContentEventVisitor() {
-                    @Override
-                    public void visit(final SelectObjectContentEvent.StatsEvent event) {
-                        logger.debug("s3 select query stats: bucket='{}' key='{}' bytes-scanned='{}' bytes-processed='{}' bytes-returned='{}'",
-                                request.getBucketName(),
-                                request.getKey(),
-                                event.getDetails().getBytesProcessed(),
-                                event.getDetails().getBytesScanned(),
-                                event.getDetails().getBytesReturned()
-                        );
+        public static String queryObject(final AmazonS3 s3Client,
+                                              final SelectObjectContentRequest request) throws IOException {
+            final StringBuilder results = new StringBuilder();
+            try (final SelectObjectContentResult result = s3Client.selectObjectContent(request)) {
+                try (final InputStream inputStream = result.getPayload().getRecordsInputStream(
+                        new SelectObjectContentEventVisitor() {
+                            @Override
+                            public void visit(final SelectObjectContentEvent.StatsEvent event) {
+                                logger.debug("s3 select query stats: bucket='{}' key='{}' bytes-scanned='{}' bytes-processed='{}' bytes-returned='{}'",
+                                        request.getBucketName(),
+                                        request.getKey(),
+                                        event.getDetails().getBytesProcessed(),
+                                        event.getDetails().getBytesScanned(),
+                                        event.getDetails().getBytesReturned()
+                                );
+                            }
+                        }
+                )) {
+                    try (final Scanner lineReader = new Scanner(inputStream)) {
+                        // json events are stored in json lines format, so one json object per line
+                        while (lineReader.hasNext()) {
+                            results.append(lineReader.nextLine()).append("\n");
+                        }
                     }
                 }
-            );
+            }
+            return results.toString();
         }
 
         /**
@@ -287,6 +318,13 @@ public class S3Utils {
 
             return request;
         }
+    }
 
+    private static class ObjectWeigher implements Weigher<String, byte[]> {
+        @Override
+        public int weigh(final String keyIgnored, final byte[] value) {
+            return value.length;
+        }
     }
 }
+
