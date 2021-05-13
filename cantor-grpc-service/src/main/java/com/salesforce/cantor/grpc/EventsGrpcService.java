@@ -186,7 +186,7 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
         return this.cantor.events();
     }
 
-    private List<EventProto> getProtosFromEvents(List<Events.Event> events) {
+    private List<EventProto> getProtosFromEvents(final List<Events.Event> events) {
         final List<EventProto> eventProtos = new ArrayList<>();
         for (final Events.Event event : events) {
             eventProtos.add(EventProto.newBuilder()

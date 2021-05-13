@@ -8,7 +8,6 @@
 package com.salesforce.cantor.jdbc;
 
 import com.salesforce.cantor.Events;
-import jdk.nashorn.internal.ir.annotations.Immutable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,18 +108,18 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
                                  Map<String, String> metadataQuery,
                                  Map<String, String> dimensionsQuery) throws IOException {
         checkDimension(namespace,
-            dimensionKey,
-            startTimestampMillis,
-            endTimestampMillis,
-            metadataQuery,
-            dimensionsQuery
+                dimensionKey,
+                startTimestampMillis,
+                endTimestampMillis,
+                metadataQuery,
+                dimensionsQuery
         );
         return doDimension(namespace,
-            dimensionKey,
-            startTimestampMillis,
-            endTimestampMillis,
-            metadataQuery,
-            dimensionsQuery
+                dimensionKey,
+                startTimestampMillis,
+                endTimestampMillis,
+                nullToEmpty(metadataQuery),
+                nullToEmpty(dimensionsQuery)
         );
     }
 
@@ -957,7 +956,7 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
 
     private long getWindowForTimestamp(final long timestampMillis) {
         return (timestampMillis / getWindowSizeMillis()) * getWindowSizeMillis();
-}
+    }
 
     private long getWindowSizeMillis() {
         return TimeUnit.DAYS.toMillis(1);  // one per day

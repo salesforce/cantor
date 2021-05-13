@@ -85,13 +85,13 @@ public class LoggableEvents extends AbstractBaseLoggableNamespaceable<Events> im
                                  final Map<String, String> dimensionsQuery) throws IOException {
         checkDimension(namespace, dimensionKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
         return logCall(() -> getDelegate()
-                        .dimension(namespace,
-                                dimensionKey,
-                                startTimestampMillis,
-                                endTimestampMillis,
-                                metadataQuery,
-                                dimensionsQuery
-                        ),
+                .dimension(namespace,
+                        dimensionKey,
+                        startTimestampMillis,
+                        endTimestampMillis,
+                        metadataQuery,
+                        dimensionsQuery
+                ),
                 "dimension", namespace,
                 dimensionKey, startTimestampMillis, endTimestampMillis,
                 nullToEmpty(metadataQuery).keySet(), nullToEmpty(dimensionsQuery).keySet()

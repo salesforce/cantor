@@ -174,7 +174,7 @@ public class EventsOnGrpc extends AbstractBaseGrpcClient<EventsServiceBlockingSt
         });
     }
 
-    private List<Event> getEventsFromProtos(List<EventProto> eventProtos) {
+    private List<Event> getEventsFromProtos(final List<EventProto> eventProtos) {
         final List<Event> events = new ArrayList<>();
         for (final EventProto proto : eventProtos) {
             final ByteString payloadByteString = proto.getPayload();
