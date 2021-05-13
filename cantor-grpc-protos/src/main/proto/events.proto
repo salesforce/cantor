@@ -68,6 +68,20 @@ message MetadataResponse {
     repeated string values = 1;
 }
 
+// events.dimension()
+message DimensionRequest {
+    string namespace = 1;
+    string dimension_key = 2;
+    uint64 start_timestamp_millis = 3;
+    uint64 end_timestamp_millis = 4;
+    map<string, string> metadata_query = 5;
+    map<string, string> dimensions_query = 6;
+}
+
+message DimensionResponse {
+    repeated EventProto values = 1;
+}
+
 // events.expire()
 message ExpireRequest {
     string namespace = 1;
@@ -81,6 +95,7 @@ service EventsService {
     rpc drop (DropRequest) returns (VoidResponse) {}
     rpc store (StoreRequest) returns (VoidResponse) {}
     rpc metadata (MetadataRequest) returns (MetadataResponse) {}
+    rpc dimension (DimensionRequest) returns (DimensionResponse) {}
     rpc expire (ExpireRequest) returns (VoidResponse) {}
 }
 

@@ -101,6 +101,29 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
     }
 
     @Override
+    public List<Event> dimension(String namespace,
+                                 String dimensionKey,
+                                 long startTimestampMillis,
+                                 long endTimestampMillis,
+                                 Map<String, String> metadataQuery,
+                                 Map<String, String> dimensionsQuery) throws IOException {
+        checkDimension(namespace,
+            dimensionKey,
+            startTimestampMillis,
+            endTimestampMillis,
+            metadataQuery,
+            dimensionsQuery
+        );
+        return doDimension(namespace,
+            dimensionKey,
+            startTimestampMillis,
+            endTimestampMillis,
+            metadataQuery,
+            dimensionsQuery
+        );
+    }
+
+    @Override
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
         checkExpire(namespace, endTimestampMillis);
         doExpire(namespace, endTimestampMillis);
@@ -691,6 +714,15 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
             throw new IOException("events get operation timed out", e);
         }
         return results;
+    }
+
+    private List<Event> doDimension(final String namespace,
+                                    final String metadataKey,
+                                    final long startTimestampMillis,
+                                    final long endTimestampMillis,
+                                    final Map<String, String> metadataQuery,
+                                    final Map<String, String> dimensionsQuery) throws IOException {
+        return null;
     }
 
     // the metadata query object can contain these patterns:
