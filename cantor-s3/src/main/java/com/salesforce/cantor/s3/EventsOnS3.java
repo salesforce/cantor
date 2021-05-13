@@ -181,6 +181,28 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     }
 
     @Override
+    public List<Event> dimension(final String namespace,
+                                 final String dimensionKey,
+                                 final long startTimestampMillis,
+                                 final long endTimestampMillis,
+                                 final Map<String, String> metadataQuery,
+                                 final Map<String, String> dimensionsQuery) throws IOException {
+        checkDimension(namespace, dimensionKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
+        checkNamespace(namespace);
+        try {
+            return doDimension(namespace,
+                    dimensionKey,
+                    startTimestampMillis,
+                    endTimestampMillis,
+                    (metadataQuery != null) ? metadataQuery : Collections.emptyMap(),
+                    (dimensionsQuery != null) ? dimensionsQuery : Collections.emptyMap());
+        } catch (final AmazonS3Exception e) {
+            logger.warn("exception getting dimension from namespace: " + namespace, e);
+            throw new IOException("exception getting dimension from namespace: " + namespace, e);
+        }
+    }
+
+    @Override
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
         checkExpire(namespace, endTimestampMillis);
         checkNamespace(namespace);
@@ -363,6 +385,40 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         return results;
     }
 
+    private List<Event> doDimension(final String namespace,
+                                    final String dimensionKey,
+                                    final long startTimestampMillis,
+                                    final long endTimestampMillis,
+                                    final Map<String, String> metadataQuery,
+                                    final Map<String, String> dimensionsQuery) throws IOException {
+        final List<Event> results = new CopyOnWriteArrayList<>();
+        // parallel calls to s3
+        final CompletionService<List<Event>> completionService =
+                new ExecutorCompletionService<>(Executors.newWorkStealingPool(64));
+        final List<Future<List<Event>>> futures = new ArrayList<>();
+        // iterate over all s3 objects that match this request
+        for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
+            // only query json files
+            if (!objectKey.endsWith("json")) {
+                continue;
+            }
+            futures.add(completionService.submit(() -> doDimensionOnObject(
+                    objectKey, dimensionKey, startTimestampMillis, endTimestampMillis,
+                    metadataQuery, dimensionsQuery))
+            );
+        }
+        // iterate over all calls, wait max of 5 seconds per call to return
+        for (int i = 0; i < futures.size(); ++i) {
+            try {
+                results.addAll(completionService.take().get(5, TimeUnit.SECONDS));
+            } catch (Exception e) {
+                logger.warn("exception on dimension call to s3", e);
+                throw new IOException(e);
+            }
+        }
+        return results;
+    }
+
     private void sortEventsByTimestamp(final List<Event> events, final boolean ascending) {
         events.sort((event1, event2) -> {
             if (event1.getTimestampMillis() < event2.getTimestampMillis()) {
@@ -446,6 +502,26 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         return results;
     }
 
+    private List<Event> doDimensionOnObject(final String objectKey,
+                                            final String dimensionKey,
+                                            final long startTimestampMillis,
+                                            final long endTimestampMillis,
+                                            final Map<String, String> metadataQuery,
+                                            final Map<String, String> dimensionsQuery) throws IOException {
+        final List<Event> results = new ArrayList<>();
+        final String query = generateDimensionQuery(dimensionKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
+        try (final Scanner lineReader = new Scanner(S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query))) {
+            // json events are stored in json lines format, so one json object per line
+            while (lineReader.hasNext()) {
+                final Map<String, Double> parsedJson = parser.fromJson(lineReader.nextLine(), Map.class);
+                final long timestamp = parsedJson.get("timestampMillis").longValue();
+                final Map<String, Double> dimensions = Collections.singletonMap(dimensionKey, parsedJson.get(dimensionKey));
+                results.add(new Event(timestamp, Collections.emptyMap(), dimensions));
+            }
+        }
+        return results;
+    }
+
     private void doExpire(final String namespace, final long endTimestampMillis) throws IOException {
         // TODO this has to be implemented properly
         logger.info("expiring namespace '{}' with end timestamp of '{}'", namespace, endTimestampMillis);
@@ -476,6 +552,20 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         final String timestampClause = String.format("s.timestampMillis BETWEEN %d AND %d", startTimestampMillis, endTmestampMillis);
         return String.format("SELECT s.metadata.\"%s\" FROM s3object[*] s WHERE %s %s %s",
                 metadataKey,
+                timestampClause,
+                getMetadataQuerySql(metadataQuery),
+                getDimensionsQuerySql(dimensionsQuery)
+        );
+    }
+
+    private String generateDimensionQuery(final String dimensionKey,
+                                          final long startTimestampMillis,
+                                          final long endTmestampMillis,
+                                          final Map<String, String> metadataQuery,
+                                          final Map<String, String> dimensionsQuery) {
+        final String timestampClause = String.format("s.timestampMillis BETWEEN %d AND %d", startTimestampMillis, endTmestampMillis);
+        return String.format("SELECT s.timestampMillis, s.dimensions.\"%s\" FROM s3object[*] s WHERE %s %s %s",
+                dimensionKey,
                 timestampClause,
                 getMetadataQuerySql(metadataQuery),
                 getDimensionsQuerySql(dimensionsQuery)

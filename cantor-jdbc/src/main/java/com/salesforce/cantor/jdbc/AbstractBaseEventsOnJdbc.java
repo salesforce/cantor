@@ -737,7 +737,7 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
         final ExecutorService executorService = Executors.newCachedThreadPool();
         final List<Event> results = new CopyOnWriteArrayList<>();
         for (String chunkTableName: chunkTables) {
-            final String sqlFormat = "SELECT %s %s FROM %s WHERE %s BETWEEN ? AND ? ";
+            final String sqlFormat = "SELECT %s, %s as DIMENSION_VALUE FROM %s WHERE %s BETWEEN ? AND ? ";
             final StringBuilder sqlBuilder = new StringBuilder(String.format(sqlFormat,
                     quote(getEventTimestampColumnName()),
                     quote(getDimensionKeyColumnName(dimensionKey)),
@@ -760,9 +760,9 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
                         addParameters(preparedStatement, parameters.toArray());
                         try (final ResultSet resultSet = preparedStatement.executeQuery()) {
                             while (resultSet.next()) {
-                                final Map<String, Double> dimension = Collections.singletonMap(dimensionKey, resultSet.getDouble(dimensionKey));
+                                final Map<String, Double> dimension = Collections.singletonMap(dimensionKey, resultSet.getDouble("DIMENSION_VALUE"));
                                 final long timestampMillis = resultSet.getLong(1);
-                                results.add(new Event(timestampMillis, null, dimension, null));
+                                results.add(new Event(timestampMillis, Collections.emptyMap(), dimension, null));
                             }
                         }
                     }
