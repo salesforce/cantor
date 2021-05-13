@@ -164,7 +164,7 @@ public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
         final String namespacesCsv = S3Utils.S3Select.queryObjectCsv(this.s3Client, this.bucketName, this.namespaceLookupKey, remainingNamespacesQuery);
         // read csv file one element at a time
         try (final ByteArrayOutputStream csvForNamespaces = new ByteArrayOutputStream()) {
-                csvForNamespaces.write("namespace,key".getBytes(StandardCharsets.UTF_8));
+            csvForNamespaces.write("namespace,key".getBytes(StandardCharsets.UTF_8));
             for (final String entry : namespacesCsv.split("\n")) {
                 final String line = "\n" + entry;
                 csvForNamespaces.write(line.getBytes(StandardCharsets.UTF_8));
