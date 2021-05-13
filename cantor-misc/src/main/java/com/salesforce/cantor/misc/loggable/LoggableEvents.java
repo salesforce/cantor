@@ -77,6 +77,28 @@ public class LoggableEvents extends AbstractBaseLoggableNamespaceable<Events> im
     }
 
     @Override
+    public List<Event> dimension(final String namespace,
+                                 final String dimensionKey,
+                                 final long startTimestampMillis,
+                                 final long endTimestampMillis,
+                                 final Map<String, String> metadataQuery,
+                                 final Map<String, String> dimensionsQuery) throws IOException {
+        checkDimension(namespace, dimensionKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
+        return logCall(() -> getDelegate()
+                        .dimension(namespace,
+                                dimensionKey,
+                                startTimestampMillis,
+                                endTimestampMillis,
+                                metadataQuery,
+                                dimensionsQuery
+                        ),
+                "dimension", namespace,
+                dimensionKey, startTimestampMillis, endTimestampMillis,
+                nullToEmpty(metadataQuery).keySet(), nullToEmpty(dimensionsQuery).keySet()
+        );
+    }
+
+    @Override
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
         checkExpire(namespace, endTimestampMillis);
         logCall(() -> { getDelegate().expire(namespace, endTimestampMillis); return null; },

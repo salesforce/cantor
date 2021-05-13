@@ -8,6 +8,7 @@
 package com.salesforce.cantor.jdbc;
 
 import com.salesforce.cantor.Events;
+import jdk.nashorn.internal.ir.annotations.Immutable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -717,12 +718,66 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
     }
 
     private List<Event> doDimension(final String namespace,
-                                    final String metadataKey,
+                                    final String dimensionKey,
                                     final long startTimestampMillis,
                                     final long endTimestampMillis,
                                     final Map<String, String> metadataQuery,
                                     final Map<String, String> dimensionsQuery) throws IOException {
-        return null;
+        final Set<String> dimensionKeys = new HashSet<>(dimensionsQuery.keySet());
+        // make sure the dimension exists
+        dimensionKeys.add(dimensionKey);
+        final List<String> chunkTables = getChunkTableNames(
+                namespace,
+                startTimestampMillis,
+                endTimestampMillis,
+                metadataQuery.keySet(),
+                dimensionKeys
+        );
+
+        final ExecutorService executorService = Executors.newCachedThreadPool();
+        final List<Event> results = new CopyOnWriteArrayList<>();
+        for (String chunkTableName: chunkTables) {
+            final String sqlFormat = "SELECT %s %s FROM %s WHERE %s BETWEEN ? AND ? ";
+            final StringBuilder sqlBuilder = new StringBuilder(String.format(sqlFormat,
+                    quote(getEventTimestampColumnName()),
+                    quote(getDimensionKeyColumnName(dimensionKey)),
+                    getTableFullName(namespace, chunkTableName),
+                    quote(getEventTimestampColumnName())
+            ));
+
+            final List<Object> parameters = new ArrayList<>();
+            parameters.add(startTimestampMillis);
+            parameters.add(endTimestampMillis);
+
+            // construct the sql query and parameters for metadata and dimensions
+            sqlBuilder.append(getMetadataQuerySql(metadataQuery, parameters));
+            sqlBuilder.append(getDimensionsQuerySql(dimensionsQuery, parameters));
+            final String sql = sqlBuilder.toString();
+
+            executorService.submit(() -> {
+                try (final Connection connection = getConnection()) {
+                    try (final PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                        addParameters(preparedStatement, parameters.toArray());
+                        try (final ResultSet resultSet = preparedStatement.executeQuery()) {
+                            while (resultSet.next()) {
+                                final Map<String, Double> dimension = Collections.singletonMap(dimensionKey, resultSet.getDouble(dimensionKey));
+                                final long timestampMillis = resultSet.getLong(1);
+                                results.add(new Event(timestampMillis, null, dimension, null));
+                            }
+                        }
+                    }
+                } catch (SQLException | IOException e) {
+                    logger.warn("caught exception executing query sql '{}': {}", sql, e.getMessage());
+                }
+            });
+        }
+        executorService.shutdown();
+        try {
+            executorService.awaitTermination(30, TimeUnit.MINUTES);
+        } catch (InterruptedException e) {
+            throw new IOException("events get operation timed out", e);
+        }
+        return results;
     }
 
     // the metadata query object can contain these patterns:
@@ -902,7 +957,7 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
 
     private long getWindowForTimestamp(final long timestampMillis) {
         return (timestampMillis / getWindowSizeMillis()) * getWindowSizeMillis();
-    }
+}
 
     private long getWindowSizeMillis() {
         return TimeUnit.DAYS.toMillis(1);  // one per day
