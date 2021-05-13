@@ -53,15 +53,13 @@ public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
         this.namespaceCache = CacheBuilder.newBuilder()
             .build(new CacheLoader<String, Optional<String>>() {
                 final Map<String, String> cachedNamespaces = new HashMap<>();
-
                 @Override
                 public Optional<String> load(final String namespace) throws IOException {
-                    if (cachedNamespaces.containsKey(namespace)) {
-                        return Optional.of(cachedNamespaces.get(namespace));
+                    if (this.cachedNamespaces.containsKey(namespace)) {
+                        return Optional.of(this.cachedNamespaces.get(namespace));
                     }
-
-                    refreshNamespaces(cachedNamespaces);
-                    return Optional.ofNullable(cachedNamespaces.get(namespace));
+                    refreshNamespaces(this.cachedNamespaces);
+                    return Optional.ofNullable(this.cachedNamespaces.get(namespace));
                 }
             });
         // refresh the namespace cache every 30 seconds
@@ -163,17 +161,15 @@ public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
 
         logger.debug("deleting namespace record from namespaces object '{}.{}'", this.bucketName, this.namespaceLookupKey);
         final String remainingNamespacesQuery = String.format("select * from s3object s where NOT s.namespace = '%s'", namespace);
-        try (final InputStream namespacesCsv = S3Utils.S3Select.queryObjectCsv(this.s3Client, this.bucketName, this.namespaceLookupKey, remainingNamespacesQuery)) {
-            // read csv file one element at a time
-            final ByteArrayOutputStream csvForNamespaces = new ByteArrayOutputStream();
-            try (final BufferedReader namespaceEntry = new BufferedReader(new InputStreamReader(namespacesCsv))) {
+        final String namespacesCsv = S3Utils.S3Select.queryObjectCsv(this.s3Client, this.bucketName, this.namespaceLookupKey, remainingNamespacesQuery);
+        // read csv file one element at a time
+        try (final ByteArrayOutputStream csvForNamespaces = new ByteArrayOutputStream()) {
                 csvForNamespaces.write("namespace,key".getBytes(StandardCharsets.UTF_8));
-                final Iterator<String> entries = namespaceEntry.lines().iterator();
-                while (entries.hasNext()) {
-                    final String entry = "\n" + entries.next();
-                    csvForNamespaces.write(entry.getBytes(StandardCharsets.UTF_8));
-                }
-                final ByteArrayInputStream updatedNamespaces = new ByteArrayInputStream(csvForNamespaces.toByteArray());
+            for (final String entry : namespacesCsv.split("\n")) {
+                final String line = "\n" + entry;
+                csvForNamespaces.write(line.getBytes(StandardCharsets.UTF_8));
+            }
+            try (final ByteArrayInputStream updatedNamespaces = new ByteArrayInputStream(csvForNamespaces.toByteArray())) {
                 S3Utils.putObject(this.s3Client, this.bucketName, this.namespaceLookupKey, updatedNamespaces, new ObjectMetadata());
             }
         }

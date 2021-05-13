@@ -224,24 +224,25 @@ public class S3Utils {
      */
     public static class S3Select {
 
-        public static InputStream queryObjectJson(final AmazonS3 s3Client,
+        public static String queryObjectJson(final AmazonS3 s3Client,
                                                   final String bucket,
                                                   final String key,
                                                   final String query) throws IOException {
             return queryObject(s3Client, generateJsonRequest(bucket, key, query));
         }
 
-        public static InputStream queryObjectCsv(final AmazonS3 s3Client,
+        public static String queryObjectCsv(final AmazonS3 s3Client,
                                                  final String bucket,
                                                  final String key,
                                                  final String query) throws IOException {
             return queryObject(s3Client, generateCsvRequest(bucket, key, query));
         }
 
-        public static InputStream queryObject(final AmazonS3 s3Client,
+        public static String queryObject(final AmazonS3 s3Client,
                                               final SelectObjectContentRequest request) throws IOException {
+            final StringBuilder results = new StringBuilder();
             try (final SelectObjectContentResult result = s3Client.selectObjectContent(request)) {
-                return result.getPayload().getRecordsInputStream(
+                try (final InputStream inputStream = result.getPayload().getRecordsInputStream(
                         new SelectObjectContentEventVisitor() {
                             @Override
                             public void visit(final SelectObjectContentEvent.StatsEvent event) {
@@ -254,8 +255,16 @@ public class S3Utils {
                                 );
                             }
                         }
-                );
+                )) {
+                    try (final Scanner lineReader = new Scanner(inputStream)) {
+                        // json events are stored in json lines format, so one json object per line
+                        while (lineReader.hasNext()) {
+                            results.append(lineReader.nextLine()).append("\n");
+                        }
+                    }
+                }
             }
+            return results.toString();
         }
 
         /**
