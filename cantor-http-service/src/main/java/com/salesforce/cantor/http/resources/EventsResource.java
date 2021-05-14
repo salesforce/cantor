@@ -143,7 +143,7 @@ public class EventsResource {
     @GET
     @Path("/{namespace}/dimension/{dimension}")
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Get all events for a dimension")
+    @Operation(summary = "Get all events with a dimension")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200",
                     description = "Provides all events (containing only the specified dimension) matching query parameters",
