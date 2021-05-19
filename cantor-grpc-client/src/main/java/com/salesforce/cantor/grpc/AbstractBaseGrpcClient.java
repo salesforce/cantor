@@ -61,11 +61,9 @@ abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
         logger.info("creating stub of {} for target '{}'", stubConstructor.getClass(), target);
         final ManagedChannel channel = ManagedChannelBuilder.forTarget(target)
                 .usePlaintext()
-                .maxInboundMessageSize(32 * 1024 * 1024)  // 32MB
-                .executor(
-                        Executors.newFixedThreadPool(
-                                16, // exactly 16 concurrent worker threads
-                                new ThreadFactoryBuilder().setNameFormat("cantor-client-channel-%d").build())
+                .maxInboundMessageSize(64 * 1024 * 1024)  // 64MB
+                .executor(Executors.newCachedThreadPool(
+                        new ThreadFactoryBuilder().setNameFormat("cantor-grpc-client-%d").build())
                 )
                 .build();
         return stubConstructor
