@@ -100,21 +100,8 @@ public class EventsOnGrpc extends AbstractBaseGrpcClient<EventsServiceBlockingSt
                     .setAscending(ascending)
                     .setLimit(limit)
                     .build();
-            final List<Event> results = new ArrayList<>();
             final GetResponse response = getStub().get(request);
-            final List<EventProto> eventProtos = response.getResultsList();
-            for (final EventProto proto : eventProtos) {
-                final ByteString payloadByteString = proto.getPayload();
-                results.add(
-                        new Event(
-                                proto.getTimestampMillis(),
-                                proto.getMetadataMap(),
-                                proto.getDimensionsMap(),
-                                payloadByteString != null ? payloadByteString.toByteArray() : null
-                        )
-                );
-            }
-            return results;
+            return getEventsFromProtos(response.getResultsList());
         });
     }
 
@@ -147,6 +134,34 @@ public class EventsOnGrpc extends AbstractBaseGrpcClient<EventsServiceBlockingSt
     }
 
     @Override
+    public List<Event> dimension(final String namespace,
+                                 final String dimensionKey,
+                                 final long startTimestampMillis,
+                                 final long endTimestampMillis,
+                                 final Map<String, String> metadataQuery,
+                                 final Map<String, String> dimensionsQuery) throws IOException {
+        checkDimension(namespace,
+            dimensionKey,
+            startTimestampMillis,
+            endTimestampMillis,
+            metadataQuery,
+            dimensionsQuery
+        );
+        return call(() -> {
+            final DimensionRequest request = DimensionRequest.newBuilder()
+                    .setNamespace(namespace)
+                    .setDimensionKey(dimensionKey)
+                    .setStartTimestampMillis(startTimestampMillis)
+                    .setEndTimestampMillis(endTimestampMillis)
+                    .putAllMetadataQuery(nullToEmpty(metadataQuery))
+                    .putAllDimensionsQuery(nullToEmpty(dimensionsQuery))
+                    .build();
+            final DimensionResponse dimensionResponse = getStub().dimension(request);
+            return getEventsFromProtos(dimensionResponse.getValuesList());
+        });
+    }
+
+    @Override
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
         checkExpire(namespace, endTimestampMillis);
         call(() -> {
@@ -157,6 +172,22 @@ public class EventsOnGrpc extends AbstractBaseGrpcClient<EventsServiceBlockingSt
             getStub().expire(request);
             return null;
         });
+    }
+
+    private List<Event> getEventsFromProtos(final List<EventProto> eventProtos) {
+        final List<Event> events = new ArrayList<>();
+        for (final EventProto proto : eventProtos) {
+            final ByteString payloadByteString = proto.getPayload();
+            events.add(
+                    new Event(
+                            proto.getTimestampMillis(),
+                            proto.getMetadataMap(),
+                            proto.getDimensionsMap(),
+                            payloadByteString != null ? payloadByteString.toByteArray() : null
+                    )
+            );
+        }
+        return events;
     }
 }
 

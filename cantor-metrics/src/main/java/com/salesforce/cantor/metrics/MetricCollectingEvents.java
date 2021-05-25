@@ -75,6 +75,23 @@ public class MetricCollectingEvents extends BaseMetricCollectingCantor implement
     }
 
     @Override
+    public List<Event> dimension(final String namespace,
+                                 final String dimensionKey,
+                                 final long startTimestampMillis,
+                                 final long endTimestampMillis,
+                                 final Map<String, String> metadataQuery,
+                                 final Map<String, String> dimensionsQuery) throws IOException {
+        return metrics(() -> this.delegate
+                .dimension(namespace,
+                        dimensionKey,
+                        startTimestampMillis,
+                        endTimestampMillis,
+                        metadataQuery,
+                        dimensionsQuery
+                ), "dimension", namespace, super::size);
+    }
+
+    @Override
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
         metrics(() -> this.delegate.expire(namespace, endTimestampMillis), "expire", namespace);
     }

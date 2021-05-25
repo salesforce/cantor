@@ -391,6 +391,37 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         }
     }
 
+    @Test
+    public void testDimension() throws Exception {
+        final Events events = getEvents();
+        final String testDimensionKey = "test-dimension-key";
+        final double testDimensionValue = 123D;
+        final long startTimestampMillis = System.currentTimeMillis();
+        final int total = ThreadLocalRandom.current().nextInt(100, 1000);
+        logger.info("storing {} random events", total);
+        for (int i = 0; i < total; ++i) {
+            final Map<String, Double> dimensions = getRandomDimensions(5);
+            // only add a specific dimension key to half of the events to be stored
+            if ((i + 1) % 2 == 0) dimensions.put(testDimensionKey, testDimensionValue + i);
+            events.store(this.namespace, startTimestampMillis + i, getRandomMetadata(5), dimensions);
+        }
+        final List<Events.Event> eventsRetrieved = events.dimension(
+            this.namespace,
+            testDimensionKey,
+            startTimestampMillis,
+            startTimestampMillis + total,
+            Collections.emptyMap(),
+            Collections.singletonMap(testDimensionKey, ">=" + testDimensionValue)
+        );
+        assertEquals(eventsRetrieved.size(), total / 2);
+        for (final Events.Event e : eventsRetrieved) {
+            assertTrue(e.getTimestampMillis() >= startTimestampMillis && e.getTimestampMillis() <= startTimestampMillis + total);
+            assertEquals(e.getMetadata().size(), 0);
+            assertEquals(e.getDimensions().size(), 1);
+            assertTrue(e.getDimensions().get(testDimensionKey) >= testDimensionValue);
+        }
+    }
+
     private void checkSum(final Map<Long, Double> sumResults, final double sum) {
         logger.info("{}", sumResults);
         double returnedSum = 0.0;

@@ -101,6 +101,29 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
     }
 
     @Override
+    public List<Event> dimension(String namespace,
+                                 String dimensionKey,
+                                 long startTimestampMillis,
+                                 long endTimestampMillis,
+                                 Map<String, String> metadataQuery,
+                                 Map<String, String> dimensionsQuery) throws IOException {
+        checkDimension(namespace,
+                dimensionKey,
+                startTimestampMillis,
+                endTimestampMillis,
+                metadataQuery,
+                dimensionsQuery
+        );
+        return doDimension(namespace,
+                dimensionKey,
+                startTimestampMillis,
+                endTimestampMillis,
+                nullToEmpty(metadataQuery),
+                nullToEmpty(dimensionsQuery)
+        );
+    }
+
+    @Override
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
         checkExpire(namespace, endTimestampMillis);
         doExpire(namespace, endTimestampMillis);
@@ -676,6 +699,69 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
                         try (final ResultSet resultSet = preparedStatement.executeQuery()) {
                             while (resultSet.next()) {
                                 results.add(resultSet.getString(1));
+                            }
+                        }
+                    }
+                } catch (SQLException | IOException e) {
+                    logger.warn("caught exception executing query sql '{}': {}", sql, e.getMessage());
+                }
+            });
+        }
+        executorService.shutdown();
+        try {
+            executorService.awaitTermination(30, TimeUnit.MINUTES);
+        } catch (InterruptedException e) {
+            throw new IOException("events get operation timed out", e);
+        }
+        return results;
+    }
+
+    private List<Event> doDimension(final String namespace,
+                                    final String dimensionKey,
+                                    final long startTimestampMillis,
+                                    final long endTimestampMillis,
+                                    final Map<String, String> metadataQuery,
+                                    final Map<String, String> dimensionsQuery) throws IOException {
+        final Set<String> dimensionKeys = new HashSet<>(dimensionsQuery.keySet());
+        // make sure the dimension exists
+        dimensionKeys.add(dimensionKey);
+        final List<String> chunkTables = getChunkTableNames(
+                namespace,
+                startTimestampMillis,
+                endTimestampMillis,
+                metadataQuery.keySet(),
+                dimensionKeys
+        );
+
+        final ExecutorService executorService = Executors.newCachedThreadPool();
+        final List<Event> results = new CopyOnWriteArrayList<>();
+        for (String chunkTableName: chunkTables) {
+            final String sqlFormat = "SELECT %s, %s as DIMENSION_VALUE FROM %s WHERE %s BETWEEN ? AND ? ";
+            final StringBuilder sqlBuilder = new StringBuilder(String.format(sqlFormat,
+                    quote(getEventTimestampColumnName()),
+                    quote(getDimensionKeyColumnName(dimensionKey)),
+                    getTableFullName(namespace, chunkTableName),
+                    quote(getEventTimestampColumnName())
+            ));
+
+            final List<Object> parameters = new ArrayList<>();
+            parameters.add(startTimestampMillis);
+            parameters.add(endTimestampMillis);
+
+            // construct the sql query and parameters for metadata and dimensions
+            sqlBuilder.append(getMetadataQuerySql(metadataQuery, parameters));
+            sqlBuilder.append(getDimensionsQuerySql(dimensionsQuery, parameters));
+            final String sql = sqlBuilder.toString();
+
+            executorService.submit(() -> {
+                try (final Connection connection = getConnection()) {
+                    try (final PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                        addParameters(preparedStatement, parameters.toArray());
+                        try (final ResultSet resultSet = preparedStatement.executeQuery()) {
+                            while (resultSet.next()) {
+                                final Map<String, Double> dimension = Collections.singletonMap(dimensionKey, resultSet.getDouble("DIMENSION_VALUE"));
+                                final long timestampMillis = resultSet.getLong(1);
+                                results.add(new Event(timestampMillis, Collections.emptyMap(), dimension, null));
                             }
                         }
                     }

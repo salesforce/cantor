@@ -91,17 +91,7 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
                     request.getAscending(),
                     request.getLimit());
             if (!results.isEmpty()) {
-                final List<EventProto> eventProtos = new ArrayList<>(results.size());
-                for (final Events.Event event : results) {
-                    eventProtos.add(EventProto.newBuilder()
-                            .setTimestampMillis(event.getTimestampMillis())
-                            .putAllMetadata(event.getMetadata())
-                            .putAllDimensions(event.getDimensions())
-                            .setPayload(event.getPayload() != null ? ByteString.copyFrom(event.getPayload()) : ByteString.EMPTY)
-                            .build()
-                    );
-                }
-                responseBuilder.addAllResults(eventProtos);
+                responseBuilder.addAllResults(getProtosFromEvents(results));
             }
             sendResponse(responseObserver, responseBuilder.build());
         } catch (IOException e) {
@@ -154,6 +144,28 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
     }
 
     @Override
+    public void dimension(final DimensionRequest request, final StreamObserver<DimensionResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
+        try {
+            final List<Events.Event> results = getEvents().dimension(
+                    request.getNamespace(),
+                    request.getDimensionKey(),
+                    request.getStartTimestampMillis(),
+                    request.getEndTimestampMillis(),
+                    request.getMetadataQueryMap(),
+                    request.getDimensionsQueryMap()
+            );
+            final DimensionResponse response = DimensionResponse.newBuilder().addAllValues(getProtosFromEvents(results)).build();
+            sendResponse(responseObserver, response);
+        } catch (IOException e) {
+            sendError(responseObserver, e);
+        }
+    }
+
+    @Override
     public void expire(final ExpireRequest request, final StreamObserver<VoidResponse> responseObserver) {
         if (Context.current().isCancelled()) {
             sendCancelledError(responseObserver, Context.current().cancellationCause());
@@ -172,6 +184,20 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
 
     private Events getEvents() {
         return this.cantor.events();
+    }
+
+    private List<EventProto> getProtosFromEvents(final List<Events.Event> events) {
+        final List<EventProto> eventProtos = new ArrayList<>();
+        for (final Events.Event event : events) {
+            eventProtos.add(EventProto.newBuilder()
+                    .setTimestampMillis(event.getTimestampMillis())
+                    .putAllMetadata(event.getMetadata())
+                    .putAllDimensions(event.getDimensions())
+                    .setPayload(event.getPayload() != null ? ByteString.copyFrom(event.getPayload()) : ByteString.EMPTY)
+                    .build()
+            );
+        }
+        return eventProtos;
     }
 }
 

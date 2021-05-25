@@ -49,6 +49,19 @@ public class EventsPreconditions extends CommonPreconditions {
         checkDimensionsQuery(dimensionsQuery);
     }
 
+    public static void checkDimension(final String namespace,
+                                      final String dimensionKey,
+                                      final long startTimestampMillis,
+                                      final long endTimestampMillis,
+                                      final Map<String, String> metadataQuery,
+                                      final Map<String, String> dimensionsQuery) {
+        checkNamespace(namespace);
+        checkString(dimensionKey);
+        checkTimestamps(startTimestampMillis, endTimestampMillis);
+        checkMetadataQuery(metadataQuery);
+        checkDimensionsQuery(dimensionsQuery);
+    }
+
     public static void checkExpire(final String namespace, final long endTimestampMillis) {
         checkNamespace(namespace);
         checkArgument(endTimestampMillis >= 0, "invalid end timestamp");

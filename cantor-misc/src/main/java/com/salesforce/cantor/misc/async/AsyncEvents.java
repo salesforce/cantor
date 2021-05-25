@@ -89,6 +89,25 @@ public class AsyncEvents extends AbstractBaseAsyncNamespaceable<Events> implemen
     }
 
     @Override
+    public List<Event> dimension(final String namespace,
+                                 final String dimensionKey,
+                                 final long startTimestampMillis,
+                                 final long endTimestampMillis,
+                                 final Map<String, String> metadataQuery,
+                                 final Map<String, String> dimensionsQuery) throws IOException {
+        checkDimension(namespace, dimensionKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery);
+        return submitCall(() -> getDelegate()
+                .dimension(namespace,
+                        dimensionKey,
+                        startTimestampMillis,
+                        endTimestampMillis,
+                        metadataQuery,
+                        dimensionsQuery
+                )
+        );
+    }
+
+    @Override
     public void expire(final String namespace, final long endTimestampMillis) throws IOException {
         checkExpire(namespace, endTimestampMillis);
         submitCall(() -> { getDelegate().expire(namespace, endTimestampMillis); return null; });

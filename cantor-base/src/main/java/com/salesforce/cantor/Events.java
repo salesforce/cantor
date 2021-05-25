@@ -297,12 +297,13 @@ public interface Events extends Namespaceable {
      * the start and end, metadata and dimensions matching the given queries.
      *
      * @param namespace the namespace identifier
+     * @param metadataKey the given metadata key
      * @param startTimestampMillis start timestamp in milli-seconds
      * @param endTimestampMillis end timestamp in milli-seconds
      * @param metadataQuery map of string to string representing a query to run against events metadata
      * @param dimensionsQuery map of string to string representing a query to run against events dimensions
-     * @return map of timestamp to set of metadata values for all events in the namespace with timestamp
-     * between start/end and metadata/dimensions matching the query, bucketed for each interval
+     * @return set of metadata values for all events in the namespace with timestamp
+     * between start/end and metadata/dimensions matching the query
      * @throws IOException exception thrown from the underlying storage implementation
      */
     Set<String> metadata(String namespace,
@@ -311,6 +312,27 @@ public interface Events extends Namespaceable {
                          long endTimestampMillis,
                          Map<String, String> metadataQuery,
                          Map<String, String> dimensionsQuery) throws IOException;
+
+    /**
+     * Get a list of events values where each event only contains the specified dimension, for events in the given
+     * namespace, with timestamp between the start and end, metadata and dimensions matching the given queries.
+     *
+     * @param namespace the namespace identifier
+     * @param dimensionKey the given dimension key
+     * @param startTimestampMillis start timestamp in milli-seconds
+     * @param endTimestampMillis end timestamp in milli-seconds
+     * @param metadataQuery map of string to string representing a query to run against events metadata
+     * @param dimensionsQuery map of string to string representing a query to run against events dimensions
+     * @return list of events where each event only contains the specified dimension - no payload or metadata is
+     * included, in the namespace with timestamp between start/end and metadata/dimensions matching the query
+     * @throws IOException exception thrown from the underlying storage implementation
+     */
+    List<Event> dimension(String namespace,
+                          String dimensionKey,
+                          long startTimestampMillis,
+                          long endTimestampMillis,
+                          Map<String, String> metadataQuery,
+                          Map<String, String> dimensionsQuery) throws IOException;
 
     /**
      * Expire all events with timestamp before the given end timestamp.

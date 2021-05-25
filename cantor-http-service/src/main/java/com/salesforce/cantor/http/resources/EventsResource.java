@@ -140,6 +140,33 @@ public class EventsResource {
         return Response.ok(parser.toJson(metadataValueSet)).build();
     }
 
+    @GET
+    @Path("/{namespace}/dimension/{dimension}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Get all events with a dimension")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Provides all events (containing only the specified dimension) matching query parameters",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = Event.class)))),
+            @ApiResponse(responseCode = "400", description = "One of the query parameters has a bad value"),
+            @ApiResponse(responseCode = "500", description = serverErrorMessage)
+    })
+    public Response getDimension(@Parameter(description = "Namespace identifier") @PathParam("namespace") final String namespace,
+                                @Parameter(description = "Specific dimension to have") @PathParam("dimension") final String dimension,
+                                @BeanParam final EventsDataSourceBean bean) throws IOException {
+        logger.info("received request for dimension {} in namespace {}", dimension, namespace);
+        logger.debug("request parameters: {}", bean);
+        final List<Event> thinEvents = this.cantor.events().dimension(
+                namespace,
+                dimension,
+                bean.getStart(),
+                bean.getEnd(),
+                bean.getMetadataQuery(),
+                bean.getDimensionsquery()
+        );
+        return Response.ok(parser.toJson(thinEvents)).build();
+    }
+
     @PUT
     @Path("/{namespace}")
     @Operation(summary = "Create an event namespace")
