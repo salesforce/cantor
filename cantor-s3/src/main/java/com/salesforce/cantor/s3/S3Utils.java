@@ -84,20 +84,6 @@ public class S3Utils {
         return getObjectBytes(s3Client, bucketName, key, 0, -1);
     }
 
-
-    public static byte[] getCacheableObjectBytes(final AmazonS3 s3Client,
-                                                 final String bucketName,
-                                                 final String key,
-                                                 final long start,
-                                                 final long end) throws IOException {
-        final String cacheKey = String.format("%s-%s-%d-%d", bucketName, key, start, end);
-        try {
-            return cache.get(cacheKey, () -> getObjectBytes(s3Client, bucketName, key, start, end));
-        } catch (ExecutionException e) {
-            return getObjectBytes(s3Client, bucketName, key, start, end);
-        }
-    }
-
     public static byte[] getObjectBytes(final AmazonS3 s3Client,
                                         final String bucketName,
                                         final String key,
