@@ -104,14 +104,14 @@ public class CantorFactory {
                 logger.info("creating single instance mysql cantor...");
                 final Cantor readCantor = new CantorOnMysql(MysqlDataSourceProvider.getDatasource(dataSources.get(0)));
                 final Cantor writeCantor = new CantorOnMysql(MysqlDataSourceProvider.getDatasource(dataSources.get(0)));
-                return new LoggableCantor(new AsyncCantor(new ReadWriteCantor(writeCantor, readCantor), newExecutorService(32)));
+                return new LoggableCantor(new AsyncCantor(new ReadWriteCantor(writeCantor, readCantor), newExecutorService()));
             }
 
             final Cantor[] cantors = new Cantor[dataSources.size()];
             for (int index = 0; index < cantors.length; index++) {
                 final Cantor readCantor = new CantorOnMysql(MysqlDataSourceProvider.getDatasource(dataSources.get(index)));
                 final Cantor writeCantor = new CantorOnMysql(MysqlDataSourceProvider.getDatasource(dataSources.get(index)));
-                cantors[index] = new AsyncCantor(new ReadWriteCantor(writeCantor, readCantor), newExecutorService(32));
+                cantors[index] = new AsyncCantor(new ReadWriteCantor(writeCantor, readCantor), newExecutorService());
             }
             logger.info("creating shared mysql cantor with {} instances: {}", cantors.length, dataSources);
             return new LoggableCantor(new ShardedCantor(cantors));
@@ -195,9 +195,8 @@ public class CantorFactory {
         return amazonS3ClientBuilder.build();
     }
 
-    private ExecutorService newExecutorService(final int concurrency) {
-        return Executors.newFixedThreadPool(
-                concurrency,
+    private ExecutorService newExecutorService() {
+        return Executors.newCachedThreadPool(
                 new ThreadFactoryBuilder().setNameFormat("cantor-worker-%d").build()
         );
     }
