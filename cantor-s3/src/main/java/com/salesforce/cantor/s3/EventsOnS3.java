@@ -63,10 +63,10 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private static final String objectKeyPrefix = "cantor-events";
 
     // date directoryFormatter for flush cycle name calculation
-    private static final DateFormat cycleNameFormatter = new SimpleDateFormat("YYYY-MM-dd_HH-mm-ss");
+    private static final DateFormat cycleNameFormatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
     // date directoryFormatter for converting an event timestamp to a hierarchical directory structure
-    private static final DateFormat directoryFormatterMin = new SimpleDateFormat("YYYY/MM/dd/HH/mm");
-    private static final DateFormat directoryFormatterHour = new SimpleDateFormat("YYYY/MM/dd/HH/");
+    private static final DateFormat directoryFormatterMin = new SimpleDateFormat("yyyy/MM/dd/HH/mm");
+    private static final DateFormat directoryFormatterHour = new SimpleDateFormat("yyyy/MM/dd/HH/");
 
     // monitors for synchronizing writes to namespaces
     private static final Map<String, Object> namespaceLocks = new ConcurrentHashMap<>();
@@ -466,7 +466,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                     final long offset = event.getDimensions().get(dimensionKeyPayloadOffset).longValue();
                     final long length = event.getDimensions().get(dimensionKeyPayloadLength).longValue();
                     final String payloadFilename = objectKey.replace("json", "b64");
-                    final byte[] payloadBase64Bytes = S3Utils.getCacheableObjectBytes(this.s3Client, this.bucketName, payloadFilename, offset, offset + length - 1);
+                    final byte[] payloadBase64Bytes = S3Utils.getObjectBytes(this.s3Client, this.bucketName, payloadFilename, offset, offset + length - 1);
                     if (payloadBase64Bytes == null || payloadBase64Bytes.length == 0) {
                         throw new IOException("failed to retrieve payload for event");
                     }
@@ -589,6 +589,8 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         while (start <= endTimestampMillis) {
             if (start + TimeUnit.HOURS.toMillis(1) <= endTimestampMillis) {
                 prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatterHour.format(start)));
+                // round to the nearest hour and then add one hour
+                start = start / (60 * 60 * 1000) * (60 * 60 * 1000);
                 start += TimeUnit.HOURS.toMillis(1);
             } else {
                 prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatterMin.format(start)));

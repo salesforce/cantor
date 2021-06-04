@@ -26,12 +26,19 @@ import static com.salesforce.cantor.common.CommonPreconditions.checkString;
 
 abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
     private final Logger logger = LoggerFactory.getLogger(getClass());
+    private final Channel channel;
+    private final String target;
     private final StubType stub;
+    private final Function<Channel, StubType> stubConstructor;
 
     AbstractBaseGrpcClient(final Function<Channel, StubType> stubConstructor,
                            final String target) {
         checkString(target, "null/empty target");
-        this.stub = makeStubs(stubConstructor, target);
+        this.target = target;
+        this.stubConstructor = stubConstructor;
+
+        this.channel = makeChannel();
+        this.stub = makeStubs();
 
         // redirect JUL to slf4j
         SLF4JBridgeHandler.install();
@@ -56,17 +63,18 @@ abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
         }
     }
 
-    private StubType makeStubs(final Function<Channel, StubType> stubConstructor,
-                               final String target) {
-        logger.info("creating stub of {} for target '{}'", stubConstructor.getClass(), target);
-        final ManagedChannel channel = ManagedChannelBuilder.forTarget(target)
+    private Channel makeChannel() {
+        logger.info("creating channel for target '{}'", this.target);
+        return ManagedChannelBuilder.forTarget(this.target)
                 .usePlaintext()
                 .maxInboundMessageSize(64 * 1024 * 1024)  // 64MB
                 .executor(Executors.newCachedThreadPool(
                         new ThreadFactoryBuilder().setNameFormat("cantor-grpc-client-%d").build())
                 )
                 .build();
-        return stubConstructor
-                .apply(channel);
+    }
+
+    private StubType makeStubs() {
+        return this.stubConstructor.apply(this.channel);
     }
 }
