@@ -17,7 +17,7 @@ import com.amazonaws.services.s3.transfer.MultipleFileUpload;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import com.google.common.cache.*;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.common.util.concurrent.*;
 import com.google.gson.*;
 import com.salesforce.cantor.Events;
 import org.slf4j.Logger;
@@ -55,7 +55,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private static final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
 
     // executor service to parallelize calls to s3
-    private static final Executor executorService = Executors.newCachedThreadPool(
+    private static final ExecutorService executorService = Executors.newCachedThreadPool(
             new ThreadFactoryBuilder().setNameFormat("cantor-s3-events-worker-%d").build()
     );
 
@@ -320,29 +320,32 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
         final List<Event> results = new CopyOnWriteArrayList<>();
         // parallel calls to s3
-        final CompletionService<List<Event>> completionService = new ExecutorCompletionService<>(executorService);
-        final List<Future<List<Event>>> futures = new ArrayList<>();
+        final ListeningExecutorService service = MoreExecutors.listeningDecorator(executorService);
+
         // iterate over all s3 objects that match this request
         for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
             // only query json files
             if (!objectKey.endsWith("json")) {
                 continue;
             }
-            futures.add(completionService.submit(() -> doCacheableGetOnObject(
+            Futures.addCallback(
+                service.submit(() -> doCacheableGetOnObject(
                     objectKey, startTimestampMillis, endTimestampMillis,
                     metadataQuery, dimensionsQuery, includePayloads
-                    ))
+                )),
+                new FutureCallback<List<Event>>() {
+                    // we want this handler to run immediately after we push the big red button!
+                    public void onSuccess(List<Event> events) {
+                        results.addAll(events);
+                    }
+                    public void onFailure(Throwable e) {
+                        logger.warn("exception on get call to s3", e);
+                    }
+                },
+                service
             );
         }
-        // iterate over all calls, wait max of 30 seconds per call to return
-        for (int i = 0; i < futures.size(); ++i) {
-            try {
-                results.addAll(completionService.take().get(30, TimeUnit.SECONDS));
-            } catch (Exception e) {
-                logger.warn("exception on get call to s3", e);
-                throw new IOException(e);
-            }
-        }
+
         // events are fetched from multiple sources, sort before returning
         sortEventsByTimestamp(results, ascending);
         if (limit > 0) {
@@ -360,27 +363,28 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
         final Set<String> results = new CopyOnWriteArraySet<>();
         // parallel calls to s3
-        final CompletionService<Set<String>> completionService = new ExecutorCompletionService<>(executorService);
-        final List<Future<Set<String>>> futures = new ArrayList<>();
+        final ListeningExecutorService service = MoreExecutors.listeningDecorator(executorService);
         // iterate over all s3 objects that match this request
         for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
             // only query json files
             if (!objectKey.endsWith("json")) {
                 continue;
             }
-            futures.add(completionService.submit(() -> doMetadataOnObject(
+            Futures.addCallback(
+                service.submit(() -> doMetadataOnObject(
                     objectKey, metadataKey, startTimestampMillis, endTimestampMillis,
-                    metadataQuery, dimensionsQuery))
+                    metadataQuery, dimensionsQuery)
+                ),
+                new FutureCallback<Set<String>>() {
+                    public void onSuccess(Set<String> metadata) {
+                        results.addAll(metadata);
+                    }
+                    public void onFailure(Throwable e) {
+                        logger.warn("exception on metadata call to s3", e);
+                    }
+                },
+                service
             );
-        }
-        // iterate over all calls, wait max of 30 seconds per call to return
-        for (int i = 0; i < futures.size(); ++i) {
-            try {
-                results.addAll(completionService.take().get(30, TimeUnit.SECONDS));
-            } catch (Exception e) {
-                logger.warn("exception on metadata call to s3", e);
-                throw new IOException(e);
-            }
         }
         return results;
     }
@@ -393,28 +397,29 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                                     final Map<String, String> dimensionsQuery) throws IOException {
         final List<Event> results = new CopyOnWriteArrayList<>();
         // parallel calls to s3
-        final CompletionService<List<Event>> completionService =
-                new ExecutorCompletionService<>(Executors.newWorkStealingPool(64));
-        final List<Future<List<Event>>> futures = new ArrayList<>();
+        final ListeningExecutorService service = MoreExecutors.listeningDecorator(executorService);
         // iterate over all s3 objects that match this request
         for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
             // only query json files
             if (!objectKey.endsWith("json")) {
                 continue;
             }
-            futures.add(completionService.submit(() -> doDimensionOnObject(
-                    objectKey, dimensionKey, startTimestampMillis, endTimestampMillis,
-                    metadataQuery, dimensionsQuery))
+            Futures.addCallback(
+                service.submit(
+                    () -> doDimensionOnObject(
+                        objectKey, dimensionKey, startTimestampMillis, endTimestampMillis,
+                        metadataQuery, dimensionsQuery)
+                ),
+                new FutureCallback<List<Event>>() {
+                    public void onSuccess(List<Event> events) {
+                        results.addAll(events);
+                    }
+                    public void onFailure(Throwable e) {
+                        logger.warn("exception on dimension call to s3", e);
+                    }
+                },
+                service
             );
-        }
-        // iterate over all calls, wait max of 5 seconds per call to return
-        for (int i = 0; i < futures.size(); ++i) {
-            try {
-                results.addAll(completionService.take().get(5, TimeUnit.SECONDS));
-            } catch (Exception e) {
-                logger.warn("exception on dimension call to s3", e);
-                throw new IOException(e);
-            }
         }
         return results;
     }
@@ -582,8 +587,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         }
     }
 
-    private Set<String> doGetMatchingKeys(final String namespace, final long startTimestampMillis, final long endTimestampMillis)
-            throws IOException {
+    private Set<String> doGetMatchingKeys(final String namespace, final long startTimestampMillis, final long endTimestampMillis) {
         final Set<String> prefixes = new HashSet<>();
         long start = startTimestampMillis;
         while (start <= endTimestampMillis) {
@@ -599,21 +603,22 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         }
         prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatterMin.format(endTimestampMillis)));
         final Set<String> matchingKeys = new ConcurrentSkipListSet<>();
-        final CompletionService<List<Event>> completionService = new ExecutorCompletionService<>(executorService);
-        final List<Future<?>> futures = new ArrayList<>();
+        final ListeningExecutorService service = MoreExecutors.listeningDecorator(executorService);
         for (final String prefix : prefixes) {
-            futures.add(completionService.submit(() -> {
-                matchingKeys.addAll(S3Utils.getKeys(this.s3Client, this.bucketName, prefix));
-                return null;
-            }));
-        }
-        for (int i = 0; i < futures.size(); ++i) {
-            try {
-                completionService.take().get(30, TimeUnit.SECONDS);
-            } catch (Exception e) {
-                logger.warn("exception on get call to s3", e);
-                throw new IOException(e);
-            }
+            Futures.addCallback(
+                service.submit(
+                    () -> S3Utils.getKeys(this.s3Client, this.bucketName, prefix)
+                ),
+                new FutureCallback<Collection<String>>() {
+                    public void onSuccess(Collection<String> keys) {
+                        matchingKeys.addAll(keys);
+                    }
+                    public void onFailure(Throwable e) {
+                        logger.warn("exception on get call to s3", e);
+                    }
+                },
+                service
+            );
         }
         return matchingKeys;
     }
