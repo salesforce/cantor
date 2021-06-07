@@ -23,8 +23,7 @@
     <properties>
         <typesafe-config.version>1.2.1</typesafe-config.version>
         <spring.jersey.version>2.1.4.RELEASE</spring.jersey.version>
-        <swagger.version>1.5.22</swagger.version>
-        <guava.version>27.0-jre</guava.version>
+        <guava.version>30.1-jre</guava.version>
         <mysql.version>8.0.16</mysql.version>
     </properties>
 
