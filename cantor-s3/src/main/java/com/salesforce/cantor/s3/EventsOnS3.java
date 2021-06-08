@@ -17,7 +17,7 @@ import com.amazonaws.services.s3.transfer.MultipleFileUpload;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import com.google.common.cache.*;
-import com.google.common.util.concurrent.*;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.gson.*;
 import com.salesforce.cantor.Events;
 import org.slf4j.Logger;
@@ -55,10 +55,8 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private static final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
 
     // executor service to parallelize calls to s3
-    private static final ListeningExecutorService executorService = MoreExecutors.listeningDecorator(
-        Executors.newCachedThreadPool(
-            new ThreadFactoryBuilder().setNameFormat("cantor-s3-events-worker-%d").build()
-        )
+    private static final ExecutorService executorService = Executors.newCachedThreadPool(
+        new ThreadFactoryBuilder().setNameFormat("cantor-s3-events-worker-%d").build()
     );
 
     // cantor-events-<namespace>/<startTimestamp>-<endTimestamp>
