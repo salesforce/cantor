@@ -154,7 +154,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                          includePayloads,
                          ascending,
                          limit);
-        } catch (final AmazonS3Exception e) {
+        } catch (final AmazonS3Exception | InterruptedException | ExecutionException e) {
             logger.warn("exception getting events from namespace: " + namespace, e);
             throw new IOException("exception getting events from namespace: " + namespace, e);
         }
@@ -176,7 +176,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                     endTimestampMillis,
                     (metadataQuery != null) ? metadataQuery : Collections.emptyMap(),
                     (dimensionsQuery != null) ? dimensionsQuery : Collections.emptyMap());
-        } catch (final AmazonS3Exception e) {
+        } catch (final AmazonS3Exception |  InterruptedException | ExecutionException e) {
             logger.warn("exception getting metadata from namespace: " + namespace, e);
             throw new IOException("exception getting metadata from namespace: " + namespace, e);
         }
@@ -198,7 +198,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                     endTimestampMillis,
                     (metadataQuery != null) ? metadataQuery : Collections.emptyMap(),
                     (dimensionsQuery != null) ? dimensionsQuery : Collections.emptyMap());
-        } catch (final AmazonS3Exception e) {
+        } catch (final AmazonS3Exception | InterruptedException | ExecutionException e) {
             logger.warn("exception getting dimension from namespace: " + namespace, e);
             throw new IOException("exception getting dimension from namespace: " + namespace, e);
         }
@@ -210,7 +210,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         checkNamespace(namespace);
         try {
             doExpire(namespace, endTimestampMillis);
-        } catch (final AmazonS3Exception e) {
+        } catch (final AmazonS3Exception | InterruptedException | ExecutionException e) {
             logger.warn("exception expiring events from namespace: " + namespace, e);
             throw new IOException("exception expiring events from namespace: " + namespace, e);
         }
@@ -318,29 +318,26 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                               final Map<String, String> dimensionsQuery,
                               final boolean includePayloads,
                               final boolean ascending,
-                              final int limit) throws IOException {
+                              final int limit) throws IOException, ExecutionException, InterruptedException {
 
         final List<Event> results = new CopyOnWriteArrayList<>();
+        final List<Future<List<Event>>> futures = new ArrayList<>();
         // iterate over all s3 objects that match this request
         for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
             // only query json files
             if (!objectKey.endsWith("json")) {
                 continue;
             }
-            final ListenableFuture<List<Event>> future = executorService.submit(
-                () -> doCacheableGetOnObject(objectKey, startTimestampMillis, endTimestampMillis, metadataQuery,
-                    dimensionsQuery, includePayloads)
+            futures.add(
+                executorService.submit(
+                    () -> doCacheableGetOnObject(objectKey, startTimestampMillis, endTimestampMillis, metadataQuery,
+                        dimensionsQuery, includePayloads)
+                    )
             );
-            future.addListener(
-                () -> {
-                    try {
-                        results.addAll(future.get());
-                    } catch (final InterruptedException | ExecutionException e) {
-                        logger.warn("exception on metadata call to s3", e);
-                    }
-                },
-                executorService
-            );
+        }
+
+        for (final Future<List<Event>> future: futures) {
+            results.addAll(future.get());
         }
 
         // events are fetched from multiple sources, sort before returning
@@ -356,29 +353,25 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                                    final long startTimestampMillis,
                                    final long endTimestampMillis,
                                    final Map<String, String> metadataQuery,
-                                   final Map<String, String> dimensionsQuery) throws IOException {
+                                   final Map<String, String> dimensionsQuery) throws IOException, ExecutionException, InterruptedException {
 
         final Set<String> results = new CopyOnWriteArraySet<>();
+        final List<Future<Set<String>>> futures = new ArrayList<>();
         // iterate over all s3 objects that match this request
         for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
             // only query json files
             if (!objectKey.endsWith("json")) {
                 continue;
             }
-            final ListenableFuture<Set<String>> future = executorService.submit(
-                () -> doMetadataOnObject(objectKey, metadataKey, startTimestampMillis, endTimestampMillis,
-                    metadataQuery, dimensionsQuery)
+            futures.add(
+                executorService.submit(
+                    () -> doMetadataOnObject(objectKey, metadataKey, startTimestampMillis, endTimestampMillis,
+                        metadataQuery, dimensionsQuery)
+                )
             );
-            future.addListener(
-                () -> {
-                    try {
-                        results.addAll(future.get());
-                    } catch (final InterruptedException | ExecutionException e) {
-                        logger.warn("exception on metadata call to s3", e);
-                    }
-                },
-                executorService
-            );
+        }
+        for (final Future<Set<String>> future : futures) {
+            results.addAll(future.get());
         }
         return results;
     }
@@ -388,28 +381,24 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                                     final long startTimestampMillis,
                                     final long endTimestampMillis,
                                     final Map<String, String> metadataQuery,
-                                    final Map<String, String> dimensionsQuery) throws IOException {
+                                    final Map<String, String> dimensionsQuery) throws IOException, ExecutionException, InterruptedException {
         final List<Event> results = new CopyOnWriteArrayList<>();
+        final List<Future<List<Event>>> futures = new ArrayList<>();
         // iterate over all s3 objects that match this request
         for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
             // only query json files
             if (!objectKey.endsWith("json")) {
                 continue;
             }
-            final ListenableFuture<List<Event>> future = executorService.submit(
-                () -> doDimensionOnObject(objectKey, dimensionKey, startTimestampMillis, endTimestampMillis,
-                    metadataQuery, dimensionsQuery)
+            futures.add(
+                executorService.submit(
+                    () -> doDimensionOnObject(objectKey, dimensionKey, startTimestampMillis, endTimestampMillis,
+                        metadataQuery, dimensionsQuery)
+                )
             );
-            future.addListener(
-                () -> {
-                    try {
-                        results.addAll(future.get());
-                    } catch (final InterruptedException | ExecutionException e) {
-                        logger.warn("exception on dimension call to s3", e);
-                    }
-                },
-                executorService
-            );
+        }
+        for (final Future<List<Event>> future : futures) {
+            results.addAll(future.get());
         }
         return results;
     }
@@ -517,7 +506,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         return results;
     }
 
-    private void doExpire(final String namespace, final long endTimestampMillis) throws IOException {
+    private void doExpire(final String namespace, final long endTimestampMillis) throws IOException, ExecutionException, InterruptedException {
         // TODO this has to be implemented properly
         logger.info("expiring namespace '{}' with end timestamp of '{}'", namespace, endTimestampMillis);
         final Set<String> keys = getMatchingKeys(namespace, 0, endTimestampMillis);
@@ -568,7 +557,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     }
 
     private Set<String> getMatchingKeys(final String namespace, final long startTimestampMillis, final long endTimestampMillis)
-            throws IOException {
+            throws IOException, ExecutionException, InterruptedException {
         final String cacheKey = String.format("%d-%d-%d", namespace.hashCode(), startTimestampMillis, endTimestampMillis);
         try {
             return keysCache.get(cacheKey, () -> doGetMatchingKeys(namespace, startTimestampMillis, endTimestampMillis));
@@ -577,7 +566,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         }
     }
 
-    private Set<String> doGetMatchingKeys(final String namespace, final long startTimestampMillis, final long endTimestampMillis) {
+    private Set<String> doGetMatchingKeys(final String namespace, final long startTimestampMillis, final long endTimestampMillis) throws ExecutionException, InterruptedException {
         final Set<String> prefixes = new HashSet<>();
         long start = startTimestampMillis;
         while (start <= endTimestampMillis) {
@@ -593,20 +582,16 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         }
         prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatterMin.format(endTimestampMillis)));
         final Set<String> matchingKeys = new ConcurrentSkipListSet<>();
+        final List<Future<Collection<String>>> futures = new ArrayList<>();
         for (final String prefix : prefixes) {
-            final ListenableFuture<Collection<String>> future = executorService.submit(
-                () -> S3Utils.getKeys(this.s3Client, this.bucketName, prefix)
+            futures.add(
+                executorService.submit(
+                    () -> S3Utils.getKeys(this.s3Client, this.bucketName, prefix)
+                )
             );
-            future.addListener(
-                () -> {
-                    try {
-                        matchingKeys.addAll(future.get());
-                    } catch (final InterruptedException | ExecutionException e) {
-                        logger.warn("exception on doGetMatchingKeys call to s3", e);
-                    }
-                },
-                executorService
-            );
+        }
+        for (final Future<Collection<String>> future : futures) {
+            matchingKeys.addAll(future.get());
         }
         return matchingKeys;
     }
