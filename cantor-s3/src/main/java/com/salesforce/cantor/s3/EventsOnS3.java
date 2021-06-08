@@ -55,8 +55,10 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private static final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
 
     // executor service to parallelize calls to s3
-    private static final ExecutorService executorService = Executors.newCachedThreadPool(
+    private static final ListeningExecutorService executorService = MoreExecutors.listeningDecorator(
+        Executors.newCachedThreadPool(
             new ThreadFactoryBuilder().setNameFormat("cantor-s3-events-worker-%d").build()
+        )
     );
 
     // cantor-events-<namespace>/<startTimestamp>-<endTimestamp>
@@ -319,30 +321,25 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                               final int limit) throws IOException {
 
         final List<Event> results = new CopyOnWriteArrayList<>();
-        // parallel calls to s3
-        final ListeningExecutorService service = MoreExecutors.listeningDecorator(executorService);
-
         // iterate over all s3 objects that match this request
         for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
             // only query json files
             if (!objectKey.endsWith("json")) {
                 continue;
             }
-            Futures.addCallback(
-                service.submit(() -> doCacheableGetOnObject(
-                    objectKey, startTimestampMillis, endTimestampMillis,
-                    metadataQuery, dimensionsQuery, includePayloads
-                )),
-                new FutureCallback<List<Event>>() {
-                    // we want this handler to run immediately after we push the big red button!
-                    public void onSuccess(List<Event> events) {
-                        results.addAll(events);
-                    }
-                    public void onFailure(Throwable e) {
-                        logger.warn("exception on get call to s3", e);
+            final ListenableFuture<List<Event>> future = executorService.submit(
+                () -> doCacheableGetOnObject(objectKey, startTimestampMillis, endTimestampMillis, metadataQuery,
+                    dimensionsQuery, includePayloads)
+            );
+            future.addListener(
+                () -> {
+                    try {
+                        results.addAll(future.get());
+                    } catch (final InterruptedException | ExecutionException e) {
+                        logger.warn("exception on metadata call to s3", e);
                     }
                 },
-                service
+                executorService
             );
         }
 
@@ -362,28 +359,25 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                                    final Map<String, String> dimensionsQuery) throws IOException {
 
         final Set<String> results = new CopyOnWriteArraySet<>();
-        // parallel calls to s3
-        final ListeningExecutorService service = MoreExecutors.listeningDecorator(executorService);
         // iterate over all s3 objects that match this request
         for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
             // only query json files
             if (!objectKey.endsWith("json")) {
                 continue;
             }
-            Futures.addCallback(
-                service.submit(() -> doMetadataOnObject(
-                    objectKey, metadataKey, startTimestampMillis, endTimestampMillis,
+            final ListenableFuture<Set<String>> future = executorService.submit(
+                () -> doMetadataOnObject(objectKey, metadataKey, startTimestampMillis, endTimestampMillis,
                     metadataQuery, dimensionsQuery)
-                ),
-                new FutureCallback<Set<String>>() {
-                    public void onSuccess(Set<String> metadata) {
-                        results.addAll(metadata);
-                    }
-                    public void onFailure(Throwable e) {
+            );
+            future.addListener(
+                () -> {
+                    try {
+                        results.addAll(future.get());
+                    } catch (final InterruptedException | ExecutionException e) {
                         logger.warn("exception on metadata call to s3", e);
                     }
                 },
-                service
+                executorService
             );
         }
         return results;
@@ -396,29 +390,25 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                                     final Map<String, String> metadataQuery,
                                     final Map<String, String> dimensionsQuery) throws IOException {
         final List<Event> results = new CopyOnWriteArrayList<>();
-        // parallel calls to s3
-        final ListeningExecutorService service = MoreExecutors.listeningDecorator(executorService);
         // iterate over all s3 objects that match this request
         for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
             // only query json files
             if (!objectKey.endsWith("json")) {
                 continue;
             }
-            Futures.addCallback(
-                service.submit(
-                    () -> doDimensionOnObject(
-                        objectKey, dimensionKey, startTimestampMillis, endTimestampMillis,
-                        metadataQuery, dimensionsQuery)
-                ),
-                new FutureCallback<List<Event>>() {
-                    public void onSuccess(List<Event> events) {
-                        results.addAll(events);
-                    }
-                    public void onFailure(Throwable e) {
+            final ListenableFuture<List<Event>> future = executorService.submit(
+                () -> doDimensionOnObject(objectKey, dimensionKey, startTimestampMillis, endTimestampMillis,
+                    metadataQuery, dimensionsQuery)
+            );
+            future.addListener(
+                () -> {
+                    try {
+                        results.addAll(future.get());
+                    } catch (final InterruptedException | ExecutionException e) {
                         logger.warn("exception on dimension call to s3", e);
                     }
                 },
-                service
+                executorService
             );
         }
         return results;
@@ -603,21 +593,19 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         }
         prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatterMin.format(endTimestampMillis)));
         final Set<String> matchingKeys = new ConcurrentSkipListSet<>();
-        final ListeningExecutorService service = MoreExecutors.listeningDecorator(executorService);
         for (final String prefix : prefixes) {
-            Futures.addCallback(
-                service.submit(
-                    () -> S3Utils.getKeys(this.s3Client, this.bucketName, prefix)
-                ),
-                new FutureCallback<Collection<String>>() {
-                    public void onSuccess(Collection<String> keys) {
-                        matchingKeys.addAll(keys);
-                    }
-                    public void onFailure(Throwable e) {
-                        logger.warn("exception on get call to s3", e);
+            final ListenableFuture<Collection<String>> future = executorService.submit(
+                () -> S3Utils.getKeys(this.s3Client, this.bucketName, prefix)
+            );
+            future.addListener(
+                () -> {
+                    try {
+                        matchingKeys.addAll(future.get());
+                    } catch (final InterruptedException | ExecutionException e) {
+                        logger.warn("exception on doGetMatchingKeys call to s3", e);
                     }
                 },
-                service
+                executorService
             );
         }
         return matchingKeys;
