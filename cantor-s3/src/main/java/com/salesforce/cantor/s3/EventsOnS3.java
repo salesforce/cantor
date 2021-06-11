@@ -55,11 +55,10 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     // cantor-events-<namespace>/<startTimestamp>-<endTimestamp>
     private static final String objectKeyPrefix = "cantor-events";
 
-    // date directoryFormatter for flush cycle name calculation
-    private static final DateFormat cycleNameFormatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
-    // date directoryFormatter for converting an event timestamp to a hierarchical directory structure
-    private static final DateFormat directoryFormatterMin = new SimpleDateFormat("yyyy/MM/dd/HH/mm");
-    private static final DateFormat directoryFormatterHour = new SimpleDateFormat("yyyy/MM/dd/HH/");
+    // date formatter patterns for converting an event timestamp to a hierarchical directory structure
+    private static final String directoryFormatterMinPattern = "yyyy/MM/dd/HH/mm";
+    private static final String directoryFormatterHourPattern = "yyyy/MM/dd/HH/";
+    private static final String cycleNameFormatterPattern = "yyyy-MM-dd_HH-mm-ss";
 
     // monitors for synchronizing writes to namespaces
     private static final Map<String, Object> namespaceLocks = new ConcurrentHashMap<>();
@@ -283,6 +282,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     }
 
     private void appendEvent(final String namespace, final Event event) {
+        final DateFormat directoryFormatterMin = new SimpleDateFormat(directoryFormatterMinPattern);
         final Map<String, String> metadata = new HashMap<>(event.getMetadata());
         final Map<String, Double> dimensions = new HashMap<>(event.getDimensions());
         final byte[] payload = event.getPayload();
@@ -614,6 +614,8 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     }
 
     private Set<String> doGetMatchingKeys(final String namespace, final long startTimestampMillis, final long endTimestampMillis) throws IOException, InterruptedException {
+        final DateFormat directoryFormatterMin = new SimpleDateFormat(directoryFormatterMinPattern);
+        final DateFormat directoryFormatterHour = new SimpleDateFormat(directoryFormatterHourPattern);
         final Set<String> prefixes = new HashSet<>();
         long start = startTimestampMillis;
         while (start <= endTimestampMillis) {
@@ -748,14 +750,16 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     }
 
     // update the rollover cycle guid and return the previous one
-    private static String rollover() {
+    private static void rollover() {
+        // date directoryFormatter for flush cycle name calculation
+        final DateFormat cycleNameFormatter = new SimpleDateFormat(cycleNameFormatterPattern);
         // cycle name is: <timestamp>-<guid>
         final String rolloverCycleName = String.format("%s.%s",
                 cycleNameFormatter.format(System.currentTimeMillis()),
                 UUID.randomUUID().toString().replaceAll("-", "")
         );
         logger.info("starting new cycle: {}", rolloverCycleName);
-        return currentFlushCycleGuid.getAndSet(rolloverCycleName);
+        currentFlushCycleGuid.set(rolloverCycleName);
     }
 
     private String getRolloverCycleName() {
