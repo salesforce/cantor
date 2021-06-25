@@ -8,10 +8,7 @@
 package com.salesforce.cantor.grpc;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import io.grpc.Channel;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
-import io.grpc.StatusRuntimeException;
+import io.grpc.*;
 import io.grpc.stub.AbstractStub;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +17,7 @@ import org.slf4j.bridge.SLF4JBridgeHandler;
 import java.io.IOException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkString;
@@ -28,7 +26,6 @@ abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final Channel channel;
     private final String target;
-    private final StubType stub;
     private final Function<Channel, StubType> stubConstructor;
 
     AbstractBaseGrpcClient(final Function<Channel, StubType> stubConstructor,
@@ -38,14 +35,14 @@ abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
         this.stubConstructor = stubConstructor;
 
         this.channel = makeChannel();
-        this.stub = makeStubs();
 
         // redirect JUL to slf4j
         SLF4JBridgeHandler.install();
     }
 
     StubType getStub() {
-        return this.stub;
+        // create a new stub with deadline of 1 minute
+        return makeStubs().withDeadline(Deadline.after(60, TimeUnit.SECONDS));
     }
 
     <R> R call(final Callable<R> callable) throws IOException {

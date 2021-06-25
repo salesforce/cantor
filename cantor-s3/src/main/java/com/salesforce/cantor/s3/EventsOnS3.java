@@ -40,17 +40,14 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
     private static final String defaultBufferDirectory = "cantor-events-s3-buffer";
     private static final long defaultFlushIntervalSeconds = 60;
+    private static final long defaultTimeoutSeconds = 30;
 
     private static final String dimensionKeyPayloadOffset = ".cantor-payload-offset";
     private static final String dimensionKeyPayloadLength = ".cantor-payload-length";
 
     // parameter used for path to file for the sifting logger
     private static final String siftingDiscriminatorKey = "path";
-
-    private static final AtomicReference<String> currentFlushCycleGuid = new AtomicReference<>();
-    private static final Gson parser = new GsonBuilder().create();
     private static final Logger siftingLogger = initSiftingLogger();
-    private static final AtomicBoolean isInitialized = new AtomicBoolean(false);
 
     // cantor-events-<namespace>/<startTimestamp>-<endTimestamp>
     private static final String objectKeyPrefix = "cantor-events";
@@ -74,26 +71,17 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             .maximumSize(1024)
             .build();
 
+    // json parser
+    private final Gson parser = new GsonBuilder().create();
+
+    // reference to the flush cycle guid
+    private final AtomicReference<String> currentFlushCycleGuid = new AtomicReference<>();
+
+    // aws transfer manager for uploading buffer files
     private final TransferManager s3TransferManager;
 
+    // path to directory to store buffered event logs
     private final String bufferDirectory;
-
-    private static class ExecutorFactory {
-        // return executor service to schedule buffer flushing at set time intervals
-        ScheduledExecutorService getScheduledExecutor() {
-            return Executors.newSingleThreadScheduledExecutor();
-        }
-
-        // return executor service to parallelize calls to s3, one for each Event interface method
-        ListeningExecutorService getListeningExecutor() {
-            return MoreExecutors.listeningDecorator(
-                Executors.newCachedThreadPool(
-                    new ThreadFactoryBuilder().setNameFormat("cantor-s3-events-worker-%d").build()
-                )
-            );
-        }
-    }
-    private static final ExecutorFactory executorFactory = new ExecutorFactory();
 
     public EventsOnS3(final AmazonS3 s3Client,
                       final String bucketName) throws IOException {
@@ -123,10 +111,11 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         this.s3TransferManager = builder.build();
 
         // schedule flush cycle to start immediately
-        if (!isInitialized.getAndSet(true)) {
-            rollover();
-            executorFactory.getScheduledExecutor().scheduleAtFixedRate(this::flush, 0, flushIntervalSeconds, TimeUnit.SECONDS);
-        }
+        rollover();
+        // scheduler for flushing buffers
+        Executors.newSingleThreadScheduledExecutor(
+                new ThreadFactoryBuilder().setNameFormat("cantor-s3-buffer-flusher").build()
+        ).scheduleAtFixedRate(this::flush, 0, flushIntervalSeconds, TimeUnit.SECONDS);
     }
 
     @Override
@@ -309,7 +298,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                 dimensions.put(dimensionKeyPayloadLength, (double) payloadBase64.length());
             }
             final Event toWrite = new Event(event.getTimestampMillis(), metadata, dimensions);
-            append(eventsFilePath, parser.toJson(toWrite));
+            append(eventsFilePath, this.parser.toJson(toWrite));
         }
     }
 
@@ -330,7 +319,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
         final List<Event> results = new CopyOnWriteArrayList<>();
         // parallel calls to s3
-        final ListeningExecutorService executorService = executorFactory.getListeningExecutor();
+        final ListeningExecutorService executorService = newListeningExecutor("cantor-events-s3-get-%d");
         final AtomicBoolean futureHasFailed = new AtomicBoolean(false);
 
         // iterate over all s3 objects that match this request
@@ -356,8 +345,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             Futures.addCallback(future, callback, MoreExecutors.directExecutor());
         }
 
-        executorService.shutdown();
-        executorService.awaitTermination(30, TimeUnit.SECONDS);
+        awaitTermination(executorService);
 
         if (futureHasFailed.get()) throw new IOException("exception on get call to s3");
 
@@ -378,7 +366,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
         final Set<String> results = new CopyOnWriteArraySet<>();
         // parallel calls to s3
-        final ListeningExecutorService executorService = executorFactory.getListeningExecutor();
+        final ListeningExecutorService executorService = newListeningExecutor("cantor-events-s3-metadata-%d");
         final AtomicBoolean futureHasFailed = new AtomicBoolean(false);
 
         // iterate over all s3 objects that match this request
@@ -403,10 +391,11 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             Futures.addCallback(future, callback, MoreExecutors.directExecutor());
         }
 
-        executorService.shutdown();
-        executorService.awaitTermination(30, TimeUnit.SECONDS);
+        awaitTermination(executorService);
 
-        if (futureHasFailed.get()) throw new IOException("exception on metadata call to s3");
+        if (futureHasFailed.get()) {
+            throw new IOException("exception on metadata call to s3");
+        }
         return results;
     }
 
@@ -418,7 +407,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                                     final Map<String, String> dimensionsQuery) throws IOException, InterruptedException {
         final List<Event> results = new CopyOnWriteArrayList<>();
         // parallel calls to s3
-        final ListeningExecutorService executorService = executorFactory.getListeningExecutor();
+        final ListeningExecutorService executorService = newListeningExecutor("cantor-events-s3-dimension-%d");
         final AtomicBoolean futureHasFailed = new AtomicBoolean(false);
 
         // iterate over all s3 objects that match this request
@@ -443,10 +432,11 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             Futures.addCallback(future, callback, MoreExecutors.directExecutor());
         }
 
-        executorService.shutdown();
-        executorService.awaitTermination(30, TimeUnit.SECONDS);
+        awaitTermination(executorService);
 
-        if (futureHasFailed.get()) throw new IOException("exception on get call to s3");
+        if (futureHasFailed.get()) {
+            throw new IOException("exception on get call to s3");
+        }
         return results;
     }
 
@@ -488,7 +478,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         try (final Scanner lineReader = new Scanner(S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query))) {
             // json events are stored in json lines format, so one json object per line
             while (lineReader.hasNext()) {
-                final Event event = parser.fromJson(lineReader.nextLine(), Event.class);
+                final Event event = this.parser.fromJson(lineReader.nextLine(), Event.class);
                 // if include payloads is true, find the payload offset and length, do a range call to s3 to pull
                 // the base64 representation of the payload bytes
                 if (includePayloads
@@ -524,7 +514,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         try (final Scanner lineReader = new Scanner(S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query))) {
             // json events are stored in json lines format, so one json object per line
             while (lineReader.hasNext()) {
-                final Map<String, String> metadata = parser.fromJson(lineReader.nextLine(), Map.class);
+                final Map<String, String> metadata = this.parser.fromJson(lineReader.nextLine(), Map.class);
                 if (metadata.containsKey(metadataKey)) {
                     results.add(metadata.get(metadataKey));
                 }
@@ -544,7 +534,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         try (final Scanner lineReader = new Scanner(S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, objectKey, query))) {
             // json events are stored in json lines format, so one json object per line
             while (lineReader.hasNext()) {
-                final Map<String, Double> parsedJson = parser.fromJson(lineReader.nextLine(), Map.class);
+                final Map<String, Double> parsedJson = this.parser.fromJson(lineReader.nextLine(), Map.class);
                 final long timestamp = parsedJson.get("timestampMillis").longValue();
                 final Map<String, Double> dimensions = Collections.singletonMap(dimensionKey, parsedJson.get(dimensionKey));
                 results.add(new Event(timestamp, Collections.emptyMap(), dimensions));
@@ -632,7 +622,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         prefixes.add(String.format("%s/%s", getObjectKeyPrefix(namespace), directoryFormatterMin.format(endTimestampMillis)));
 
         final Set<String> matchingKeys = new ConcurrentSkipListSet<>();
-        final ListeningExecutorService executorService = executorFactory.getListeningExecutor();
+        final ListeningExecutorService executorService = newListeningExecutor("cantor-events-s3-get-matching-keys-%d");
         final AtomicBoolean futureHasFailed = new AtomicBoolean(false);
 
         for (final String prefix : prefixes) {
@@ -651,10 +641,11 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             Futures.addCallback(future, callback, MoreExecutors.directExecutor());
         }
 
-        executorService.shutdown();
-        executorService.awaitTermination(30, TimeUnit.SECONDS);
+        awaitTermination(executorService);
 
-        if (futureHasFailed.get()) throw new IOException("exception on getting object keys from s3");
+        if (futureHasFailed.get()) {
+            throw new IOException("exception on getting object keys from s3");
+        }
         return matchingKeys;
     }
 
@@ -750,7 +741,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     }
 
     // update the rollover cycle guid and return the previous one
-    private static void rollover() {
+    private void rollover() {
         // date directoryFormatter for flush cycle name calculation
         final DateFormat cycleNameFormatter = new SimpleDateFormat(cycleNameFormatterPattern);
         // cycle name is: <timestamp>-<guid>
@@ -759,11 +750,15 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                 UUID.randomUUID().toString().replaceAll("-", "")
         );
         logger.info("starting new cycle: {}", rolloverCycleName);
-        currentFlushCycleGuid.set(rolloverCycleName);
+        setRolloverCycleName(rolloverCycleName);
     }
 
     private String getRolloverCycleName() {
-        return currentFlushCycleGuid.get();
+        return this.currentFlushCycleGuid.get();
+    }
+
+    private void setRolloverCycleName(final String name) {
+        this.currentFlushCycleGuid.set(name);
     }
 
     private String getPath(final String rolloverCycleName) {
@@ -846,6 +841,21 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             }
         }
         dir.delete();
+    }
+
+    private static ListeningExecutorService newListeningExecutor(final String nameFormat) {
+        return MoreExecutors.listeningDecorator(
+                Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat(nameFormat).build())
+        );
+    }
+
+    private static void awaitTermination(final ExecutorService executor) throws IOException {
+        executor.shutdown();
+        try {
+            executor.awaitTermination(defaultTimeoutSeconds, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            throw new IOException(e);
+        }
     }
 
     private static class ObjectWeigher implements Weigher<String, List<Event>> {
