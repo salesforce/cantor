@@ -368,6 +368,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         // parallel calls to s3
         final ListeningExecutorService executorService = newListeningExecutor("cantor-events-s3-metadata-%d");
         final AtomicBoolean futureHasFailed = new AtomicBoolean(false);
+
         // iterate over all s3 objects that match this request
         for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
             // only query json files
@@ -408,6 +409,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         // parallel calls to s3
         final ListeningExecutorService executorService = newListeningExecutor("cantor-events-s3-dimension-%d");
         final AtomicBoolean futureHasFailed = new AtomicBoolean(false);
+
         // iterate over all s3 objects that match this request
         for (final String objectKey : getMatchingKeys(namespace, startTimestampMillis, endTimestampMillis)) {
             // only query json files
