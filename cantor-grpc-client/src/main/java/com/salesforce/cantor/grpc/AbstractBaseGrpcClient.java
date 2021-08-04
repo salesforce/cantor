@@ -42,7 +42,7 @@ abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
 
     StubType getStub() {
         // create a new stub with deadline of 1 minute
-        return makeStubs().withDeadline(Deadline.after(60, TimeUnit.SECONDS));
+        return makeStubs().withDeadlineAfter(60, TimeUnit.SECONDS);
     }
 
     <R> R call(final Callable<R> callable) throws IOException {
