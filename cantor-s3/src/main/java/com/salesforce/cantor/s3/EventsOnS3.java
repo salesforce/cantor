@@ -486,7 +486,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                         && event.getDimensions().containsKey(dimensionKeyPayloadLength)) {
                     final long offset = event.getDimensions().get(dimensionKeyPayloadOffset).longValue();
                     final long length = event.getDimensions().get(dimensionKeyPayloadLength).longValue();
-                    final String payloadFilename = objectKey.replace("json", "b64");
+                    final String payloadFilename = objectKey.substring(0, objectKey.lastIndexOf("json")) + "b64";
                     final byte[] payloadBase64Bytes = S3Utils.getObjectBytes(this.s3Client, this.bucketName, payloadFilename, offset, offset + length - 1);
                     if (payloadBase64Bytes == null || payloadBase64Bytes.length == 0) {
                         throw new IOException("failed to retrieve payload for event");
@@ -557,7 +557,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                                  final long endTmestampMillis,
                                  final Map<String, String> metadataQuery,
                                  final Map<String, String> dimensionsQuery) {
-        final String timestampClause = String.format("s.timestampMillis BETWEEN %d AND %d", startTimestampMillis, endTmestampMillis);
+        final String timestampClause = String.format("s.timestampMillis >= %d AND s.timestampMillis <= %d", startTimestampMillis, endTmestampMillis);
         return String.format("SELECT * FROM s3object[*] s WHERE %s %s %s",
                 timestampClause,
                 getMetadataQuerySql(metadataQuery),
@@ -570,7 +570,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                                          final long endTmestampMillis,
                                          final Map<String, String> metadataQuery,
                                          final Map<String, String> dimensionsQuery) {
-        final String timestampClause = String.format("s.timestampMillis BETWEEN %d AND %d", startTimestampMillis, endTmestampMillis);
+        final String timestampClause = String.format("s.timestampMillis >= %d AND s.timestampMillis <= %d", startTimestampMillis, endTmestampMillis);
         return String.format("SELECT s.metadata.\"%s\" FROM s3object[*] s WHERE %s %s %s",
                 metadataKey,
                 timestampClause,
@@ -584,7 +584,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                                           final long endTmestampMillis,
                                           final Map<String, String> metadataQuery,
                                           final Map<String, String> dimensionsQuery) {
-        final String timestampClause = String.format("s.timestampMillis BETWEEN %d AND %d", startTimestampMillis, endTmestampMillis);
+        final String timestampClause = String.format("s.timestampMillis >= %d AND s.timestampMillis <= %d", startTimestampMillis, endTmestampMillis);
         return String.format("SELECT s.timestampMillis, s.dimensions.\"%s\" FROM s3object[*] s WHERE %s %s %s",
                 dimensionKey,
                 timestampClause,
