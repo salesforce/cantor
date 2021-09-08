@@ -37,45 +37,51 @@ public class S3Utils {
                                              final String prefix,
                                              final int start,
                                              final int count) throws IOException {
-        if (!s3Client.doesBucketExistV2(bucketName)) {
-            throw new IOException(String.format("couldn't find bucket '%s'", bucketName));
-        }
-
-        final Set<String> keys = new HashSet<>();
-        int index = 0;
-        ObjectListing listing = null;
-        do {
-            if (listing == null) {
-                listing = s3Client.listObjects(bucketName, prefix);
-            } else {
-                listing = s3Client.listNextBatchOfObjects(listing);
+        final long before = System.nanoTime();
+        try {
+            if (!s3Client.doesBucketExistV2(bucketName)) {
+                throw new IOException(String.format("couldn't find bucket '%s'", bucketName));
             }
 
-            final List<S3ObjectSummary> objectSummaries = listing.getObjectSummaries();
-            // skip sections that the start index wouldn't include
-            if ((objectSummaries.size() - 1) + index < start) {
-                index += objectSummaries.size();
-                logger.debug("skipping {} objects to index={}", objectSummaries.size(), index);
-                listing = s3Client.listNextBatchOfObjects(listing);
-                continue;
-            }
+            final Set<String> keys = new HashSet<>();
+            int index = 0;
+            ObjectListing listing = null;
+            do {
+                if (listing == null) {
+                    listing = s3Client.listObjects(bucketName, prefix);
+                } else {
+                    listing = s3Client.listNextBatchOfObjects(listing);
+                }
 
-            for (final S3ObjectSummary summary : objectSummaries) {
-                if (start > index++) {
+                final List<S3ObjectSummary> objectSummaries = listing.getObjectSummaries();
+                // skip sections that the start index wouldn't include
+                if ((objectSummaries.size() - 1) + index < start) {
+                    index += objectSummaries.size();
+                    logger.debug("skipping {} objects to index={}", objectSummaries.size(), index);
+                    listing = s3Client.listNextBatchOfObjects(listing);
                     continue;
                 }
-                keys.add(summary.getKey());
 
-                if (keys.size() == count) {
-                    logger.debug("retrieved {}/{} keys, returning early", keys.size(), count);
-                    return keys;
+                for (final S3ObjectSummary summary : objectSummaries) {
+                    if (start > index++) {
+                        continue;
+                    }
+                    keys.add(summary.getKey());
+
+                    if (keys.size() == count) {
+                        logger.debug("retrieved {}/{} keys, returning early", keys.size(), count);
+                        return keys;
+                    }
                 }
-            }
 
-            logger.debug("got {} keys from {}", listing.getObjectSummaries().size(), listing);
-        } while (listing.isTruncated());
-
-        return keys;
+                logger.debug("got {} keys from {}", listing.getObjectSummaries().size(), listing);
+            } while (listing.isTruncated());
+            return keys;
+        } finally {
+            logger.info("get keys - bucket: {} - prefix: {} - start: {} - count: {}; time spent: {}ms",
+                    bucketName, prefix, start, count, ((System.nanoTime() - before) / 1_000_000)
+            );
+        }
     }
 
     public static byte[] getObjectBytes(final AmazonS3 s3Client,
@@ -89,39 +95,52 @@ public class S3Utils {
                                         final String key,
                                         final long start,
                                         final long end) throws IOException {
-        if (!s3Client.doesObjectExist(bucketName, key)) {
-            logger.debug("object '{}.{}' doesn't exist, returning null", bucketName, key);
-            return null;
-        }
-
-        final GetObjectRequest request = new GetObjectRequest(bucketName, key);
-        if (start >= 0 && end > 0) {
-            request.setRange(start, end);
-        } else if (start > 0 && end < 0) {
-            request.setRange(start);
-        }
-        final S3Object s3Object = s3Client.getObject(request);
-        try (final InputStream inputStream = s3Object.getObjectContent()) {
-            try (final ByteArrayOutputStream buffer = new ByteArrayOutputStream()) {
-                final byte[] data = new byte[streamingChunkSize];
-                int read;
-                while ((read = inputStream.read(data, 0, data.length)) != -1) {
-                    buffer.write(data, 0, read);
-                }
-                buffer.flush();
-                return buffer.toByteArray();
+        final long before = System.nanoTime();
+        try {
+            if (!s3Client.doesObjectExist(bucketName, key)) {
+                logger.warn("object '{}.{}' doesn't exist, returning null", bucketName, key);
+                return null;
             }
+            final GetObjectRequest request = new GetObjectRequest(bucketName, key);
+            if (start >= 0 && end > 0) {
+                request.setRange(start, end);
+            } else if (start > 0 && end < 0) {
+                request.setRange(start);
+            }
+            final S3Object s3Object = s3Client.getObject(request);
+            try (final InputStream inputStream = s3Object.getObjectContent()) {
+                try (final ByteArrayOutputStream buffer = new ByteArrayOutputStream()) {
+                    final byte[] data = new byte[streamingChunkSize];
+                    int read;
+                    while ((read = inputStream.read(data, 0, data.length)) != -1) {
+                        buffer.write(data, 0, read);
+                    }
+                    buffer.flush();
+                    return buffer.toByteArray();
+                }
+            }
+        } finally {
+            logger.info("get object bytes - bucket: {} - key: {} - start: {} - end: {}; time spent: {}ms",
+                    bucketName, key, start, end, ((System.nanoTime() - before) / 1_000_000)
+            );
         }
     }
 
     public static InputStream getObjectStream(final AmazonS3 s3Client,
                                               final String bucketName,
                                               final String key) {
-        if (!s3Client.doesObjectExist(bucketName, key)) {
-            logger.warn(String.format("couldn't find S3 object with key '%s' in bucket '%s'", key, bucketName));
-            return null;
+        final long before = System.nanoTime();
+        try {
+            if (!s3Client.doesObjectExist(bucketName, key)) {
+                logger.warn(String.format("couldn't find S3 object with key '%s' in bucket '%s'", key, bucketName));
+                return null;
+            }
+            return s3Client.getObject(bucketName, key).getObjectContent();
+        } finally {
+            logger.info("get object stream - bucket: {} - key: {}; time spent: {}ms",
+                    bucketName, key, ((System.nanoTime() - before) / 1_000_000)
+            );
         }
-        return s3Client.getObject(bucketName, key).getObjectContent();
     }
 
     public static void putObject(final AmazonS3 s3Client,
@@ -129,73 +148,104 @@ public class S3Utils {
                                  final String key,
                                  final InputStream content,
                                  final ObjectMetadata metadata) throws IOException {
-        if (!s3Client.doesBucketExistV2(bucketName)) {
-            throw new IOException(String.format("couldn't find bucket '%s'", bucketName));
+        final long before = System.nanoTime();
+        try {
+            if (!s3Client.doesBucketExistV2(bucketName)) {
+                throw new IOException(String.format("couldn't find bucket '%s'", bucketName));
+            }
+            final PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, key, content, metadata);
+            putObjectRequest.withCannedAcl(CannedAccessControlList.BucketOwnerFullControl);
+            s3Client.putObject(putObjectRequest);
+        } finally {
+            logger.info("put object - bucket: {} - key: {}; time spent: {}ms",
+                    bucketName, key, ((System.nanoTime() - before) / 1_000_000)
+            );
         }
-        final PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, key, content, metadata);
-        putObjectRequest.withCannedAcl(CannedAccessControlList.BucketOwnerFullControl);
-        s3Client.putObject(putObjectRequest);
     }
 
     public static boolean deleteObject(final AmazonS3 s3Client, final String bucketName, final String key) {
-        if (!s3Client.doesObjectExist(bucketName, key)) {
-            return false;
+        final long before = System.nanoTime();
+        try {
+            if (!s3Client.doesObjectExist(bucketName, key)) {
+                return false;
+            }
+            s3Client.deleteObject(bucketName, key);
+            return true;
+        } finally {
+            logger.info("delete object - bucket: {} - key: {}; time spent: {}ms",
+                    bucketName, key, ((System.nanoTime() - before) / 1_000_000)
+            );
         }
-
-        s3Client.deleteObject(bucketName, key);
-        return true;
     }
 
     public static void deleteObjects(final AmazonS3 s3Client, final String bucketName, final Collection<String> keys) {
-        if (keys == null || keys.isEmpty()) {
-            return;
+        final long before = System.nanoTime();
+        try {
+            if (keys == null || keys.isEmpty()) {
+                return;
+            }
+            final DeleteObjectsRequest request = new DeleteObjectsRequest(bucketName);
+            request.setKeys(keys.stream().map(DeleteObjectsRequest.KeyVersion::new).collect(Collectors.toList()));
+            s3Client.deleteObjects(request);
+        } finally {
+            logger.info("delete objects - bucket: {} - keys: {}; time spent: {}ms",
+                    bucketName, keys, ((System.nanoTime() - before) / 1_000_000)
+            );
         }
-        final DeleteObjectsRequest request = new DeleteObjectsRequest(bucketName);
-        request.setKeys(keys.stream().map(DeleteObjectsRequest.KeyVersion::new).collect(Collectors.toList()));
-        s3Client.deleteObjects(request);
     }
 
     public static void deleteObjects(final AmazonS3 s3Client,
                                      final String bucketName,
                                      final String prefix) {
-        if (!s3Client.doesBucketExistV2(bucketName)) {
-            logger.debug("bucket '{}' does not exist; ignoring drop", bucketName);
-            return;
-        }
-
-        logger.info("bucket '{}' exists; dropping it", bucketName);
-        // delete all objects
-        ObjectListing objectListing = s3Client.listObjects(bucketName, prefix);
-        while (true) {
-            for (final S3ObjectSummary summary : objectListing.getObjectSummaries()) {
-                s3Client.deleteObject(bucketName, summary.getKey());
+        final long before = System.nanoTime();
+        try {
+            if (!s3Client.doesBucketExistV2(bucketName)) {
+                logger.debug("bucket '{}' does not exist; ignoring drop", bucketName);
+                return;
             }
-            if (objectListing.isTruncated()) {
-                objectListing = s3Client.listNextBatchOfObjects(objectListing);
-            } else {
-                break;
+            logger.info("bucket '{}' exists; dropping it", bucketName);
+            // delete all objects
+            ObjectListing objectListing = s3Client.listObjects(bucketName, prefix);
+            while (true) {
+                for (final S3ObjectSummary summary : objectListing.getObjectSummaries()) {
+                    s3Client.deleteObject(bucketName, summary.getKey());
+                }
+                if (objectListing.isTruncated()) {
+                    objectListing = s3Client.listNextBatchOfObjects(objectListing);
+                } else {
+                    break;
+                }
             }
+        } finally {
+            logger.info("delete objects - bucket: {} - prefix: {}; time spent: {}ms",
+                    bucketName, prefix, ((System.nanoTime() - before) / 1_000_000)
+            );
         }
     }
 
-    public static int getSize(final AmazonS3 s3Client, final String bucket, final String bucketPrefix) {
-        if (!s3Client.doesBucketExistV2(bucket)) {
-            return -1;
-        }
-
-        int totalSize = 0;
-        ObjectListing listing = null;
-        do {
-            if (listing == null) {
-                listing = s3Client.listObjects(bucket, bucketPrefix);
-            } else {
-                listing = s3Client.listNextBatchOfObjects(listing);
+    public static int getSize(final AmazonS3 s3Client, final String bucketName, final String bucketPrefix) {
+        final long before = System.nanoTime();
+        try {
+            if (!s3Client.doesBucketExistV2(bucketName)) {
+                return -1;
             }
-            totalSize += listing.getObjectSummaries().size();
-            logger.debug("got {} keys from {}", listing.getObjectSummaries().size(), listing);
-        } while (listing.isTruncated());
-
-        return totalSize;
+            int totalSize = 0;
+            ObjectListing listing = null;
+            do {
+                if (listing == null) {
+                    listing = s3Client.listObjects(bucketName, bucketPrefix);
+                } else {
+                    listing = s3Client.listNextBatchOfObjects(listing);
+                }
+                totalSize += listing.getObjectSummaries().size();
+                logger.debug("got {} keys from {}", listing.getObjectSummaries().size(), listing);
+            } while (listing.isTruncated());
+            return totalSize;
+        } finally {
+            logger.info("get size - bucket: {} - prefix: {}; time spent: {}ms",
+                    bucketName, bucketPrefix, ((System.nanoTime() - before) / 1_000_000)
+            );
+        }
     }
 
     public static String getCleanKeyForNamespace(final String namespace) {
@@ -225,32 +275,40 @@ public class S3Utils {
         }
 
         public static String queryObject(final AmazonS3 s3Client,
-                                              final SelectObjectContentRequest request) throws IOException {
-            final StringBuilder results = new StringBuilder();
-            try (final SelectObjectContentResult result = s3Client.selectObjectContent(request)) {
-                try (final InputStream inputStream = result.getPayload().getRecordsInputStream(
-                        new SelectObjectContentEventVisitor() {
-                            @Override
-                            public void visit(final SelectObjectContentEvent.StatsEvent event) {
-                                logger.debug("s3 select query stats: bucket='{}' key='{}' bytes-scanned='{}' bytes-processed='{}' bytes-returned='{}'",
-                                        request.getBucketName(),
-                                        request.getKey(),
-                                        event.getDetails().getBytesProcessed(),
-                                        event.getDetails().getBytesScanned(),
-                                        event.getDetails().getBytesReturned()
-                                );
+                                         final SelectObjectContentRequest request) throws IOException {
+
+            final long before = System.nanoTime();
+            try {
+                final StringBuilder results = new StringBuilder();
+                try (final SelectObjectContentResult result = s3Client.selectObjectContent(request)) {
+                    try (final InputStream inputStream = result.getPayload().getRecordsInputStream(
+                            new SelectObjectContentEventVisitor() {
+                                @Override
+                                public void visit(final SelectObjectContentEvent.StatsEvent event) {
+                                    logger.info("s3 select query stats: bucket='{}' key='{}' bytes-scanned='{}' bytes-processed='{}' bytes-returned='{}'",
+                                            request.getBucketName(),
+                                            request.getKey(),
+                                            event.getDetails().getBytesProcessed(),
+                                            event.getDetails().getBytesScanned(),
+                                            event.getDetails().getBytesReturned()
+                                    );
+                                }
                             }
-                        }
-                )) {
-                    try (final Scanner lineReader = new Scanner(inputStream)) {
-                        // json events are stored in json lines format, so one json object per line
-                        while (lineReader.hasNext()) {
-                            results.append(lineReader.nextLine()).append("\n");
+                    )) {
+                        try (final Scanner lineReader = new Scanner(inputStream)) {
+                            // json events are stored in json lines format, so one json object per line
+                            while (lineReader.hasNext()) {
+                                results.append(lineReader.nextLine()).append("\n");
+                            }
                         }
                     }
                 }
+                return results.toString();
+            } finally {
+                logger.info("query object - bucket: {} - key: {}; time spent: {}ms",
+                        request.getBucketName(), request.getKey(), ((System.nanoTime() - before) / 1_000_000)
+                );
             }
-            return results.toString();
         }
 
         /**

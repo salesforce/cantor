@@ -60,12 +60,6 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     // monitors for synchronizing writes to namespaces
     private static final Map<String, Object> namespaceLocks = new ConcurrentHashMap<>();
 
-    // in memory cache for queries
-    private static final Cache<String, List<Event>> cache = CacheBuilder.newBuilder()
-            .maximumWeight(1024 * 1024 * 1024) // 1GB cache
-            .weigher(new ObjectWeigher())
-            .build();
-
     // in memory cache for keys call
     private static final Cache<String, Set<String>> keysCache = CacheBuilder.newBuilder()
             .maximumSize(1024)
@@ -82,6 +76,14 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
     // path to directory to store buffered event logs
     private final String bufferDirectory;
+
+    private final LoadingCache<String, AtomicLong> payloadOffset = CacheBuilder.newBuilder()
+            .build(new CacheLoader<String, AtomicLong>() {
+                @Override
+                public AtomicLong load(final String ignoredPath) {
+                    return new AtomicLong(0);
+                }
+            });
 
     public EventsOnS3(final AmazonS3 s3Client,
                       final String bucketName) throws IOException {
@@ -217,14 +219,6 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         return String.format("%s/%s", objectKeyPrefix, trim(namespace));
     }
 
-    private LoadingCache<String, AtomicLong> payloadOffset = CacheBuilder.newBuilder()
-            .build(new CacheLoader<String, AtomicLong>() {
-                @Override
-                public AtomicLong load(final String ignoredPath) {
-                    return new AtomicLong(0);
-                }
-            });
-
     private static Logger initSiftingLogger() {
         final LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
         final SiftingAppender siftingAppender = new SiftingAppender();
@@ -329,7 +323,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                 continue;
             }
             ListenableFuture<List<Event>> future = executorService.submit(
-                () -> doCacheableGetOnObject(objectKey, startTimestampMillis, endTimestampMillis, metadataQuery,
+                () -> doGetOnObject(objectKey, startTimestampMillis, endTimestampMillis, metadataQuery,
                     dimensionsQuery, includePayloads)
             );
             FutureCallback<List<Event>> callback = new FutureCallback<List<Event>>() {
@@ -347,7 +341,9 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
         awaitTermination(executorService);
 
-        if (futureHasFailed.get()) throw new IOException("exception on get call to s3");
+        if (futureHasFailed.get()) {
+            throw new IOException("exception on get call to s3");
+        }
 
         // events are fetched from multiple sources, sort before returning
         sortEventsByTimestamp(results, ascending);
@@ -449,21 +445,6 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             }
             return 0;
         });
-    }
-
-    private List<Event> doCacheableGetOnObject(final String objectKey,
-                                               final long startTimestampMillis,
-                                               final long endTimestampMillis,
-                                               final Map<String, String> metadataQuery,
-                                               final Map<String, String> dimensionsQuery,
-                                               final boolean includePayloads) throws IOException {
-        final String cacheKey = String.format("%s-%d-%d-%d-%d-%b",
-                objectKey.hashCode(), startTimestampMillis, endTimestampMillis, metadataQuery.hashCode(), dimensionsQuery.hashCode(), includePayloads);
-        try {
-            return cache.get(cacheKey, () -> doGetOnObject(objectKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads));
-        } catch (ExecutionException e) {
-            return doGetOnObject(objectKey, startTimestampMillis, endTimestampMillis, metadataQuery, dimensionsQuery, includePayloads);
-        }
     }
 
     private List<Event> doGetOnObject(final String objectKey,
@@ -855,17 +836,6 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
             executor.awaitTermination(defaultTimeoutSeconds, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             throw new IOException(e);
-        }
-    }
-
-    private static class ObjectWeigher implements Weigher<String, List<Event>> {
-        @Override
-        public int weigh(final String keyIgnored, final List<Event> value) {
-            int weight = 0;
-            for (Event e : value) {
-                weight += e.toString().length();
-            }
-            return weight;
         }
     }
 }
