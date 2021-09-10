@@ -39,10 +39,6 @@ public class S3Utils {
                                              final int count) throws IOException {
         final long before = System.nanoTime();
         try {
-            if (!s3Client.doesBucketExistV2(bucketName)) {
-                throw new IOException(String.format("couldn't find bucket '%s'", bucketName));
-            }
-
             final Set<String> keys = new HashSet<>();
             int index = 0;
             ObjectListing listing = null;
@@ -97,10 +93,6 @@ public class S3Utils {
                                         final long end) throws IOException {
         final long before = System.nanoTime();
         try {
-            if (!s3Client.doesObjectExist(bucketName, key)) {
-                logger.warn("object '{}.{}' doesn't exist, returning null", bucketName, key);
-                return null;
-            }
             final GetObjectRequest request = new GetObjectRequest(bucketName, key);
             if (start >= 0 && end > 0) {
                 request.setRange(start, end);
@@ -126,15 +118,24 @@ public class S3Utils {
         }
     }
 
+    public static boolean doesObjectExist(final AmazonS3 s3Client,
+                                          final String bucketName,
+                                          final String key) {
+        final long before = System.nanoTime();
+        try {
+            return s3Client.doesObjectExist(bucketName, key);
+        } finally {
+            logger.info("does object exist - bucket: {} - key: {}; time spent: {}ms",
+                    bucketName, key, ((System.nanoTime() - before) / 1_000_000)
+            );
+        }
+    }
+
     public static InputStream getObjectStream(final AmazonS3 s3Client,
                                               final String bucketName,
                                               final String key) {
         final long before = System.nanoTime();
         try {
-            if (!s3Client.doesObjectExist(bucketName, key)) {
-                logger.warn(String.format("couldn't find S3 object with key '%s' in bucket '%s'", key, bucketName));
-                return null;
-            }
             return s3Client.getObject(bucketName, key).getObjectContent();
         } finally {
             logger.info("get object stream - bucket: {} - key: {}; time spent: {}ms",
@@ -150,9 +151,6 @@ public class S3Utils {
                                  final ObjectMetadata metadata) throws IOException {
         final long before = System.nanoTime();
         try {
-            if (!s3Client.doesBucketExistV2(bucketName)) {
-                throw new IOException(String.format("couldn't find bucket '%s'", bucketName));
-            }
             final PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, key, content, metadata);
             putObjectRequest.withCannedAcl(CannedAccessControlList.BucketOwnerFullControl);
             s3Client.putObject(putObjectRequest);
@@ -199,11 +197,6 @@ public class S3Utils {
                                      final String prefix) {
         final long before = System.nanoTime();
         try {
-            if (!s3Client.doesBucketExistV2(bucketName)) {
-                logger.debug("bucket '{}' does not exist; ignoring drop", bucketName);
-                return;
-            }
-            logger.info("bucket '{}' exists; dropping it", bucketName);
             // delete all objects
             ObjectListing objectListing = s3Client.listObjects(bucketName, prefix);
             while (true) {
@@ -226,9 +219,6 @@ public class S3Utils {
     public static int getSize(final AmazonS3 s3Client, final String bucketName, final String bucketPrefix) {
         final long before = System.nanoTime();
         try {
-            if (!s3Client.doesBucketExistV2(bucketName)) {
-                return -1;
-            }
             int totalSize = 0;
             ObjectListing listing = null;
             do {

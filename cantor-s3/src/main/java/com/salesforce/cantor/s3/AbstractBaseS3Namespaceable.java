@@ -115,6 +115,9 @@ public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
     }
 
     private Collection<String> doGetNamespaces() throws IOException {
+        if (!S3Utils.doesObjectExist(this.s3Client, this.bucketName, this.namespaceLookupKey)) {
+            return Collections.emptyList();
+        }
         try (final InputStream namespacesCsv = S3Utils.getObjectStream(this.s3Client, this.bucketName, this.namespaceLookupKey)) {
             if (namespacesCsv == null) {
                 return Collections.emptyList();

@@ -125,6 +125,9 @@ public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements Streamin
     private byte[] doGet(final String namespace, final String key) throws IOException {
         final String objectName = getObjectKey(namespace, key);
         logger.debug("retrieving object at '{}.{}'", this.bucketName, objectName);
+        if (!S3Utils.doesObjectExist(this.s3Client, this.bucketName, objectName)) {
+            return null;
+        }
         return S3Utils.getObjectBytes(this.s3Client, this.bucketName, objectName);
     }
 
