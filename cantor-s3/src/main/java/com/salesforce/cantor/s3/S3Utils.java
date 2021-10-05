@@ -239,7 +239,7 @@ public class S3Utils {
     }
 
     public static String getCleanKeyForNamespace(final String namespace) {
-        final String cleanName = namespace.replaceAll("[^A-Za-z0-9_\\-]", "").toLowerCase();
+        final String cleanName = namespace.replaceAll("[^A-Za-z0-9_\\-/]", "").toLowerCase();
         return String.format("cantor-%s-%s",
                 cleanName.substring(0, Math.min(32, cleanName.length())), Math.abs(namespace.hashCode()));
     }
