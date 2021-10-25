@@ -10,6 +10,9 @@ package com.salesforce.cantor.s3;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,12 +26,16 @@ import static com.salesforce.cantor.common.ObjectsPreconditions.*;
 
 public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements StreamingObjects {
     private static final Logger logger = LoggerFactory.getLogger(ObjectsOnS3.class);
+    private static final String ALL_TAGS = "all_tags";
 
     // cantor-objects-<namespace>/<startTimestamp>-<endTimestamp>
     private static final String objectKeyPrefix = "cantor-objects";
+    private final Gson parser = new GsonBuilder().create();
 
     public ObjectsOnS3(final AmazonS3 s3Client, final String bucketName) throws IOException {
         super(s3Client, bucketName, "objects");
+        //create a namespace all_tags to store tags to objects.
+        create(ALL_TAGS);
     }
 
     @Override
@@ -160,4 +167,61 @@ public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements Streamin
         return String.format("%s/%s", objectKeyPrefix, trim(namespace));
     }
 
+    /***
+     * The method will set tag on an object.
+     * Tag will be a key to namespace `all_tags` , and value will be json with
+     * @param objectNamespace : object's namespace name where we want to add a tag.
+     * @param objectKey : key of the object being tagged.
+     * @param tag : associated tag.
+     */
+    public void setTag(final String objectNamespace, final String objectKey, final String tag) {
+        final HashMap<String, String> entryMap = new HashMap<>();
+        entryMap.put("objectNamespace", objectNamespace);
+        entryMap.put("objectKey", objectKey);
+
+        final String jsonString = new Gson().toJson(entryMap);
+
+        try {
+            byte[] objectValueBytes = this.get(ALL_TAGS, tag);
+
+            if (objectValueBytes == null) {
+                // tag not present so far, create a new tag Key in all_tags namepsace and
+                this.store(ALL_TAGS, tag, jsonString.getBytes());
+            } else {
+
+                String taggedObjects = new String(objectValueBytes);
+                if (taggedObjects.contains(jsonString)) {
+                    // no reason to re-store the same list
+                    return;
+                }
+
+                taggedObjects += "\n" + jsonString;
+                final byte[] updatedTagListBytes = taggedObjects.getBytes(StandardCharsets.UTF_8);
+                this.store(ALL_TAGS, tag, updatedTagListBytes);
+            }
+        } catch (IOException e) {
+            logger.error("error occurred while adding tags", e);
+        }
+    }
+
+    private List<String> doGetOnObject(final String namespaceToQuery,
+                                       final String tagNameKey ) throws IOException {
+
+        final List<String> results = new ArrayList<>();
+        final String query = generateGetQuery(namespaceToQuery);
+        final String ObjectKey = getObjectKey(ALL_TAGS, tagNameKey);
+        try (final Scanner lineReader = new Scanner(S3Utils.S3Select.queryObjectJson(this.s3Client, this.bucketName, ObjectKey, query))) {
+            // json events are stored in json lines format, so one json object per line
+            while (lineReader.hasNext()) {
+                final JsonObject jsonString = this.parser.fromJson(lineReader.nextLine(), JsonObject.class);
+                results.add(jsonString.toString());
+            }
+        }
+        return results;
+    }
+
+    private String generateGetQuery(final String namespace) {
+        return String.format("SELECT  s.objectKey from s3Object[*] s where s.objectNamespace = '%s'",
+                namespace);
+    }
 }
