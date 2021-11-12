@@ -61,7 +61,8 @@ public abstract class AbstractBaseObjectsTest extends AbstractBaseCantorTest {
         final Objects objects = getObjects();
         final List<String> namespaces = new ArrayList<>();
         for (int i = 0; i < 10; ++i) {
-            final String namespace = UUID.randomUUID().toString();
+            final String slashTestOnFives = (i % 5 == 0) ? "/" + UUID.randomUUID().toString() : "";
+            final String namespace = String.format("%s%s", UUID.randomUUID().toString(), slashTestOnFives);
             namespaces.add(namespace);
             assertFalse(objects.namespaces().contains(namespace));
 
