@@ -116,7 +116,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         rollover();
         // scheduler for flushing buffers
         Executors.newSingleThreadScheduledExecutor(
-                new ThreadFactoryBuilder().setNameFormat("cantor-s3-buffer-flusher").build()
+                new ThreadFactoryBuilder().setNameFormat("cantor-s3-buffer-flusher-" + trim(bucketName)).build()
         ).scheduleAtFixedRate(this::flush, 0, flushIntervalSeconds, TimeUnit.SECONDS);
     }
 

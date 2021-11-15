@@ -56,7 +56,7 @@ public class GrpcServer {
     public CompletableFuture<?> start() {
         return CompletableFuture.runAsync(() -> {
             try {
-                Thread.currentThread().setName("cantor-grpc-server");
+                Thread.currentThread().setName("cantor-grpc-server-main-thread");
                 logger.info("starting grpc server...");
                 this.server.start();
                 blockUntilShutdown();
