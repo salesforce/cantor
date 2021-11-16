@@ -17,6 +17,7 @@ public interface Namespaceable {
      * @return collection of namespace identifiers
      * @throws IOException exception thrown from the underlying storage implementation
      */
+    @Deprecated
     Collection<String> namespaces() throws IOException;
 
     /**

@@ -37,8 +37,7 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         final Events events = getEvents();
         final List<String> namespaces = new ArrayList<>();
         for (int i = 0; i < 10; ++i) {
-            final String slashTestOnFives = (i % 5 == 0) ? "/" + UUID.randomUUID().toString() : "";
-            final String namespace = String.format("%s%s", UUID.randomUUID().toString(), slashTestOnFives);
+            final String namespace = String.format("%s/%s", UUID.randomUUID(), UUID.randomUUID());
             namespaces.add(namespace);
             assertFalse(events.namespaces().contains(namespace));
 
