@@ -60,11 +60,6 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     // monitors for synchronizing writes to namespaces
     private static final Map<String, Object> namespaceLocks = new ConcurrentHashMap<>();
 
-    // in memory cache for keys call
-    private static final Cache<String, Set<String>> keysCache = CacheBuilder.newBuilder()
-            .maximumSize(1024)
-            .build();
-
     // json parser
     private final Gson parser = new GsonBuilder().create();
 
@@ -469,7 +464,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                     final long length = event.getDimensions().get(dimensionKeyPayloadLength).longValue();
                     final String payloadFilename = objectKey.substring(0, objectKey.lastIndexOf("json")) + "b64";
                     final byte[] payloadBase64Bytes = S3Utils.getObjectBytes(this.s3Client, this.bucketName, payloadFilename, offset, offset + length - 1);
-                    if (payloadBase64Bytes == null || payloadBase64Bytes.length == 0) {
+                    if (payloadBase64Bytes.length == 0) {
                         throw new IOException("failed to retrieve payload for event");
                     }
                     final byte[] payload = Base64.getDecoder().decode(new String(payloadBase64Bytes));
@@ -575,16 +570,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     }
 
     private Set<String> getMatchingKeys(final String namespace, final long startTimestampMillis, final long endTimestampMillis)
-            throws IOException, InterruptedException {
-        final String cacheKey = String.format("%d-%d-%d", namespace.hashCode(), startTimestampMillis, endTimestampMillis);
-        try {
-            return keysCache.get(cacheKey, () -> doGetMatchingKeys(namespace, startTimestampMillis, endTimestampMillis));
-        } catch (ExecutionException e) {
-            return doGetMatchingKeys(namespace, startTimestampMillis, endTimestampMillis);
-        }
-    }
-
-    private Set<String> doGetMatchingKeys(final String namespace, final long startTimestampMillis, final long endTimestampMillis) throws IOException, InterruptedException {
+            throws IOException {
         final DateFormat directoryFormatterMin = new SimpleDateFormat(directoryFormatterMinPattern);
         final DateFormat directoryFormatterHour = new SimpleDateFormat(directoryFormatterHourPattern);
         final Set<String> prefixes = new HashSet<>();
