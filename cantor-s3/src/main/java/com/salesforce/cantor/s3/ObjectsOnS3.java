@@ -65,10 +65,10 @@ public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements Streamin
     }
 
     @Override
-    public Collection<String> keys(final String namespace, final int start, final int count) throws IOException {
+    public Collection<String> keys(final String namespace, final String prefix, final int start, final int count) throws IOException {
         checkKeys(namespace, start, count);
         try {
-            return doKeys(namespace, start, count);
+            return doKeys(namespace, prefix, start, count);
         } catch (final AmazonS3Exception e) {
             logger.warn("exception getting keys of namespace: " + namespace, e);
             throw new IOException("exception getting keys of namespace: " + namespace, e);
@@ -143,8 +143,8 @@ public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements Streamin
         return S3Utils.getSize(this.s3Client, this.bucketName, getObjectKey(namespace, ""));
     }
 
-    private Collection<String> doKeys(final String namespace, final int start, final int count) throws IOException {
-        final String namespaceObjectPrefix = getObjectKey(namespace, "");
+    private Collection<String> doKeys(final String namespace, final String prefix, final int start, final int count) throws IOException {
+        final String namespaceObjectPrefix = getObjectKey(namespace, prefix);
         return S3Utils.getKeys(this.s3Client, this.bucketName, namespaceObjectPrefix, start, count)
                 .stream()
                 .map(objectFile -> objectFile.substring(namespaceObjectPrefix.length()))
