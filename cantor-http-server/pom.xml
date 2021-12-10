@@ -10,7 +10,7 @@
     <parent>
         <artifactId>cantor-parent</artifactId>
         <groupId>com.salesforce.cantor</groupId>
-        <version>0.4.27-SNAPSHOT</version>
+        <version>0.4.28-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -20,8 +20,6 @@
         <jersey.version>2.28</jersey.version>
         <groovy.version>3.0.8</groovy.version>
         <freemarker.version>2.3.30</freemarker.version>
-        <jython.version>2.7.2</jython.version>
-        <luaj.version>3.0.1</luaj.version>
     </properties>
 
     <dependencies>
@@ -66,18 +64,6 @@
             <groupId>org.codehaus.groovy</groupId>
             <artifactId>groovy-jsr223</artifactId>
             <version>${groovy.version}</version>
-        </dependency>
-        <!--JYTHON-->
-        <dependency>
-            <groupId>org.python</groupId>
-            <artifactId>jython-standalone</artifactId>
-            <version>${jython.version}</version>
-        </dependency>
-        <!--LUAJ-->
-        <dependency>
-            <groupId>org.luaj</groupId>
-            <artifactId>luaj-jse</artifactId>
-            <version>${luaj.version}</version>
         </dependency>
         <!--JERSEY JETTY-->
         <dependency>

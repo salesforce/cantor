@@ -10,7 +10,7 @@
     <parent>
         <artifactId>cantor-parent</artifactId>
         <groupId>com.salesforce.cantor</groupId>
-        <version>0.4.27-SNAPSHOT</version>
+        <version>0.4.28-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -22,7 +22,6 @@
 
     <properties>
         <typesafe-config.version>1.2.1</typesafe-config.version>
-        <spring.jersey.version>2.1.4.RELEASE</spring.jersey.version>
         <guava.version>30.1-jre</guava.version>
         <mysql.version>8.0.16</mysql.version>
     </properties>
