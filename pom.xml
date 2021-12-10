@@ -28,9 +28,10 @@
         <target.version>1.8</target.version>
 
         <!--VERSIONS-->
-        <slf4j.version>1.7.25</slf4j.version>
-        <logback.version>1.2.3</logback.version>
-        <jul.to.slf4j.version>1.7.30</jul.to.slf4j.version>
+        <slf4j.version>1.7.32</slf4j.version>
+        <jul.to.slf4j.version>1.7.32</jul.to.slf4j.version>
+        <logback.version>1.2.7</logback.version>
+        <gson.version>2.8.9</gson.version>
 
         <testng.version>7.0.0</testng.version>
 
@@ -89,6 +90,13 @@
             <id>dtupper</id>
             <name>Dean Tupper</name>
             <email>dtupper@salesforce.com</email>
+            <organization>Salesforce</organization>
+            <organizationUrl>https://www.salesforce.com/</organizationUrl>
+        </developer>
+        <developer>
+            <id>yuhan-xiao</id>
+            <name>Yuhan Xiao</name>
+            <email>yuhan.xiao@salesforce.com</email>
             <organization>Salesforce</organization>
             <organizationUrl>https://www.salesforce.com/</organizationUrl>
         </developer>
