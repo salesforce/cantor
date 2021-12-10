@@ -65,6 +65,17 @@ public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements Streamin
     }
 
     @Override
+    public Collection<String> keys(final String namespace, final int start, final int count) throws IOException {
+        checkKeys(namespace, start, count);
+        try {
+            return doKeys(namespace, "", start, count);
+        } catch (final AmazonS3Exception e) {
+            logger.warn("exception getting keys of namespace: " + namespace, e);
+            throw new IOException("exception getting keys of namespace: " + namespace, e);
+        }
+    }
+
+    @Override
     public Collection<String> keys(final String namespace, final String prefix, final int start, final int count) throws IOException {
         checkKeys(namespace, start, count);
         try {
