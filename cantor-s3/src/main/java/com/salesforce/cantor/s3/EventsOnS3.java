@@ -8,6 +8,7 @@ import ch.qos.logback.classic.sift.SiftingAppender;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.FileAppender;
 import ch.qos.logback.core.util.Duration;
+import com.amazonaws.client.builder.ExecutorFactory;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.amazonaws.services.s3.model.CannedAccessControlList;
@@ -40,7 +41,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
     private static final String defaultBufferDirectory = "cantor-events-s3-buffer";
     private static final long defaultFlushIntervalSeconds = 60;
-    private static final long defaultTimeoutSeconds = 30;
+    private static final long defaultTimeoutSeconds = 60;
 
     private static final String dimensionKeyPayloadOffset = ".cantor-payload-offset";
     private static final String dimensionKeyPayloadLength = ".cantor-payload-length";
@@ -104,7 +105,15 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
         // initialize s3 transfer manager
         final TransferManagerBuilder builder = TransferManagerBuilder.standard();
-        builder.setS3Client(this.s3Client);
+        builder.withS3Client(this.s3Client)
+                .withMultipartUploadThreshold(32L * 1024 * 1024) // 32MB
+                .withMinimumUploadPartSize(32L * 1024 * 1024) // 32MB
+                .withExecutorFactory(() -> Executors.newFixedThreadPool(
+                        32, // 32 concurrent threads to upload buffer files
+                        new ThreadFactoryBuilder()
+                                .setNameFormat("cantor-s3-event-transfer-manager-worker-%d")
+                                .build()
+                ));
         this.s3TransferManager = builder.build();
 
         // schedule flush cycle to start immediately
@@ -328,7 +337,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                 }
                 public void onFailure(Throwable e) {
                     futureHasFailed.set(true);
-                    logger.warn("exception on get call to s3", e);
+                    logger.warn("exception on get call to s3: {}", e.getMessage(), e);
                 }
             };
             Futures.addCallback(future, callback, MoreExecutors.directExecutor());
