@@ -26,7 +26,7 @@
 
     <properties>
         <s3-sdk.version>1.12.1</s3-sdk.version>
-        <guava.version>31.0-jre</guava.version>
+        <guava.version>31.0.1-jre</guava.version>
         <mockito.version>2.21.0</mockito.version>
         <jackson.version>2.12.1</jackson.version>
         <s3mock.version>2.1.28</s3mock.version>
