@@ -19,7 +19,7 @@
     </parent>
 
     <properties>
-        <commons-collections.version>4.1</commons-collections.version>
+        <commons-collections.version>4.4</commons-collections.version>
         <phoenix-client.version>4.15.0-HBase-1.5</phoenix-client.version>
     </properties>
 
