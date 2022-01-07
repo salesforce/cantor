@@ -748,7 +748,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
             final File bufferDirectoryFile = new File(this.bufferDirectory);
             if (!bufferDirectoryFile.exists() || !bufferDirectoryFile.canWrite() || !bufferDirectoryFile.isDirectory()) {
-                logger.warn("buffer directory '{}' does not exist or is not writable", this.bufferDirectory);
+                logger.info("buffer directory '{}' does not exist or is not writable", this.bufferDirectory);
                 return;
             }
 
