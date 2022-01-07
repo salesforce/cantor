@@ -23,8 +23,7 @@ import java.util.stream.Collectors;
 
 import static com.salesforce.cantor.common.CommonUtils.nullToEmpty;
 import static com.salesforce.cantor.common.EventsPreconditions.*;
-import static com.salesforce.cantor.jdbc.JdbcUtils.addParameters;
-import static com.salesforce.cantor.jdbc.JdbcUtils.quote;
+import static com.salesforce.cantor.jdbc.JdbcUtils.*;
 
 public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc implements Events {
     private final Logger logger = LoggerFactory.getLogger(getClass());
@@ -574,7 +573,7 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
                         final Map<String, String> metadata = new HashMap<>();
                         final Map<String, Double> dimensions = new HashMap<>();
                         final long timestampMillis = resultSet.getLong(1);
-                        final byte[] payload = includePayloads ? resultSet.getBytes(2) : null;
+                        final byte[] payload = includePayloads ? toBytes(resultSet.getBlob(2).getBinaryStream()) : null;
                         final ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
                         // for each column, get the name of the column,
                         // if starts with m_ it's a metadata column, if starts with d_ it's a dimension column

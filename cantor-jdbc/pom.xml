@@ -48,6 +48,11 @@
             <artifactId>HikariCP</artifactId>
             <version>${hikari.version}</version>
         </dependency>
+        <!-- GUAVA -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+        </dependency>
 
         <!--TEST SCOPE-->
         <!--LOGBACK-->
