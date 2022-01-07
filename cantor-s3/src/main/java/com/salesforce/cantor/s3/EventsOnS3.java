@@ -8,7 +8,6 @@ import ch.qos.logback.classic.sift.SiftingAppender;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.FileAppender;
 import ch.qos.logback.core.util.Duration;
-import com.amazonaws.client.builder.ExecutorFactory;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.amazonaws.services.s3.model.CannedAccessControlList;
@@ -821,7 +820,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
 
     private static ListeningExecutorService newListeningExecutor(final String nameFormat) {
         return MoreExecutors.listeningDecorator(
-                Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat(nameFormat).build())
+                Executors.newFixedThreadPool(32, new ThreadFactoryBuilder().setNameFormat(nameFormat).build())
         );
     }
 
