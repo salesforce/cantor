@@ -715,7 +715,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         return String.format("CAST ( s.dimensions.\"%s\" as decimal)", key);
     }
 
-    // update the rollover cycle guid and return the previous one
+    // update the rollover cycle guid
     private void rollover() {
         // date directoryFormatter for flush cycle name calculation
         final DateFormat cycleNameFormatter = new SimpleDateFormat(cycleNameFormatterPattern);
@@ -744,6 +744,9 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         final long startMillis = System.currentTimeMillis();
         try {
             rollover();
+
+            // wait 3 seconds for the in-flight writes to previous cycle to go through
+            Thread.sleep(3_000);
 
             final File bufferDirectoryFile = new File(this.bufferDirectory);
             if (!bufferDirectoryFile.exists() || !bufferDirectoryFile.canWrite() || !bufferDirectoryFile.isDirectory()) {
