@@ -82,7 +82,7 @@ public class EventsOnH2 extends AbstractBaseEventsOnJdbc implements Events {
         for (final String dimensionKey : getOrderedKeys(dimensions)) {
             sqlBuilder.append(quote(getDimensionKeyColumnName(dimensionKey))).append(" DOUBLE, ");
         }
-        sqlBuilder.append(quote(getPayloadColumnName())).append(" BINARY,");
+        sqlBuilder.append(quote(getPayloadColumnName())).append(" BLOB,");
         sqlBuilder.append("INDEX ").append("(").append(quote(getEventTimestampColumnName())).append("),");
         for (final String metadataKey : getOrderedKeys(metadata)) {
             sqlBuilder.append("INDEX ").append("(").append(quote(getMetadataKeyColumnName(metadataKey))).append("),");

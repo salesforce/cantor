@@ -44,7 +44,7 @@ public class ObjectsOnH2 extends AbstractBaseObjectsOnJdbc implements Objects {
     protected String getCreateObjectsTableSql(final String namespace) {
         return "CREATE TABLE IF NOT EXISTS " + getTableFullName(namespace, getObjectsTableName()) + "( " +
                 " " + quote(getKeyColumnName()) + " VARCHAR NOT NULL, " +
-                " " + quote(getValueColumnName()) + " BINARY NOT NULL, " +
+                " " + quote(getValueColumnName()) + " BLOB NOT NULL, " +
                 "  PRIMARY KEY (" + quote(getKeyColumnName()) + ") ) "
                 ;
     }

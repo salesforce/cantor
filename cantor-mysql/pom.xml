@@ -20,12 +20,12 @@
     <parent>
         <groupId>com.salesforce.cantor</groupId>
         <artifactId>cantor-parent</artifactId>
-        <version>0.4.29-SNAPSHOT</version>
+        <version>0.4.30-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <properties>
-        <mysql.version>8.0.27</mysql.version>
+        <mysql.version>8.0.16</mysql.version>
     </properties>
 
     <dependencies>

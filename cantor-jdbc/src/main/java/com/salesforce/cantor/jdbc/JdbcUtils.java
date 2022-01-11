@@ -7,6 +7,11 @@
 
 package com.salesforce.cantor.jdbc;
 
+import com.google.common.io.ByteStreams;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
@@ -36,11 +41,15 @@ public class JdbcUtils {
             } else if (param instanceof Float) {
                 preparedStatement.setFloat(index, (Float) param);
             } else if (param instanceof byte[]) {
-                preparedStatement.setBytes(index, (byte[]) param);
+                preparedStatement.setBlob(index, new ByteArrayInputStream((byte[]) param));
             } else {
                 throw new IllegalStateException("invalid parameter type: " + param);
             }
         }
+    }
+    
+    static byte[] toBytes(final InputStream stream) throws IOException {
+        return ByteStreams.toByteArray(stream);
     }
 
     static String getPlaceholders(final int count) {

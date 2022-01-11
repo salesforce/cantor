@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -20,8 +21,7 @@ import java.sql.SQLException;
 import java.util.*;
 
 import static com.salesforce.cantor.common.ObjectsPreconditions.*;
-import static com.salesforce.cantor.jdbc.JdbcUtils.getPlaceholders;
-import static com.salesforce.cantor.jdbc.JdbcUtils.quote;
+import static com.salesforce.cantor.jdbc.JdbcUtils.*;
 
 public abstract class AbstractBaseObjectsOnJdbc
         extends AbstractBaseCantorOnJdbc
@@ -149,7 +149,7 @@ public abstract class AbstractBaseObjectsOnJdbc
                 preparedStatement.setString(1, key);
                 try (final ResultSet resultSet = preparedStatement.executeQuery()) {
                     if (resultSet.next()) {
-                        return resultSet.getBytes(1);
+                        return toBytes(resultSet.getBlob(1).getBinaryStream());
                     }
                     return null;
                 }
@@ -179,7 +179,7 @@ public abstract class AbstractBaseObjectsOnJdbc
                 try (final ResultSet resultSet = preparedStatement.executeQuery()) {
                     while (resultSet.next()) {
                         final String key = resultSet.getString(1);
-                        final byte[] val = resultSet.getBytes(2);
+                        final byte[] val = toBytes(resultSet.getBlob(2).getBinaryStream());
                         results.put(key, val);
                     }
                 }

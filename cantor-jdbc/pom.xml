@@ -20,7 +20,7 @@
     <parent>
         <groupId>com.salesforce.cantor</groupId>
         <artifactId>cantor-parent</artifactId>
-        <version>0.4.29-SNAPSHOT</version>
+        <version>0.4.30-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -47,6 +47,11 @@
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
             <version>${hikari.version}</version>
+        </dependency>
+        <!-- GUAVA -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
         </dependency>
 
         <!--TEST SCOPE-->
