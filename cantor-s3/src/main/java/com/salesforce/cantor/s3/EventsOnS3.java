@@ -273,18 +273,19 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         final Map<String, Double> dimensions = new HashMap<>(event.getDimensions());
         final byte[] payload = event.getPayload();
 
-        final String currentCycleName = getRolloverCycleName();
-        final String cyclePath = getPath(currentCycleName);
-        final String filePath = String.format("%s/%s/%s.%s",
-                cyclePath, getObjectKeyPrefix(namespace), directoryFormatterMin.format(event.getTimestampMillis()), currentCycleName
-        );
-        final String payloadFilePath = filePath + ".b64";
-        final String eventsFilePath = filePath + ".json";
 
         // make sure there is a lock object for this namespace
         namespaceLocks.putIfAbsent(namespace, namespace);
 
         synchronized (namespaceLocks.get(namespace)) {
+            final String currentCycleName = getRolloverCycleName();
+            final String cyclePath = getPath(currentCycleName);
+            final String filePath = String.format("%s/%s/%s.%s",
+                    cyclePath, getObjectKeyPrefix(namespace), directoryFormatterMin.format(event.getTimestampMillis()), currentCycleName
+            );
+            final String payloadFilePath = filePath + ".b64";
+            final String eventsFilePath = filePath + ".json";
+
             if (payload != null && payload.length > 0) {
                 final String payloadBase64 = Base64.getEncoder().encodeToString(payload);
                 append(payloadFilePath, payloadBase64);
@@ -760,6 +761,11 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                 // skip if path does not exist or is not a directory
                 if (!toUpload.exists() || !toUpload.isDirectory()) {
                     logger.info("nothing to upload");
+                    continue;
+                }
+
+                if (toUpload.getName().contains(getRolloverCycleName())) {
+                    // skip current cycle directory
                     continue;
                 }
 
