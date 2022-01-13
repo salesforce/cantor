@@ -764,6 +764,11 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                     continue;
                 }
 
+                if (toUpload.getName().contains(getRolloverCycleName())) {
+                    // skip current cycle directory
+                    continue;
+                }
+
                 // upload all of the contents of the directory to s3
                 uploadDirectory(toUpload);
 
