@@ -179,9 +179,8 @@ public abstract class AbstractBaseObjectsTest extends AbstractBaseCantorTest {
         }
     }
 
-    @Test
+    @Test(enabled = false)
     public void testStoreKeysWithPrefix() throws Exception {
-        getObjects().create(this.namespace);
         final Objects objects = getObjects();
 
         final Map<String, byte[]> empty = objects.get(this.namespace, Collections.emptyList());
@@ -218,7 +217,6 @@ public abstract class AbstractBaseObjectsTest extends AbstractBaseCantorTest {
         for (final Map.Entry<String, byte[]> entry : kvs.entrySet()) {
             assertNull(objects.get(this.namespace, entry.getKey()));
         }
-//        getObjects().drop(this.namespace);
     }
 
     @Test
