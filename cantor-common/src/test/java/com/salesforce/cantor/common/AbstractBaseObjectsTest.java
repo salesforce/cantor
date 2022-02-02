@@ -180,6 +180,48 @@ public abstract class AbstractBaseObjectsTest extends AbstractBaseCantorTest {
     }
 
     @Test
+    public void testStoreKeysWithPrefix() throws Exception {
+        getObjects().create(this.namespace);
+        final Objects objects = getObjects();
+
+        final Map<String, byte[]> empty = objects.get(this.namespace, Collections.emptyList());
+        assertTrue(empty.isEmpty());
+
+        final Map<String, Integer> prefixes = new HashMap<>();
+        prefixes.put("prefix0", 0);
+        prefixes.put("prefix1", 0);
+
+        final Map<String, byte[]> kvs = new HashMap<>();
+        for (int i = 0; i < 100; ++i) {
+            final String prefix = "prefix" + (i % prefixes.size());
+            final String key = prefix + "/" + UUID.randomUUID().toString();
+            prefixes.put(prefix, prefixes.get(prefix) + 1);
+            final byte[] value = UUID.randomUUID().toString().getBytes();
+            kvs.put(key, value);
+        }
+
+        for (final Map.Entry<String, byte[]> entry : kvs.entrySet()) {
+            assertNull(objects.get(this.namespace, entry.getKey()));
+        }
+        objects.store(this.namespace, kvs);
+        for (final String prefix : prefixes.keySet()) {
+            final Collection<String> partialResults = objects.keys(this.namespace, prefix, 0, 100);
+            assertEquals(partialResults.size(), prefixes.get(prefix).intValue());
+        }
+
+        final Collection<String> results = objects.keys(this.namespace, 0, -1);
+        assertEquals(kvs.size(), results.size());
+        for (final Map.Entry<String, byte[]> entry : kvs.entrySet()) {
+            assertTrue(results.contains(entry.getKey()));
+        }
+        objects.delete(this.namespace, kvs.keySet());
+        for (final Map.Entry<String, byte[]> entry : kvs.entrySet()) {
+            assertNull(objects.get(this.namespace, entry.getKey()));
+        }
+//        getObjects().drop(this.namespace);
+    }
+
+    @Test
     public void testSize() throws Exception {
         final Objects objects = getObjects();
 
