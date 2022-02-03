@@ -119,6 +119,20 @@ public interface Objects extends Namespaceable {
     Collection<String> keys(String namespace, int start, int count) throws IOException;
 
     /**
+     * Returns paginated list of entries; the returned list is not ordered.
+     *
+     * @param namespace the namespace identifier
+     * @param prefix to narrow down the search results
+     * @param start start offset
+     * @param count maximum number of entries to return; -1 for infinite
+     * @return paginated list of keys in the namespace
+     * @throws IOException exception thrown from the underlying storage implementation
+     */
+    default Collection<String> keys(String namespace, String prefix, int start, int count) throws IOException {
+        return keys(namespace, start, count);
+    }
+
+    /**
      * Returns number of key/value pairs in the given namespace.
      *
      * @param namespace the namespace identifier
