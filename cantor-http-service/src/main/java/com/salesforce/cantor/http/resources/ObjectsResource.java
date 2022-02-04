@@ -165,6 +165,26 @@ public class ObjectsResource {
     }
 
     @GET
+    @Path("/keys/{namespace}/{prefix}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Get the keys matching prefix for objects in a namespace")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200",
+                     description = "Provides a list of keys in namespace",
+                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
+        @ApiResponse(responseCode = "400", description = "One of the query parameters has a bad value"),
+        @ApiResponse(responseCode = "500", description = serverErrorMessage)
+    })
+    public Response keys(@Parameter(description = "Namespace identifier") @PathParam("namespace") final String namespace,
+                         @Parameter(description = "Prefix all returned keys will match") @PathParam("prefix") final String prefix,
+                         @Parameter(description = "Index from which to start counting") @QueryParam("start") final int start,
+                         @Parameter(description = "Number of entries allowed in response", example = "10") @QueryParam("count") final int count) throws IOException {
+        logger.info("received request to get keys {}-{} in namespace {} with prefix {}", start, start + count, namespace, prefix);
+        final Collection<String> keys = this.cantor.objects().keys(namespace, prefix, start, count);
+        return Response.ok(parser.toJson(keys)).build();
+    }
+
+    @GET
     @Path("/keys/{namespace}")
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Get the keys of objects in a namespace")

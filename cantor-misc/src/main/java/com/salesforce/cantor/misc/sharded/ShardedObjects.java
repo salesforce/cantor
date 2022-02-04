@@ -77,6 +77,12 @@ public class ShardedObjects extends AbstractBaseShardedNamespaceable<Objects> im
     }
 
     @Override
+    public Collection<String> keys(final String namespace, final String prefix, final int start, final int count) throws IOException {
+        checkKeys(namespace, start, count, prefix);
+        return getShard(namespace).keys(namespace, prefix, start, count);
+    }
+
+    @Override
     public int size(final String namespace) throws IOException {
         checkSize(namespace);
         return getShard(namespace).size(namespace);

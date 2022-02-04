@@ -13,8 +13,6 @@ import com.salesforce.cantor.Objects;
 import com.salesforce.cantor.grpc.objects.*;
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -83,8 +81,14 @@ public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBas
         }
         try {
             final KeysResponse.Builder resultsBuilder = KeysResponse.newBuilder();
-            final Collection<String> results = getObjects()
-                    .keys(request.getNamespace(), request.getStart(), request.getCount());
+            final Collection<String> results;
+            if (request.getPrefix().isEmpty()) {
+                results = getObjects()
+                        .keys(request.getNamespace(), request.getStart(), request.getCount());
+            } else {
+                results = getObjects()
+                        .keys(request.getNamespace(), request.getPrefix(), request.getStart(), request.getCount());
+            }
             if (results != null) {
                 resultsBuilder.addAllKeys(results);
             }

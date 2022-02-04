@@ -63,6 +63,12 @@ public class ReadWriteObjects extends AbstractBaseReadWriteNamespaceable<Objects
     }
 
     @Override
+    public Collection<String> keys(final String namespace, final String prefix, final int start, final int count) throws IOException {
+        checkKeys(namespace, start, count, prefix);
+        return getReadable().keys(namespace, prefix, start, count);
+    }
+
+    @Override
     public int size(final String namespace) throws IOException {
         checkSize(namespace);
         return getReadable().size(namespace);

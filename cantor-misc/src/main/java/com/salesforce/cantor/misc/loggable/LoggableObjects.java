@@ -81,6 +81,14 @@ public class LoggableObjects extends AbstractBaseLoggableNamespaceable<Objects> 
     }
 
     @Override
+    public Collection<String> keys(final String namespace, final String prefix, final int start, final int count) throws IOException {
+        checkKeys(namespace, start, count, prefix);
+        return logCall(() -> getDelegate().keys(namespace, prefix, start, count),
+                "keys", namespace, start, count
+        );
+    }
+
+    @Override
     public int size(final String namespace) throws IOException {
         checkSize(namespace);
         return logCall(() -> getDelegate().size(namespace),

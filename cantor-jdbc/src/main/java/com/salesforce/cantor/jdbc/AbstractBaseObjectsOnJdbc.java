@@ -57,6 +57,11 @@ public abstract class AbstractBaseObjectsOnJdbc
     }
 
     @Override
+    public Collection<String> keys(final String namespace, final String prefix, final int start, final int count) throws IOException {
+        throw new UnsupportedOperationException("This functionality has not yet been implemented yet.");
+    }
+
+    @Override
     public void store(final String namespace, final String key, final byte[] value) throws IOException {
         checkStore(namespace, key, value);
         doStore(namespace, key, value);
