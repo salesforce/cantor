@@ -60,6 +60,11 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     // monitors for synchronizing writes to namespaces
     private static final Map<String, Object> namespaceLocks = new ConcurrentHashMap<>();
 
+    // executor service for flushing buffered files to S3
+    private static final ScheduledExecutorService flushExecutorService = Executors.newSingleThreadScheduledExecutor(
+            new ThreadFactoryBuilder().setNameFormat("cantor-s3-buffer-flusher-%d").build()
+    );
+
     // json parser
     private final Gson parser = new GsonBuilder().create();
 
@@ -118,9 +123,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         // schedule flush cycle to start immediately
         rollover();
         // scheduler for flushing buffers
-        Executors.newSingleThreadScheduledExecutor(
-                new ThreadFactoryBuilder().setNameFormat("cantor-s3-buffer-flusher-" + trim(bucketName)).build()
-        ).scheduleAtFixedRate(this::flush, 0, flushIntervalSeconds, TimeUnit.SECONDS);
+        flushExecutorService.scheduleWithFixedDelay(this::flush, 0, flushIntervalSeconds, TimeUnit.SECONDS);
     }
 
     @Override
