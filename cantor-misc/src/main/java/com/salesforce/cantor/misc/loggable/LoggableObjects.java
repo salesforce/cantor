@@ -84,7 +84,7 @@ public class LoggableObjects extends AbstractBaseLoggableNamespaceable<Objects> 
     public Collection<String> keys(final String namespace, final String prefix, final int start, final int count) throws IOException {
         checkKeys(namespace, start, count, prefix);
         return logCall(() -> getDelegate().keys(namespace, prefix, start, count),
-                "keys", namespace, start, count
+                "keys", namespace, prefix, start, count
         );
     }
 
