@@ -14,7 +14,7 @@ import java.io.InputStream;
 
 /**
  * Extension of the {@link Objects} interface to implement storing/streaming objects that are too large
- * to store/get as whole {@link byte[]}.
+ * to store/get as whole {@code byte[]}.
  */
 public interface StreamingObjects extends Objects {
     /**

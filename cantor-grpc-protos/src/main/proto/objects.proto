@@ -30,6 +30,7 @@ message KeysRequest {
     string namespace = 1;
     int32 start = 2;
     int32 count = 3;
+    string prefix = 4;
 }
 
 message KeysResponse {

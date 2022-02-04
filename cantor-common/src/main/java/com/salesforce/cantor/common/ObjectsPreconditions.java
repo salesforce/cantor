@@ -35,6 +35,11 @@ public class ObjectsPreconditions extends CommonPreconditions {
         checkArgument(count >= 0 || (count == -1 && start == 0), "invalid count");
     }
 
+    public static void checkKeys(final String namespace, final int start, final int count, final String prefix) {
+        checkKeys(namespace, start, count);
+        checkString(prefix);
+    }
+
     public static void checkGet(final String namespace, final String key) {
         checkNamespace(namespace);
         checkString(key);

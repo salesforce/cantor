@@ -74,6 +74,21 @@ public class ObjectsOnGrpc extends AbstractBaseGrpcClient<ObjectsServiceBlocking
     }
 
     @Override
+    public Collection<String> keys(final String namespace, final String prefix, final int start, final int count) throws IOException {
+        checkKeys(namespace, start, count, prefix);
+        return call(() -> {
+            final KeysRequest request = KeysRequest.newBuilder()
+                    .setNamespace(namespace)
+                    .setStart(start)
+                    .setCount(count)
+                    .setPrefix(prefix)
+                    .build();
+            final KeysResponse response = getStub().keys(request);
+            return response.getKeysList();
+        });
+    }
+
+    @Override
     public void store(final String namespace, final String key, final byte[] bytes) throws IOException {
         checkString(key, "null/empty key");
         checkArgument(bytes != null, "null bytes");

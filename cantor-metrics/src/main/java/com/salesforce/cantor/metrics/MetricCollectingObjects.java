@@ -58,6 +58,11 @@ public class MetricCollectingObjects extends BaseMetricCollectingCantor implemen
     }
 
     @Override
+    public Collection<String> keys(final String namespace, final String prefix, final int start, final int count) throws IOException {
+        return metrics(() -> this.delegate.keys(namespace, prefix, start, count), "keys", namespace, super::size);
+    }
+
+    @Override
     public int size(final String namespace) throws IOException {
         return metrics(() -> this.delegate.size(namespace), "size", namespace, Function.identity());
     }
