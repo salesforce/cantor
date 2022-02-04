@@ -193,7 +193,7 @@ public abstract class AbstractBaseObjectsTest extends AbstractBaseCantorTest {
         final Map<String, byte[]> kvs = new HashMap<>();
         for (int i = 0; i < 100; ++i) {
             final String prefix = "prefix" + (i % prefixes.size());
-            final String key = prefix + "/" + UUID.randomUUID().toString();
+            final String key = prefix + "/" + UUID.randomUUID();
             prefixes.put(prefix, prefixes.get(prefix) + 1);
             final byte[] value = UUID.randomUUID().toString().getBytes();
             kvs.put(key, value);
@@ -206,13 +206,15 @@ public abstract class AbstractBaseObjectsTest extends AbstractBaseCantorTest {
         for (final String prefix : prefixes.keySet()) {
             final Collection<String> partialResults = objects.keys(this.namespace, prefix, 0, 100);
             assertEquals(partialResults.size(), prefixes.get(prefix).intValue());
+
+            for (final Map.Entry<String, byte[]> entry : kvs.entrySet()) {
+                final String key = entry.getKey();
+                if (key.startsWith(prefix)) {
+                    assertTrue(partialResults.contains(key.substring(prefix.length())));
+                }
+            }
         }
 
-        final Collection<String> results = objects.keys(this.namespace, 0, -1);
-        assertEquals(kvs.size(), results.size());
-        for (final Map.Entry<String, byte[]> entry : kvs.entrySet()) {
-            assertTrue(results.contains(entry.getKey()));
-        }
         objects.delete(this.namespace, kvs.keySet());
         for (final Map.Entry<String, byte[]> entry : kvs.entrySet()) {
             assertNull(objects.get(this.namespace, entry.getKey()));
