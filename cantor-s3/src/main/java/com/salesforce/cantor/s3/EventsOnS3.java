@@ -276,7 +276,6 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         final Map<String, Double> dimensions = new HashMap<>(event.getDimensions());
         final byte[] payload = event.getPayload();
 
-
         // make sure there is a lock object for this namespace
         namespaceLocks.putIfAbsent(namespace, namespace);
 

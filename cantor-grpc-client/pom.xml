@@ -24,10 +24,6 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <properties>
-        <grpc.version>1.42.1</grpc.version>
-    </properties>
-
     <dependencies>
         <!--CANTOR BASE-->
         <dependency>
