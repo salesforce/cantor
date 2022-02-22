@@ -757,30 +757,31 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                 return;
             }
 
-            final List<File> toDelete = new ArrayList<>();
-            for (final File toUpload : bufferDirectoryFile.listFiles()) {
-                logger.info("uploading buffer directory: {}", toUpload.getAbsolutePath());
+            // retrieve list of all buffer directories to be uploaded
+            final File[] toUploadDirs = bufferDirectoryFile.listFiles();
+            checkState(toUploadDirs != null, "list of buffer directories to upload is null");
+            logger.info("total number of directories to upload: {}", toUploadDirs.length);
+
+            for (final File dir : toUploadDirs) {
+                logger.info("uploading buffer directory: {}", dir.getAbsolutePath());
                 // skip if path does not exist or is not a directory
-                if (!toUpload.exists() || !toUpload.isDirectory()) {
+                if (!dir.exists() || !dir.isDirectory()) {
                     logger.info("nothing to upload");
                     continue;
                 }
 
-                if (toUpload.getName().contains(getRolloverCycleName())) {
-                    // skip current cycle directory
+                // skip current cycle directory
+                if (dir.getName().contains(getRolloverCycleName())) {
                     continue;
                 }
 
                 // upload all of the contents of the directory to s3
-                uploadDirectory(toUpload);
+                uploadDirectory(dir);
+                logger.info("successfully uploaded buffer directory: {}", dir.getAbsolutePath());
 
-                logger.info("successfully uploaded buffer directory: {}", toUpload.getAbsolutePath());
-                toDelete.add(toUpload);
-            }
-
-            for (final File file : toDelete) {
-                logger.info("deleting buffer file: {}", file.getAbsolutePath());
-                delete(file);
+                // delete the buffer directory
+                logger.info("deleting buffer directory: {}", dir.getAbsolutePath());
+                delete(dir);
             }
         } catch (InterruptedException e) {
             logger.warn("flush cycle interrupted; exiting");
@@ -819,6 +820,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         upload.waitForCompletion();
     }
 
+    // recursively delete all files in the given directory
     private void delete(final File dir) {
         final File[] files = dir.listFiles();
         if (files != null) {
