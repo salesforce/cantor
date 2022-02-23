@@ -24,11 +24,6 @@ public class MetricCollectingSets extends BaseMetricCollectingCantor implements 
     }
 
     @Override
-    public Collection<String> namespaces() throws IOException {
-        return metrics(this.delegate::namespaces, "namespaces", "", super::size);
-    }
-
-    @Override
     public void create(final String namespace) throws IOException {
         metrics(() -> this.delegate.create(namespace), "create", namespace);
     }

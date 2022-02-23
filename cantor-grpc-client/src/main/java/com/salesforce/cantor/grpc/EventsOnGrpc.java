@@ -25,14 +25,6 @@ public class EventsOnGrpc extends AbstractBaseGrpcClient<EventsServiceBlockingSt
     }
 
     @Override
-    public Collection<String> namespaces() throws IOException {
-        return call(() -> {
-            final NamespacesRequest request = NamespacesRequest.newBuilder().build();
-            return getStub().namespaces(request).getNamespacesList();
-        });
-    }
-
-    @Override
     public void create(final String namespace) throws IOException {
         checkCreate(namespace);
         call(() -> {

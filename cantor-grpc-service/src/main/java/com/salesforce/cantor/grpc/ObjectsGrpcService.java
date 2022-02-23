@@ -30,22 +30,6 @@ public class ObjectsGrpcService extends ObjectsServiceGrpc.ObjectsServiceImplBas
     }
 
     @Override
-    public void namespaces(final NamespacesRequest request, final StreamObserver<NamespacesResponse> responseObserver) {
-        if (Context.current().isCancelled()) {
-            sendCancelledError(responseObserver, Context.current().cancellationCause());
-            return;
-        }
-        try {
-            final NamespacesResponse response = NamespacesResponse.newBuilder()
-                    .addAllNamespaces(getObjects().namespaces())
-                    .build();
-            GrpcUtils.sendResponse(responseObserver, response);
-        } catch (IOException e) {
-            sendError(responseObserver, e);
-        }
-    }
-
-    @Override
     public void create(final CreateRequest request, final StreamObserver<VoidResponse> responseObserver) {
         if (Context.current().isCancelled()) {
             sendCancelledError(responseObserver, Context.current().cancellationCause());

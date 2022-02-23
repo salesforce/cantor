@@ -33,11 +33,6 @@ public abstract class AbstractBaseEventsOnJdbc extends AbstractBaseCantorOnJdbc 
     }
 
     @Override
-    public Collection<String> namespaces() throws IOException {
-        return getNamespaces();
-    }
-
-    @Override
     public void create(final String namespace) throws IOException {
         checkCreate(namespace);
         createNamespace(namespace);

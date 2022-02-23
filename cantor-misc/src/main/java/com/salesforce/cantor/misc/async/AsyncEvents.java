@@ -25,11 +25,6 @@ public class AsyncEvents extends AbstractBaseAsyncNamespaceable<Events> implemen
     }
 
     @Override
-    public Collection<String> namespaces() throws IOException {
-        return submitCall(getDelegate()::namespaces);
-    }
-
-    @Override
     public void create(final String namespace) throws IOException {
         checkCreate(namespace);
         submitCall(() -> { getDelegate().create(namespace); return null; });

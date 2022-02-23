@@ -68,16 +68,6 @@ public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
     }
 
     @Override
-    public Collection<String> namespaces() throws IOException {
-        try {
-            return doGetNamespaces();
-        } catch (final AmazonS3Exception e) {
-            logger.warn("exception getting namespaces", e);
-            throw new IOException("exception getting namespaces", e);
-        }
-    }
-
-    @Override
     public void create(final String namespace) throws IOException {
         checkCreate(namespace);
         try {

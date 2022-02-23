@@ -57,25 +57,6 @@ public abstract class AbstractBaseObjectsTest extends AbstractBaseCantorTest {
     }
 
     @Test
-    public void testNamespaces() throws Exception {
-        final Objects objects = getObjects();
-        final List<String> namespaces = new ArrayList<>();
-        for (int i = 0; i < 10; ++i) {
-            final String namespace = String.format("%s/%s", UUID.randomUUID(), UUID.randomUUID());
-            namespaces.add(namespace);
-            assertFalse(objects.namespaces().contains(namespace));
-
-            objects.create(namespace);
-            assertTrue(objects.namespaces().contains(namespace));
-        }
-
-        for (final String namespace : namespaces) {
-            objects.drop(namespace);
-            assertFalse(objects.namespaces().contains(namespace));
-        }
-    }
-
-    @Test
     public void testStoreGetDelete() throws Exception {
         final Objects objects = getObjects();
 

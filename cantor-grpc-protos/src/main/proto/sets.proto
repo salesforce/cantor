@@ -9,12 +9,6 @@ package com.salesforce.cantor.grpc.sets;
 
 message VoidResponse {}
 
-message NamespacesRequest {}
-
-message NamespacesResponse {
-    repeated string namespaces = 1;
-}
-
 message CreateRequest {
     string namespace = 1;
 }
@@ -183,7 +177,6 @@ message IncResponse {
 }
 
 service SetsService {
-    rpc namespaces (NamespacesRequest) returns (NamespacesResponse) {}
     rpc create (CreateRequest) returns (VoidResponse) {}
     rpc drop (DropRequest) returns (VoidResponse) {}
     rpc get (GetRequest) returns (GetResponse) {}

@@ -26,11 +26,6 @@ abstract class AbstractBaseReadWriteNamespaceable<T extends Namespaceable> imple
     }
 
     @Override
-    public final Collection<String> namespaces() throws IOException {
-        return getReadable().namespaces();
-    }
-
-    @Override
     public final void create(final String namespace) throws IOException {
         checkCreate(namespace);
         getWritable().create(namespace);

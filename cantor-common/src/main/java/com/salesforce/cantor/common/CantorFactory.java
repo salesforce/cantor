@@ -131,10 +131,6 @@ public class CantorFactory {
 
         @Override
         public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
-            // there is only one method that takes no arguments, and that is 'namespaces()'
-            if (method.getName().equals("namespaces")) {
-                return doNamespaces();
-            }
             if (args == null || args.length == 0) {
                 throw new IllegalArgumentException("method '" + method.getName() + "' is not recognized by proxy object");
             }
@@ -159,23 +155,6 @@ public class CantorFactory {
             newArgs[0] = namespace;
             System.arraycopy(args, 1, newArgs, 1, args.length - 1);
             return method.invoke(this.delegates.get(scope), newArgs);
-        }
-
-        private Object doNamespaces() throws IOException {
-            final List<String> results = new ArrayList<>();
-            for (final Map.Entry<String, T> entry : this.delegates.entrySet()) {
-                final Collection<String> namespaces = entry.getValue().namespaces();
-                for (final String namespace : namespaces) {
-                    // attach scope to namespaces
-                    final String scope = entry.getKey();
-                    if (NamespaceableProvider.DEFAULT_SCOPE.equals(scope)) {
-                        results.add(namespace);
-                    } else {
-                        results.add(String.format("%s.%s", scope, namespace));
-                    }
-                }
-            }
-            return results;
         }
     }
 
