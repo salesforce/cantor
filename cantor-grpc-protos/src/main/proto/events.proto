@@ -9,12 +9,6 @@ package com.salesforce.cantor.grpc.events;
 
 message VoidResponse {}
 
-message NamespacesRequest {}
-
-message NamespacesResponse {
-    repeated string namespaces = 1;
-}
-
 message EventProto {
     uint64 timestamp_millis = 1;
     map<string, string> metadata = 2;
@@ -89,7 +83,6 @@ message ExpireRequest {
 }
 
 service EventsService {
-    rpc namespaces (NamespacesRequest) returns (NamespacesResponse) {}
     rpc get (GetRequest) returns (GetResponse) {}
     rpc create (CreateRequest) returns (VoidResponse) {}
     rpc drop (DropRequest) returns (VoidResponse) {}

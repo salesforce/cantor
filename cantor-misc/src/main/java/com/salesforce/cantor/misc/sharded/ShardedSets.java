@@ -23,15 +23,13 @@ public class ShardedSets extends AbstractBaseShardedNamespaceable<Sets> implemen
     @Override
     public void create(final String namespace) throws IOException {
         checkCreate(namespace);
-        getShardForCreate(namespace).create(namespace);
-        loadNamespaceLookupTable();
+        getShard(namespace).create(namespace);
     }
 
     @Override
     public void drop(final String namespace) throws IOException {
         checkDrop(namespace);
         getShard(namespace).drop(namespace);
-        loadNamespaceLookupTable(); // reload lookup table after dropping
     }
 
     @Override

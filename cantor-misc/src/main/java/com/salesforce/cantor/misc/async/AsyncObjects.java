@@ -23,11 +23,6 @@ public class AsyncObjects extends AbstractBaseAsyncNamespaceable<Objects> implem
     }
 
     @Override
-    public Collection<String> namespaces() throws IOException {
-        return submitCall(getDelegate()::namespaces);
-    }
-
-    @Override
     public void create(final String namespace) throws IOException {
         checkCreate(namespace);
         submitCall(() -> { getDelegate().create(namespace); return null; });

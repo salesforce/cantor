@@ -33,25 +33,6 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
     }
 
     @Test
-    public void testNamespaces() throws Exception {
-        final Events events = getEvents();
-        final List<String> namespaces = new ArrayList<>();
-        for (int i = 0; i < 10; ++i) {
-            final String namespace = String.format("%s/%s", UUID.randomUUID(), UUID.randomUUID());
-            namespaces.add(namespace);
-            assertFalse(events.namespaces().contains(namespace));
-
-            events.create(namespace);
-            assertTrue(events.namespaces().contains(namespace));
-        }
-
-        for (final String namespace : namespaces) {
-            events.drop(namespace);
-            assertFalse(events.namespaces().contains(namespace));
-        }
-    }
-
-    @Test
     public void testBadInput() throws Exception {
         final Events events = getEvents();
         assertThrows(IllegalArgumentException.class,

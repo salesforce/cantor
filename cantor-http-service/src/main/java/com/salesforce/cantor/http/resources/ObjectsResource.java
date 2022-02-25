@@ -59,20 +59,6 @@ public class ObjectsResource {
         this.cantor = cantor;
     }
 
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Get all objects namespaces")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200",
-                    description = "Provides the list of all namespaces",
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
-            @ApiResponse(responseCode = "500", description = serverErrorMessage)
-    })
-    public Response getNamespaces() throws IOException {
-        logger.info("received request for all objects namespaces");
-        return Response.ok(parser.toJson(this.cantor.objects().namespaces())).build();
-    }
-
     @PUT
     @Path("/{namespace}")
     @Operation(summary = "Create a new object namespace")

@@ -27,11 +27,6 @@ abstract class AbstractBaseLoggableNamespaceable<T extends Namespaceable> implem
     }
 
     @Override
-    public final Collection<String> namespaces() throws IOException {
-        return logCall(getDelegate()::namespaces, "namespaces", null);
-    }
-
-    @Override
     public final void create(final String namespace) throws IOException {
         checkCreate(namespace);
         logCall(() -> { getDelegate().create(namespace); return null; },

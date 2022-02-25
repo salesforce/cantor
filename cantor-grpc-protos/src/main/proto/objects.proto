@@ -9,12 +9,6 @@ package com.salesforce.cantor.grpc.objects;
 
 message VoidResponse {}
 
-message NamespacesRequest {}
-
-message NamespacesResponse {
-    repeated string namespaces = 1;
-}
-
 // objects.create()
 message CreateRequest {
     string namespace = 1;
@@ -75,7 +69,6 @@ message SizeResponse {
 }
 
 service ObjectsService {
-    rpc namespaces (NamespacesRequest) returns (NamespacesResponse) {}
     rpc create (CreateRequest) returns (VoidResponse) {}
     rpc drop (DropRequest) returns (VoidResponse) {}
     rpc keys (KeysRequest) returns (KeysResponse) {}

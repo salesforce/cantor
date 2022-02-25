@@ -38,24 +38,6 @@ public abstract class AbstractBaseSetsTest extends AbstractBaseCantorTest {
     }
 
     @Test
-    public void testNamespaces() throws Exception {
-        final Sets sets = getSets();
-        final List<String> namespaces = new ArrayList<>();
-        for (int i = 0; i < 10; ++i) {
-            final String namespace = String.format("%s/%s", UUID.randomUUID(), UUID.randomUUID());
-            namespaces.add(namespace);
-            assertFalse(sets.namespaces().contains(namespace));
-
-            sets.create(namespace);
-            assertTrue(sets.namespaces().contains(namespace));
-        }
-
-        for (final String namespace : namespaces) {
-            sets.drop(namespace);
-            assertFalse(sets.namespaces().contains(namespace));
-        }
-    }
-    @Test
     public void testMinMax() throws IOException {
         final Sets sets = getSets();
 
@@ -68,55 +50,6 @@ public abstract class AbstractBaseSetsTest extends AbstractBaseCantorTest {
         assertEquals(sets.weight(this.namespace, setName, "min").longValue(), Long.MIN_VALUE);
         assertEquals(sets.weight(this.namespace, setName, "zero").longValue(), 0);
         assertEquals(sets.weight(this.namespace, setName, "max").longValue(), Long.MAX_VALUE);
-    }
-
-//    @Test
-    public void testConcurrency() throws Exception {
-        final Sets sets = getSets();
-        final String setName = UUID.randomUUID().toString();
-        final ExecutorService executor = Executors.newCachedThreadPool();
-        final int entriesCount = 1000;
-        final int producersCount = 10;
-        final int consumersCount = 10;
-        final AtomicInteger producedCount = new AtomicInteger(0);
-        final AtomicInteger consumedCount = new AtomicInteger(0);
-        // producers
-        for (int i = 0; i < producersCount; ++i) {
-            executor.submit(() -> {
-                for (int j = 0; j < entriesCount / producersCount; ++j) {
-                    try {
-                        sets.add(this.namespace, setName, UUID.randomUUID().toString(), ThreadLocalRandom.current().nextLong());
-                        producedCount.incrementAndGet();
-                        logger.info("finished producing {} entries.", producedCount.get());
-                    } catch (IOException e) {
-                        logger.warn("exception caught", e);
-                        j--;
-                    }
-                }
-            });
-        }
-        // consumers
-        for (int i = 0; i < consumersCount; ++i) {
-            executor.submit(() -> {
-                while (true) {
-                    try {
-                        if (sets.size(this.namespace, setName) == 0) {
-                            break;
-                        }
-                        final Map<String, Long> entries = sets.pop(this.namespace, setName, 0, 10);
-                        consumedCount.addAndGet(entries.size());
-                        logger.info("consumed {} entries", consumedCount.get());
-                    } catch (IOException e) {
-                        logger.warn("exception caught", e);
-                    }
-                    logger.info("finished consuming {} entries.", consumedCount.get());
-                }
-            });
-        }
-        executor.shutdown();
-        executor.awaitTermination(1, TimeUnit.MINUTES);
-        assertEquals(producedCount.get(), entriesCount, "total number of entries produced is incorrect");
-        assertEquals(consumedCount.get(), producedCount.get(), "produced entries != consumed entries");
     }
 
     @Test
