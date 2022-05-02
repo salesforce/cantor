@@ -38,5 +38,6 @@ public class Constants {
     public static final String CANTOR_S3_BUCKET_REGION = "region";
     public static final String CANTOR_S3_PROXY_HOST = "proxy.host";
     public static final String CANTOR_S3_PROXY_PORT = "proxy.port";
+    public static final String CANTOR_S3_ENDPOINT_OVERRIDE = "endpoint.override";
     public static final String CANTOR_S3_SETS_TYPE = "sets.type";
 }

@@ -9,6 +9,7 @@ package com.salesforce.cantor.server.utils;
 
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.Protocol;
+import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.google.common.base.Strings;
@@ -36,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static com.salesforce.cantor.server.Constants.CANTOR_H2_COMPRESSED;
 import static com.salesforce.cantor.server.Constants.CANTOR_H2_IN_MEMORY;
@@ -48,6 +50,7 @@ import static com.salesforce.cantor.server.Constants.CANTOR_MYSQL_PORT;
 import static com.salesforce.cantor.server.Constants.CANTOR_MYSQL_USERNAME;
 import static com.salesforce.cantor.server.Constants.CANTOR_S3_BUCKET_NAME;
 import static com.salesforce.cantor.server.Constants.CANTOR_S3_BUCKET_REGION;
+import static com.salesforce.cantor.server.Constants.CANTOR_S3_ENDPOINT_OVERRIDE;
 import static com.salesforce.cantor.server.Constants.CANTOR_S3_PROXY_HOST;
 import static com.salesforce.cantor.server.Constants.CANTOR_S3_PROXY_PORT;
 import static com.salesforce.cantor.server.Constants.CANTOR_S3_SETS_TYPE;
@@ -182,17 +185,30 @@ public class CantorFactory {
     }
 
     private AmazonS3 createAwsClient(final Config config) {
-        final AmazonS3ClientBuilder amazonS3ClientBuilder = AmazonS3ClientBuilder.standard()
-                .withRegion(config.getString(CANTOR_S3_BUCKET_REGION));
-        if (config.hasPath(CANTOR_S3_PROXY_HOST)) {
-            final ClientConfiguration clientConfiguration = new ClientConfiguration();
-            clientConfiguration.setProtocol(Protocol.HTTPS);
-            clientConfiguration.setProxyHost(config.getString(CANTOR_S3_PROXY_HOST));
-            clientConfiguration.setProxyPort(config.getInt(CANTOR_S3_PROXY_PORT));
-            clientConfiguration.setMaxConnections(256);
-            amazonS3ClientBuilder.withClientConfiguration(clientConfiguration);
+        final String region = config.getString(CANTOR_S3_BUCKET_REGION);
+        final AmazonS3ClientBuilder amazonS3ClientBuilder = AmazonS3ClientBuilder.standard().withRegion(region);
+
+        final ClientConfiguration clientConfiguration = new ClientConfiguration();
+        clientConfiguration.withProtocol(Protocol.HTTPS)
+            .withMaxConnections(256)
+            .withConnectionMaxIdleMillis(TimeUnit.MINUTES.toMillis(5)) // keep connections alive for 5 minutes
+            .withConnectionTimeout(3_000) // timeout on connect after 3 seconds
+            .withRequestTimeout(10_000) // timeout out the request after 10 seconds
+            .withMaxErrorRetry(3); // on errors, retry max of 3 times
+
+        final String proxyHost = config.getString(CANTOR_S3_PROXY_HOST);
+        final int proxyPort = config.getInt(CANTOR_S3_PROXY_PORT);
+        if (!Strings.isNullOrEmpty(proxyHost)) {
+            clientConfiguration.setProxyHost(proxyHost);
+            clientConfiguration.setProxyPort(proxyPort);
         }
-        return amazonS3ClientBuilder.build();
+
+        final boolean endpointOverride = config.getBoolean(CANTOR_S3_ENDPOINT_OVERRIDE);
+        if (endpointOverride) {
+            amazonS3ClientBuilder.withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(String.format("%s-fips", region), region));
+        }
+
+        return amazonS3ClientBuilder.withClientConfiguration(clientConfiguration).build();
     }
 
     private ExecutorService newExecutorService() {
