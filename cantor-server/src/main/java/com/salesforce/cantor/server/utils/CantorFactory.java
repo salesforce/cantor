@@ -186,7 +186,7 @@ public class CantorFactory {
 
     private AmazonS3 createAwsClient(final Config config) {
         final String region = config.getString(CANTOR_S3_BUCKET_REGION);
-        final AmazonS3ClientBuilder amazonS3ClientBuilder = AmazonS3ClientBuilder.standard().withRegion(region);
+        final AmazonS3ClientBuilder amazonS3ClientBuilder = AmazonS3ClientBuilder.standard();
 
         final ClientConfiguration clientConfiguration = new ClientConfiguration();
         clientConfiguration.withProtocol(Protocol.HTTPS)
@@ -196,16 +196,18 @@ public class CantorFactory {
             .withRequestTimeout(10_000) // timeout out the request after 10 seconds
             .withMaxErrorRetry(3); // on errors, retry max of 3 times
 
-        final String proxyHost = config.getString(CANTOR_S3_PROXY_HOST);
-        final int proxyPort = config.getInt(CANTOR_S3_PROXY_PORT);
+        final boolean endpointOverride = config.hasPath(CANTOR_S3_ENDPOINT_OVERRIDE) && config.getBoolean(CANTOR_S3_ENDPOINT_OVERRIDE);
+        if (endpointOverride) {
+            amazonS3ClientBuilder.withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(String.format("%s-fips", region), region));
+        } else {
+            amazonS3ClientBuilder.withRegion(region);
+        }
+
+        final String proxyHost = config.hasPath(CANTOR_S3_PROXY_HOST) ? config.getString(CANTOR_S3_PROXY_HOST) : "";
+        final int proxyPort = config.hasPath(CANTOR_S3_PROXY_PORT) ? config.getInt(CANTOR_S3_PROXY_PORT) : -1;
         if (!Strings.isNullOrEmpty(proxyHost)) {
             clientConfiguration.setProxyHost(proxyHost);
             clientConfiguration.setProxyPort(proxyPort);
-        }
-
-        final boolean endpointOverride = config.getBoolean(CANTOR_S3_ENDPOINT_OVERRIDE);
-        if (endpointOverride) {
-            amazonS3ClientBuilder.withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(String.format("%s-fips", region), region));
         }
 
         return amazonS3ClientBuilder.withClientConfiguration(clientConfiguration).build();
