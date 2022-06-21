@@ -22,7 +22,7 @@
 
     <properties>
         <typesafe-config.version>1.4.2</typesafe-config.version>
-        <mysql.version>8.0.25</mysql.version>
+        <mysql.version>8.0.28</mysql.version>
     </properties>
 
     <dependencies>
