@@ -27,7 +27,7 @@
     <properties>
         <s3-sdk.version>1.12.261</s3-sdk.version>
         <mockito.version>2.21.0</mockito.version>
-        <jackson.version>2.12.6.1</jackson.version>
+        <jackson.version>2.13.4.1</jackson.version>
         <s3mock.version>2.1.28</s3mock.version>
     </properties>
 
