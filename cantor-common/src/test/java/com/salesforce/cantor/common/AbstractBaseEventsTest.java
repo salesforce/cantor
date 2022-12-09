@@ -47,8 +47,8 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         final Map<String, Double> dimensions = new HashMap<>();
         final Map<String, String> metadata = new HashMap<>();
         
-        // create an event with 400 dimensions and 100 metadata
-        for (int i = 0; i < 400; ++i) {
+        // create an event with 100 dimensions and 100 metadata
+        for (int i = 0; i < 100; ++i) {
             dimensions.put(UUID.randomUUID().toString(), (double)i);
         }
         for (int i = 0; i < 100; ++i) {
@@ -80,7 +80,7 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         final Events events = getEvents();
         final long timestamp = System.currentTimeMillis();
         final Map<String, String> metadata = getRandomMetadata(100);
-        final Map<String, Double> dimensions = getRandomDimensions(400);
+        final Map<String, Double> dimensions = getRandomDimensions(100);
         final byte[] payload = getRandomPayload(8 * 1024 * 1024);
         events.store(this.namespace, timestamp, metadata, dimensions, payload);
         final List<Events.Event> results = events.get(

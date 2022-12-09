@@ -91,7 +91,7 @@ public class EventsPreconditions extends CommonPreconditions {
         if (dimensions == null || dimensions.isEmpty()) {
             return;
         }
-        checkArgument(dimensions.keySet().size() <= 400, "dimensions contains more than 400 keys");
+        checkArgument(dimensions.keySet().size() <= 100, "dimensions contains more than 100 keys");
         final Set<String> uniqueKeys = new HashSet<>();
         for (final Map.Entry<String, Double> entry : dimensions.entrySet()) {
             final String key = entry.getKey();
