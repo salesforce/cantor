@@ -17,10 +17,10 @@ import static com.salesforce.cantor.common.CommonPreconditions.*;
 
 /**
  * A class responsible for managing namespace level calls for CantorOnS3
- * <p>
+ *
  * Note: there is a cache for the namespaces that refreshes every 30 seconds, however this means that there is a chance
  * an instance of Cantor may think that a namespace exists when it doesn't.
- * </p>
+ *
  */
 public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
     protected static final String NAMESPACE_IDENTIFIER = ".namespace";
