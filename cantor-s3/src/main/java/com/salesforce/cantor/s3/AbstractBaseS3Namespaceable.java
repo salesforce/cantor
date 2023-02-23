@@ -6,27 +6,24 @@ import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.amazonaws.services.s3.model.HeadBucketRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.util.StringInputStream;
-import com.google.common.cache.*;
 import com.salesforce.cantor.Namespaceable;
-import com.salesforce.cantor.common.CommonPreconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.stream.Collectors;
+import java.io.IOException;
+import java.io.InputStream;
 
 import static com.salesforce.cantor.common.CommonPreconditions.*;
 
 /**
  * A class responsible for managing namespace level calls for CantorOnS3
- *
+ * <p>
  * Note: there is a cache for the namespaces that refreshes every 30 seconds, however this means that there is a chance
  * an instance of Cantor may think that a namespace exists when it doesn't.
+ * </p>
  */
 public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
+    protected static final String NAMESPACE_IDENTIFIER = ".namespace";
     private static final Logger logger = LoggerFactory.getLogger(AbstractBaseS3Namespaceable.class);
 
     protected final AmazonS3 s3Client;
@@ -75,7 +72,7 @@ public abstract class AbstractBaseS3Namespaceable implements Namespaceable {
 
     private void doCreate(final String namespace) throws IOException {
         logger.info("creating namespace: '{}'.'{}'", this.bucketName, namespace);
-        final String markerKey = getObjectKeyPrefix(namespace) + "/.namespace";
+        final String markerKey = getObjectKeyPrefix(namespace) + "/" + NAMESPACE_IDENTIFIER;
         if (S3Utils.doesObjectExist(this.s3Client, this.bucketName, markerKey)) {
             logger.info("namespace already exists: '{}'.'{}'", namespace, this.bucketName);
             return;
