@@ -13,7 +13,9 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
@@ -158,6 +160,7 @@ public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements Streamin
         final String namespaceObjectPrefix = getObjectKey(namespace, prefix);
         return S3Utils.getKeys(this.s3Client, this.bucketName, namespaceObjectPrefix, start, count)
                 .stream()
+                .filter(key -> !key.endsWith(NAMESPACE_IDENTIFIER))
                 .map(objectFile -> objectFile.substring(namespaceObjectPrefix.length()))
                 .collect(Collectors.toList());
     }
