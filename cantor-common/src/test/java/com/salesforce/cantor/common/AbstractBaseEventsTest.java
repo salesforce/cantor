@@ -403,18 +403,7 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         }
     }
 
-    private void checkSum(final Map<Long, Double> sumResults, final double sum) {
-        logger.info("{}", sumResults);
-        double returnedSum = 0.0;
-        for (final Map.Entry<Long, Double> entry : sumResults.entrySet()) {
-            returnedSum += entry.getValue();
-        }
-        // can't rely on operations on double values with high precision,
-        // so just check that the returned sum is close enough to expected
-        assertTrue(Math.abs(sum - returnedSum) < 0.1);
-    }
-
-    private Map<String, Double> getRandomDimensions(final int count) {
+    protected Map<String, Double> getRandomDimensions(final int count) {
         final Map<String, Double> dimensions = new HashMap<>();
         for (int i = 0; i < count; ++i) {
             dimensions.put("random-keys-like-!@#$%^&*()_+=-/?,>,<`-are-all-accepted; " +
@@ -423,7 +412,7 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         return dimensions;
     }
 
-    private Map<String, String> getRandomMetadata(final int count) {
+    protected Map<String, String> getRandomMetadata(final int count) {
         final Map<String, String> metadata = new HashMap<>();
         for (int i = 0; i < count; ++i) {
             metadata.put("random-keys-like-!@#$%^&*()_+=-/?,>,<`-are-all-accepted; " +
@@ -432,13 +421,13 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         return metadata;
     }
 
-    private byte[] getRandomPayload(final int size) {
+    protected byte[] getRandomPayload(final int size) {
         final byte[] buffer = new byte[size];
         new Random().nextBytes(buffer);
         return buffer;
     }
 
-    private Events getEvents() throws IOException {
+    protected Events getEvents() throws IOException {
         return getCantor().events();
     }
 

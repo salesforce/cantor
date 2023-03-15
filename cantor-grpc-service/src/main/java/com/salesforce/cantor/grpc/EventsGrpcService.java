@@ -90,15 +90,23 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
             return;
         }
         try {
-            final Collection<Events.Event> batch = new ArrayList<>();
-            for (final EventProto eventProto : request.getBatchList()) {
-                batch.add(new Events.Event(eventProto.getTimestampMillis(),
-                        eventProto.getMetadataMap(),
-                        eventProto.getDimensionsMap(),
-                        eventProto.getPayload().toByteArray())
-                );
+            doStore(request);
+            sendResponse(responseObserver, VoidResponse.getDefaultInstance());
+        } catch (IOException e) {
+            sendError(responseObserver, e);
+        }
+    }
+
+    @Override
+    public void storeBatch(final StoreRequests requests, final StreamObserver<VoidResponse> responseObserver) {
+        if (Context.current().isCancelled()) {
+            sendCancelledError(responseObserver, Context.current().cancellationCause());
+            return;
+        }
+        try {
+            for (final StoreRequest request : requests.getRequestsList()) {
+                doStore(request);
             }
-            getEvents().store(request.getNamespace(), batch);
             sendResponse(responseObserver, VoidResponse.getDefaultInstance());
         } catch (IOException e) {
             sendError(responseObserver, e);
@@ -168,6 +176,18 @@ public class EventsGrpcService extends EventsServiceGrpc.EventsServiceImplBase {
 
     private Events getEvents() {
         return this.cantor.events();
+    }
+
+    private void doStore(StoreRequest request) throws IOException {
+        final Collection<Events.Event> batch = new ArrayList<>();
+        for (final EventProto eventProto : request.getBatchList()) {
+            batch.add(new Events.Event(eventProto.getTimestampMillis(),
+                    eventProto.getMetadataMap(),
+                    eventProto.getDimensionsMap(),
+                    eventProto.getPayload().toByteArray())
+            );
+        }
+        getEvents().store(request.getNamespace(), batch);
     }
 
     private List<EventProto> getProtosFromEvents(final List<Events.Event> events) {

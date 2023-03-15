@@ -71,6 +71,35 @@ public class EventsOnGrpc extends AbstractBaseGrpcClient<EventsServiceBlockingSt
         });
     }
 
+    public void store(final Map<String, Collection<Event>> batch) throws IOException {
+        for (Map.Entry<String, Collection<Event>> entry : batch.entrySet()) {
+            checkStore(entry.getKey(), entry.getValue());
+        }
+        call(() -> {
+            final List<EventProto> eventBatch = new ArrayList<>();
+            final StoreRequests.Builder requestsBuilder = StoreRequests.newBuilder();
+            for (Map.Entry<String, Collection<Event>> entry : batch.entrySet()) {
+                final String namespace = entry.getKey();
+                for (final Event event : entry.getValue()) {
+                    eventBatch.add(EventProto.newBuilder()
+                            .setTimestampMillis(event.getTimestampMillis())
+                            .putAllMetadata(event.getMetadata())
+                            .putAllDimensions(event.getDimensions())
+                            .setPayload(event.getPayload() != null ? ByteString.copyFrom(event.getPayload()) : ByteString.EMPTY)
+                            .build()
+                    );
+                }
+                final StoreRequest request = StoreRequest.newBuilder()
+                        .setNamespace(namespace)
+                        .addAllBatch(eventBatch)
+                        .build();
+                requestsBuilder.addRequests(request);
+            }
+            getStub().storeBatch(requestsBuilder.build());
+            return null;
+        });
+    }
+
     @Override
     public List<Event> get(final String namespace,
                            final long startTimestampMillis,

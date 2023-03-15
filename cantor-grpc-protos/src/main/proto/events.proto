@@ -32,6 +32,11 @@ message StoreRequest {
     repeated EventProto batch = 2;
 }
 
+// events.storeBatch()
+message StoreRequests {
+    repeated StoreRequest requests = 1;
+}
+
 // events.get()
 message GetRequest {
     string namespace = 1;
@@ -87,6 +92,7 @@ service EventsService {
     rpc create (CreateRequest) returns (VoidResponse) {}
     rpc drop (DropRequest) returns (VoidResponse) {}
     rpc store (StoreRequest) returns (VoidResponse) {}
+    rpc storeBatch (StoreRequests) returns (VoidResponse) {}
     rpc metadata (MetadataRequest) returns (MetadataResponse) {}
     rpc dimension (DimensionRequest) returns (DimensionResponse) {}
     rpc expire (ExpireRequest) returns (VoidResponse) {}
