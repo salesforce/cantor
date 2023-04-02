@@ -12,6 +12,7 @@ logs
 
 # docs
 apidocs/
+site/
 
 # mac stuff
 .DS_Store

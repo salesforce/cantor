@@ -27,7 +27,7 @@ public abstract class AbstractBaseEventsTest extends AbstractBaseCantorTest {
         getEvents().create(this.namespace);
     }
 
-    @AfterMethod
+    @AfterMethod(alwaysRun = true)
     public void after() throws Exception {
         getEvents().drop(this.namespace);
     }

@@ -76,9 +76,9 @@ public class EventsOnGrpc extends AbstractBaseGrpcClient<EventsServiceBlockingSt
             checkStore(entry.getKey(), entry.getValue());
         }
         call(() -> {
-            final List<EventProto> eventBatch = new ArrayList<>();
             final StoreRequests.Builder requestsBuilder = StoreRequests.newBuilder();
             for (Map.Entry<String, Collection<Event>> entry : batch.entrySet()) {
+                final List<EventProto> eventBatch = new ArrayList<>();
                 final String namespace = entry.getKey();
                 for (final Event event : entry.getValue()) {
                     eventBatch.add(EventProto.newBuilder()

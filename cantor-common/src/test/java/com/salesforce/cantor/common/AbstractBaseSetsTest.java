@@ -28,7 +28,7 @@ public abstract class AbstractBaseSetsTest extends AbstractBaseCantorTest {
         getSets().create(this.namespace);
     }
 
-    @AfterMethod
+    @AfterMethod(alwaysRun = true)
     public void after() throws Exception {
         getSets().drop(this.namespace);
     }
