@@ -42,30 +42,30 @@ public class FunctionsOnCantor implements Functions {
 
     @Override
     public void store(final String namespace, final String function, final String body) throws IOException {
-        checkString(body, "missing function body");
+        checkString(body, "missing function body", namespace);
         store(namespace, function, body.getBytes(StandardCharsets.UTF_8));
     }
 
     @Override
     public void store(final String namespace, final String function, final byte[] body) throws IOException {
         checkNamespace(namespace);
-        checkString(function, "missing function name");
-        checkArgument(function.contains("."), "missing extension in function name");
-        checkArgument(body != null, "missing function body");
+        checkString(function, "missing function name", namespace);
+        checkArgument(function.contains("."), "missing extension in function name", namespace);
+        checkArgument(body != null, "missing function body", namespace);
         doStore(namespace, function, body);
     }
 
     @Override
     public byte[] get(final String namespace, final String function) throws IOException {
         checkNamespace(namespace);
-        checkString(function, "missing function name");
+        checkString(function, "missing function name", namespace);
         return doGet(namespace, function);
     }
 
     @Override
     public void delete(final String namespace, final String function) throws IOException {
         checkNamespace(namespace);
-        checkString(function, "missing function name");
+        checkString(function, "missing function name", namespace);
         doDelete(namespace, function);
     }
 
@@ -81,9 +81,9 @@ public class FunctionsOnCantor implements Functions {
                     final Context context,
                     final Map<String, String> params) throws IOException {
         checkNamespace(namespace);
-        checkString(function, "missing function name");
-        checkArgument(context != null, "missing context");
-        checkArgument(params != null, "missing parameters");
+        checkString(function, "missing function name", namespace);
+        checkArgument(context != null, "missing context", namespace);
+        checkArgument(params != null, "missing parameters", namespace);
         doRun(namespace, function, context, params);
     }
 

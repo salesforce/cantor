@@ -101,10 +101,10 @@ public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements Streamin
 
     @Override
     public void store(final String namespace, final String key, final InputStream stream, final long length) throws IOException {
-        checkString(namespace);
-        checkString(key);
-        checkArgument(stream != null, "null stream");
-        checkArgument(length > 0, "zero/negative length");
+        checkString(namespace, namespace);
+        checkString(key, namespace);
+        checkArgument(stream != null, "null stream", namespace);
+        checkArgument(length > 0, "zero/negative length", namespace);
         try {
             doStore(namespace, key, stream, length);
         } catch (final AmazonS3Exception e) {
@@ -114,8 +114,8 @@ public class ObjectsOnS3 extends AbstractBaseS3Namespaceable implements Streamin
 
     @Override
     public InputStream stream(final String namespace, final String key) throws IOException {
-        checkString(namespace);
-        checkString(key);
+        checkString(namespace, namespace);
+        checkString(key, namespace);
         try {
             return doStream(namespace, key);
         } catch (final AmazonS3Exception e) {
