@@ -12,47 +12,35 @@ public class CommonPreconditions {
     public static final int MAX_NAMESPACE_LENGHT = 512;
 
     public static void checkString(final String string) {
-        checkString(string, "null/empty string", null);
+        checkString(string, "null/empty string");
     }
 
-    public static void checkString(final String string, final String namespace) {
-        checkString(string, "null/empty string", namespace);
+    public static void checkString(final String string, final int maxLength) {
+        checkString(string, "null/empty string");
+        checkArgument(string.length() <= maxLength, "string cannot be longer than " + maxLength + " characters");
     }
 
-    public static void checkString(final String string, final int maxLength, String namespace) {
-        checkString(string, "null/empty string", namespace);
-        checkArgument(string.length() <= maxLength, "string cannot be longer than " + maxLength + " characters", namespace);
-    }
-
-    public static void checkString(final String string, final String message, final String namespace) {
-        checkArgument(string != null && string.length() > 0, message, namespace);
+    public static void checkString(final String string, final String message) {
+        checkArgument(string != null && string.length() > 0, message);
     }
 
     public static void checkArgument(final boolean condition, final String message) {
-        checkArgument(condition, message, null);
-    }
-
-    public static void checkArgument(final boolean condition, final String message, final String namespace) {
         if (!condition) {
-            throw new IllegalArgumentException(namespace == null ? message : String.format("%s (namespace: '%s')", message, namespace));
+            throw new IllegalArgumentException(message);
         }
     }
 
     public static void checkState(final boolean condition, final String message) {
-        checkState(condition, message, null);
-    }
-
-    public static void checkState(final boolean condition, final String message, final String namespace) {
         if (!condition) {
-            throw new IllegalStateException(namespace == null ? message : String.format("%s (namespace: '%s')", message, namespace));
+            throw new IllegalStateException(message);
         }
     }
 
     public static void checkNamespace(final String namespace) {
-        checkString(namespace, "null/empty namespace", namespace);
+        checkString(namespace, "null/empty namespace");
         checkArgument(namespace.length() < MAX_NAMESPACE_LENGHT,
-                "namespace longer than " + MAX_NAMESPACE_LENGHT + " chars",
-                namespace);
+                "namespace longer than " + MAX_NAMESPACE_LENGHT + " chars"
+        );
     }
 
     public static void checkCreate(final String namespace) {
