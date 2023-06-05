@@ -17,14 +17,18 @@ import org.slf4j.bridge.SLF4JBridgeHandler;
 import java.io.IOException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import static com.salesforce.cantor.common.CommonPreconditions.checkString;
 
 abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
+    private static final long defaultChannelRefreshTimeMillis = 10 * 60 * 1000;  // 10 minutes
     private final Logger logger = LoggerFactory.getLogger(getClass());
-    private final Channel channel;
+    private final AtomicReference<ManagedChannel> channel = new AtomicReference<>();
+    private final AtomicReference<ManagedChannel> oldChannel = new AtomicReference<>();
     private final String target;
     private final Function<Channel, StubType> stubConstructor;
 
@@ -34,10 +38,15 @@ abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
         this.target = target;
         this.stubConstructor = stubConstructor;
 
-        this.channel = makeChannel();
-
         // redirect JUL to slf4j
         SLF4JBridgeHandler.install();
+
+        // refresh periodically to ensure channels are connected to real servers (and load-balance)
+        refreshGrpcChannel();
+        final ScheduledExecutorService refreshChannelExecutorService = Executors.newSingleThreadScheduledExecutor(
+                new ThreadFactoryBuilder().setNameFormat("cantor-grpc-refresh-channel-%d").build());
+        refreshChannelExecutorService.scheduleWithFixedDelay(this::refreshGrpcChannel,
+                defaultChannelRefreshTimeMillis, defaultChannelRefreshTimeMillis, TimeUnit.MILLISECONDS);
     }
 
     StubType getStub() {
@@ -60,7 +69,7 @@ abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
         }
     }
 
-    private Channel makeChannel() {
+    private ManagedChannel makeChannel() {
         logger.info("creating channel for target '{}'", this.target);
         return ManagedChannelBuilder.forTarget(this.target)
                 .usePlaintext()
@@ -72,6 +81,14 @@ abstract class AbstractBaseGrpcClient<StubType extends AbstractStub<StubType>> {
     }
 
     private StubType makeStubs() {
-        return this.stubConstructor.apply(this.channel);
+        return this.stubConstructor.apply(this.channel.get());
+    }
+
+    private void refreshGrpcChannel() {
+        logger.info("refreshing grpc channel at timeInMillis={} on refreshInterval={}", System.currentTimeMillis(), defaultChannelRefreshTimeMillis);
+        final ManagedChannel channelToClose = this.oldChannel.getAndSet(this.channel.getAndSet(makeChannel()));
+        if (channelToClose != null) {
+            channelToClose.shutdown();
+        }
     }
 }
