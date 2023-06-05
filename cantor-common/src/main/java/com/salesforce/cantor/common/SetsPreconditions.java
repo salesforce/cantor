@@ -20,10 +20,10 @@ public class SetsPreconditions extends CommonPreconditions {
                                 final int count,
                                 final boolean ascendingIgnored) {
         checkNamespace(namespace);
-        checkString(set);
-        checkArgument(min <= max, "invalid min/max");
-        checkArgument(start >= 0, "invalid start");
-        checkArgument(count >= 0 || (count == -1 && start == 0), "invalid count");
+        checkString(set, namespace);
+        checkArgument(min <= max, "invalid min/max", namespace);
+        checkArgument(start >= 0, "invalid start", namespace);
+        checkArgument(count >= 0 || (count == -1 && start == 0), "invalid count", namespace);
     }
 
     public static void checkUnion(final String namespace,
@@ -34,10 +34,10 @@ public class SetsPreconditions extends CommonPreconditions {
                                   final int count,
                                   final boolean ascendingIgnored) {
         checkNamespace(namespace);
-        checkArgument(sets != null && !sets.isEmpty(), "null/empty sets");
-        checkArgument(min <= max, "invalid min/max");
-        checkArgument(start >= 0, "invalid start");
-        checkArgument(count >= 0 || (count == -1 && start == 0), "invalid count");
+        checkArgument(sets != null && !sets.isEmpty(), "null/empty sets", namespace);
+        checkArgument(min <= max, "invalid min/max", namespace);
+        checkArgument(start >= 0, "invalid start", namespace);
+        checkArgument(count >= 0 || (count == -1 && start == 0), "invalid count", namespace);
     }
 
     public static void checkIntersect(final String namespace,
@@ -48,10 +48,10 @@ public class SetsPreconditions extends CommonPreconditions {
                                       final int count,
                                       final boolean ascendingIgnored) {
         checkNamespace(namespace);
-        checkArgument(sets != null && !sets.isEmpty(), "null/empty sets");
-        checkArgument(min <= max, "invalid min/max");
-        checkArgument(start >= 0, "invalid start");
-        checkArgument(count >= 0 || (count == -1 && start == 0), "invalid count");
+        checkArgument(sets != null && !sets.isEmpty(), "null/empty sets", namespace);
+        checkArgument(min <= max, "invalid min/max", namespace);
+        checkArgument(start >= 0, "invalid start", namespace);
+        checkArgument(count >= 0 || (count == -1 && start == 0), "invalid count", namespace);
     }
 
     public static void checkPop(final String namespace,
@@ -62,40 +62,40 @@ public class SetsPreconditions extends CommonPreconditions {
                                 final int count,
                                 final boolean ascendingIgnored) {
         checkNamespace(namespace);
-        checkString(set);
-        checkArgument(min <= max, "invalid min/max");
-        checkArgument(start >= 0, "invalid start");
-        checkArgument(count >= 0 || (count == -1 && start == 0), "invalid count");
+        checkString(set, namespace);
+        checkArgument(min <= max, "invalid min/max", namespace);
+        checkArgument(start >= 0, "invalid start", namespace);
+        checkArgument(count >= 0 || (count == -1 && start == 0), "invalid count", namespace);
     }
 
     public static void checkAdd(final String namespace, final String set, final String entry, final long weightIgnored) {
         checkNamespace(namespace);
-        checkString(set);
-        checkString(entry);
+        checkString(set, namespace);
+        checkString(entry, namespace);
     }
 
     public static void checkAdd(final String namespace, final String set, final Map<String, Long> entries) {
         checkNamespace(namespace);
-        checkString(set);
-        checkArgument(entries != null, "null entries");
+        checkString(set, namespace);
+        checkArgument(entries != null, "null entries", namespace);
     }
 
     public static void checkDelete(final String namespace, final String set, final long min, final long max) {
         checkNamespace(namespace);
-        checkString(set);
-        checkArgument(min <= max, "invalid min/max");
+        checkString(set, namespace);
+        checkArgument(min <= max, "invalid min/max", namespace);
     }
 
     public static void checkDelete(final String namespace, final String set, final String entry) {
         checkNamespace(namespace);
-        checkString(set);
-        checkString(entry);
+        checkString(set, namespace);
+        checkString(entry, namespace);
     }
 
     public static void checkDelete(final String namespace, final String set, final Collection<String> entries) {
         checkNamespace(namespace);
-        checkString(set);
-        checkArgument(entries != null, "null entries");
+        checkString(set, namespace);
+        checkArgument(entries != null, "null entries", namespace);
     }
 
     public static void checkSets(final String namespace) {
@@ -110,10 +110,10 @@ public class SetsPreconditions extends CommonPreconditions {
                                     final int count,
                                     final boolean ascendingIgnored) {
         checkNamespace(namespace);
-        checkString(set);
-        checkArgument(min <= max, "invalid min/max");
-        checkArgument(start >= 0, "invalid start");
-        checkArgument(count >= 0 || (count == -1 && start == 0), "invalid count");
+        checkString(set, namespace);
+        checkArgument(min <= max, "invalid min/max", namespace);
+        checkArgument(start >= 0, "invalid start", namespace);
+        checkArgument(count >= 0 || (count == -1 && start == 0), "invalid count", namespace);
     }
 
     public static void checkKeys(final String namespace,
@@ -124,26 +124,26 @@ public class SetsPreconditions extends CommonPreconditions {
                                  final int count,
                                  final boolean ascendingIgnored) {
         checkNamespace(namespace);
-        checkString(set);
-        checkArgument(min <= max, "invalid min/max");
-        checkArgument(start >= 0, "invalid start");
-        checkArgument(count >= 0 || (count == -1 && start == 0), "invalid count");
+        checkString(set, namespace);
+        checkArgument(min <= max, "invalid min/max", namespace);
+        checkArgument(start >= 0, "invalid start", namespace);
+        checkArgument(count >= 0 || (count == -1 && start == 0), "invalid count", namespace);
     }
 
     public static void checkSize(final String namespace, final String set) {
         checkNamespace(namespace);
-        checkString(set);
+        checkString(set, namespace);
     }
 
     public static void checkWeight(final String namespace, final String set, final String entry) {
         checkNamespace(namespace);
-        checkString(set);
-        checkString(entry);
+        checkString(set, namespace);
+        checkString(entry, namespace);
     }
 
     public static void checkInc(final String namespace, final String set, final String entry, final long countIgnored) {
         checkNamespace(namespace);
-        checkString(set);
-        checkString(entry);
+        checkString(set, namespace);
+        checkString(entry, namespace);
     }
 }

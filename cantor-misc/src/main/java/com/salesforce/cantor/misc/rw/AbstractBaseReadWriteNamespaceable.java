@@ -10,7 +10,6 @@ package com.salesforce.cantor.misc.rw;
 import com.salesforce.cantor.Namespaceable;
 
 import java.io.IOException;
-import java.util.Collection;
 
 import static com.salesforce.cantor.common.CommonPreconditions.*;
 

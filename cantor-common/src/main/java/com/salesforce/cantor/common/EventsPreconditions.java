@@ -19,9 +19,9 @@ public class EventsPreconditions extends CommonPreconditions {
 
     public static void checkStore(final String namespace, final Collection<Events.Event> batch) {
         checkNamespace(namespace);
-        checkArgument(batch.size() <= 10_000, "batch larger than 10K events");
+        checkArgument(batch.size() <= 10_000, "batch larger than 10K events", namespace);
         for (final Events.Event event : batch) {
-            checkStore(event.getTimestampMillis(), event.getMetadata(), event.getDimensions());
+            checkStore(event.getTimestampMillis(), event.getMetadata(), event.getDimensions(), namespace);
         }
     }
 
@@ -31,9 +31,9 @@ public class EventsPreconditions extends CommonPreconditions {
                                 final Map<String, String> metadataQuery,
                                 final Map<String, String> dimensionsQuery) {
         checkNamespace(namespace);
-        checkTimestamps(startTimestampMillis, endTimestampMillis);
-        checkMetadataQuery(metadataQuery);
-        checkDimensionsQuery(dimensionsQuery);
+        checkTimestamps(startTimestampMillis, endTimestampMillis, namespace);
+        checkMetadataQuery(metadataQuery, namespace);
+        checkDimensionsQuery(dimensionsQuery, namespace);
     }
 
     public static void checkMetadata(final String namespace,
@@ -43,10 +43,10 @@ public class EventsPreconditions extends CommonPreconditions {
                                      final Map<String, String> metadataQuery,
                                      final Map<String, String> dimensionsQuery) {
         checkNamespace(namespace);
-        checkString(metadataKey);
-        checkTimestamps(startTimestampMillis, endTimestampMillis);
-        checkMetadataQuery(metadataQuery);
-        checkDimensionsQuery(dimensionsQuery);
+        checkString(metadataKey, namespace);
+        checkTimestamps(startTimestampMillis, endTimestampMillis, namespace);
+        checkMetadataQuery(metadataQuery, namespace);
+        checkDimensionsQuery(dimensionsQuery, namespace);
     }
 
     public static void checkDimension(final String namespace,
@@ -56,84 +56,85 @@ public class EventsPreconditions extends CommonPreconditions {
                                       final Map<String, String> metadataQuery,
                                       final Map<String, String> dimensionsQuery) {
         checkNamespace(namespace);
-        checkString(dimensionKey);
-        checkTimestamps(startTimestampMillis, endTimestampMillis);
-        checkMetadataQuery(metadataQuery);
-        checkDimensionsQuery(dimensionsQuery);
+        checkString(dimensionKey, namespace);
+        checkTimestamps(startTimestampMillis, endTimestampMillis, namespace);
+        checkMetadataQuery(metadataQuery, namespace);
+        checkDimensionsQuery(dimensionsQuery, namespace);
     }
 
     public static void checkExpire(final String namespace, final long endTimestampMillis) {
         checkNamespace(namespace);
-        checkArgument(endTimestampMillis >= 0, "invalid end timestamp");
+        checkArgument(endTimestampMillis >= 0, "invalid end timestamp", namespace);
     }
 
-    static void checkTimestamps(final long startTimestampMillis, final long endTimestampMillis) {
-        checkArgument(startTimestampMillis >= 0, "invalid start timestamp");
-        checkArgument(endTimestampMillis >= startTimestampMillis, "end timestamp cannot be before start timestamp");
-        checkArgument(endTimestampMillis - startTimestampMillis <= TimeUnit.DAYS.toMillis(7), "query cannot be wider than 7 days");
+    static void checkTimestamps(final long startTimestampMillis, final long endTimestampMillis, final String namespace) {
+        checkArgument(startTimestampMillis >= 0, "invalid start timestamp", namespace);
+        checkArgument(endTimestampMillis >= startTimestampMillis, "end timestamp cannot be before start timestamp", namespace);
+        checkArgument(endTimestampMillis - startTimestampMillis <= TimeUnit.DAYS.toMillis(7), "query cannot be wider than 7 days", namespace);
     }
 
-    static void checkMetadata(final Map<String, String> metadata) {
+    static void checkMetadata(final Map<String, String> metadata, final String namespace) {
         if (metadata == null || metadata.isEmpty()) {
             return;
         }
-        checkArgument(metadata.keySet().size() <= 100, "metadata contains more than 100 keys");
+        checkArgument(metadata.keySet().size() <= 100, "metadata contains more than 100 keys", namespace);
         final Set<String> uniqueKeys = new HashSet<>();
         for (final Map.Entry<String, String> entry : metadata.entrySet()) {
             final String key = entry.getKey();
-            checkString(entry.getValue(), "metadata '" + key + "' has null/empty value");
+            checkString(entry.getValue(), "metadata '" + key + "' has null/empty value", namespace);
             uniqueKeys.add(key.toUpperCase());
         }
-        checkArgument(uniqueKeys.size() == metadata.size(), "metadata keys must be unique ignoring case");
+        checkArgument(uniqueKeys.size() == metadata.size(), "metadata keys must be unique ignoring case", namespace);
     }
 
-    static void checkDimensions(final Map<String, Double> dimensions) {
+    static void checkDimensions(final Map<String, Double> dimensions, final String namespace) {
         if (dimensions == null || dimensions.isEmpty()) {
             return;
         }
-        checkArgument(dimensions.keySet().size() <= 100, "dimensions contains more than 100 keys");
+        checkArgument(dimensions.keySet().size() <= 100, "dimensions contains more than 100 keys", namespace);
         final Set<String> uniqueKeys = new HashSet<>();
         for (final Map.Entry<String, Double> entry : dimensions.entrySet()) {
             final String key = entry.getKey();
             Double value = entry.getValue();
-            checkArgument(value != null, "dimension '" + key + "' has null value");
-            checkArgument(!Double.isNaN(value) && !Double.isInfinite(value), "dimension '" + key + "' is not a valid number");
+            checkArgument(value != null, "dimension '" + key + "' has null value", namespace);
+            checkArgument(!Double.isNaN(value) && !Double.isInfinite(value), "dimension '" + key + "' is not a valid number", namespace);
             uniqueKeys.add(key.toUpperCase());
         }
-        checkArgument(uniqueKeys.size() == dimensions.size(), "dimension keys must be unique ignoring case");
+        checkArgument(uniqueKeys.size() == dimensions.size(), "dimension keys must be unique ignoring case", namespace);
     }
 
-    static void checkMetadataQuery(final Map<String, String> metadataQuery) {
+    static void checkMetadataQuery(final Map<String, String> metadataQuery, final String namespace) {
         if (metadataQuery == null || metadataQuery.isEmpty()) {
             return;
         }
         final Set<String> uniqueKeys = new HashSet<>();
         for (final Map.Entry<String, String> entry : metadataQuery.entrySet()) {
             final String key = entry.getKey();
-            checkString(entry.getValue(), "metadata query '" + key + "' has null/empty value");
+            checkString(entry.getValue(), "metadata query '" + key + "' has null/empty value", namespace);
             uniqueKeys.add(key.toUpperCase());
         }
-        checkArgument(uniqueKeys.size() == metadataQuery.size(), "metadata keys must be unique ignoring case");
+        checkArgument(uniqueKeys.size() == metadataQuery.size(), "metadata keys must be unique ignoring case", namespace);
     }
 
-    static void checkDimensionsQuery(final Map<String, String> dimensionsQuery) {
+    static void checkDimensionsQuery(final Map<String, String> dimensionsQuery, final String namespace) {
         if (dimensionsQuery == null || dimensionsQuery.isEmpty()) {
             return;
         }
         final Set<String> uniqueKeys = new HashSet<>();
         for (final Map.Entry<String, String> entry : dimensionsQuery.entrySet()) {
-            checkArgument(entry.getValue() != null, "dimension '" + entry.getKey() + "' has null value");
+            checkArgument(entry.getValue() != null, "dimension '" + entry.getKey() + "' has null value", namespace);
             uniqueKeys.add(entry.getKey().toUpperCase());
         }
-        checkArgument(uniqueKeys.size() == dimensionsQuery.size(), "dimension keys must be unique ignoring case");
+        checkArgument(uniqueKeys.size() == dimensionsQuery.size(), "dimension keys must be unique ignoring case", namespace);
     }
 
     private static void checkStore(final long timestampMillis,
                                    final Map<String, String> metadata,
-                                   final Map<String, Double> dimensions) {
-        checkArgument(timestampMillis >= 0, "invalid timestamp");
-        checkMetadata(metadata);
-        checkDimensions(dimensions);
+                                   final Map<String, Double> dimensions,
+                                   final String namespace) {
+        checkArgument(timestampMillis >= 0, "invalid timestamp", namespace);
+        checkMetadata(metadata, namespace);
+        checkDimensions(dimensions, namespace);
     }
 
 }

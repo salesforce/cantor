@@ -82,8 +82,8 @@ public class ObjectsOnGrpc extends AbstractBaseGrpcClient<ObjectsServiceBlocking
 
     @Override
     public void store(final String namespace, final String key, final byte[] bytes) throws IOException {
-        checkString(key, "null/empty key");
-        checkArgument(bytes != null, "null bytes");
+        checkString(key, "null/empty key", namespace);
+        checkArgument(bytes != null, "null bytes", namespace);
         call(() -> {
             final StoreRequest request = StoreRequest.newBuilder()
                     .setNamespace(namespace)
@@ -97,7 +97,7 @@ public class ObjectsOnGrpc extends AbstractBaseGrpcClient<ObjectsServiceBlocking
 
     @Override
     public void store(final String namespace, final Map<String, byte[]> batch) throws IOException {
-        checkArgument(batch != null, "null batch");
+        checkArgument(batch != null, "null batch", namespace);
         call(() -> {
             for (final Map.Entry<String, byte[]> entry : batch.entrySet()) {
                 store(namespace, entry.getKey(), entry.getValue());
@@ -108,7 +108,7 @@ public class ObjectsOnGrpc extends AbstractBaseGrpcClient<ObjectsServiceBlocking
 
     @Override
     public byte[] get(final String namespace, final String key) throws IOException {
-        checkString(key, "null/empty key");
+        checkString(key, "null/empty key", namespace);
         return call(() -> {
             final GetRequest request = GetRequest.newBuilder()
                     .setNamespace(namespace)
@@ -124,7 +124,7 @@ public class ObjectsOnGrpc extends AbstractBaseGrpcClient<ObjectsServiceBlocking
 
     @Override
     public Map<String, byte[]> get(final String namespace, final Collection<String> keys) throws IOException {
-        checkArgument(keys != null, "null entries");
+        checkArgument(keys != null, "null entries", namespace);
         return call(() -> {
             final Map<String, byte[]> results = new HashMap<>();
             for (final String key : keys) {
@@ -136,7 +136,7 @@ public class ObjectsOnGrpc extends AbstractBaseGrpcClient<ObjectsServiceBlocking
 
     @Override
     public boolean delete(final String namespace, final String key) throws IOException {
-        checkString(key, "null/empty key");
+        checkString(key, "null/empty key", namespace);
         return call(() -> {
             final DeleteRequest request = DeleteRequest.newBuilder()
                     .setNamespace(namespace)
@@ -148,7 +148,7 @@ public class ObjectsOnGrpc extends AbstractBaseGrpcClient<ObjectsServiceBlocking
 
     @Override
     public void delete(final String namespace, final Collection<String> keys) throws IOException {
-        checkArgument(keys != null, "null entries");
+        checkArgument(keys != null, "null entries", namespace);
         call(() -> {
             for (final String key : keys) {
                 delete(namespace, key);
