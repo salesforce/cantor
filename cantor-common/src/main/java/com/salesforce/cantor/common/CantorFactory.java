@@ -145,7 +145,7 @@ public class CantorFactory {
             final String scope = scopedNamespace.substring(0, scopedNamespace.indexOf(scopeDelimiter));
             final String namespace = scopedNamespace.substring(scopedNamespace.indexOf(scopeDelimiter) + 1);
 
-            checkArgument(this.delegates.containsKey(scope), "invalid scope: " + scope, namespace);
+            checkArgument(this.delegates.containsKey(scope), "invalid scope: " + scope);
 
             // invoke the proxied method and pass all parameters
             if (args.length == 1) {

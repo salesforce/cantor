@@ -44,7 +44,7 @@ public interface Functions {
      * @throws IOException exception thrown from the underlying storage implementation
      */
     default void store(final String namespace, final String function, final String body) throws IOException {
-        checkString(body, "missing function body", namespace);
+        checkString(body, "missing function body");
         store(namespace, function, body.getBytes(StandardCharsets.UTF_8));
     }
 

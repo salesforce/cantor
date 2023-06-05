@@ -16,21 +16,21 @@ public class CommonPreconditionsTest {
 
     @Test
     public void testCheckString() {
-        assertThrows(IllegalArgumentException.class, () -> checkString(null, namespace));
-        assertThrows(IllegalArgumentException.class, () -> checkString("", namespace));
-        checkString("valid", namespace);
+        assertThrows(IllegalArgumentException.class, () -> checkString(null));
+        assertThrows(IllegalArgumentException.class, () -> checkString(""));
+        checkString("valid");
     }
 
     @Test
     public void testCheckArgument() {
-        assertThrows(IllegalArgumentException.class, () -> checkArgument(false, "ignored", namespace));
-        checkArgument(true, "ignored", namespace);
+        assertThrows(IllegalArgumentException.class, () -> checkArgument(false, "ignored"));
+        checkArgument(true, "ignored");
     }
 
     @Test
     public void testCheckState() {
-        assertThrows(IllegalStateException.class, () -> checkState(false, "ignored", namespace));
-        checkState(true, "ignored", namespace);
+        assertThrows(IllegalStateException.class, () -> checkState(false, "ignored"));
+        checkState(true, "ignored");
     }
 
     @Test
