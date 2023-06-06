@@ -61,9 +61,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     private static final Map<String, Object> namespaceLocks = new ConcurrentHashMap<>();
 
     // executor service for flushing buffered files to S3
-    private static final ScheduledExecutorService flushExecutorService = Executors.newSingleThreadScheduledExecutor(
-            new ThreadFactoryBuilder().setNameFormat("cantor-s3-buffer-flusher-%d").build()
-    );
+    private static final ConcurrentHashMap<String, ScheduledExecutorService> flushExecutorServices = new ConcurrentHashMap<>();
 
     // json parser
     private final Gson parser = new GsonBuilder().create();
@@ -115,7 +113,7 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
                 .withExecutorFactory(() -> Executors.newFixedThreadPool(
                         32, // 32 concurrent threads to upload buffer files
                         new ThreadFactoryBuilder()
-                                .setNameFormat("cantor-s3-event-transfer-manager-worker-%d")
+                                .setNameFormat("cantor-s3-event-transfer-manager-" + this.bucketName + "-worker-%d")
                                 .build()
                 ));
         this.s3TransferManager = builder.build();
@@ -123,7 +121,13 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
         // schedule flush cycle to start immediately
         rollover();
         // scheduler for flushing buffers
-        flushExecutorService.scheduleWithFixedDelay(this::flush, 0, flushIntervalSeconds, TimeUnit.SECONDS);
+        flushExecutorServices.computeIfAbsent(bucketName, unused -> {
+            final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(
+                    new ThreadFactoryBuilder().setNameFormat("cantor-s3-buffer-flusher-" + this.bucketName + "-%d").build()
+            );
+            scheduledExecutorService.scheduleWithFixedDelay(this::flush, 0, flushIntervalSeconds, TimeUnit.SECONDS);
+            return scheduledExecutorService;
+        });
     }
 
     @Override
