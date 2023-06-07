@@ -60,8 +60,8 @@ public class EventsOnS3 extends AbstractBaseS3Namespaceable implements Events {
     // monitors for synchronizing writes to namespaces
     private static final Map<String, Object> namespaceLocks = new ConcurrentHashMap<>();
 
-    // executor service for flushing buffered files to S3
-    private static final ConcurrentHashMap<String, ScheduledExecutorService> flushExecutorServices = new ConcurrentHashMap<>();
+    // executor services for flushing buffered files to S3
+    private static final Map<String, ScheduledExecutorService> flushExecutorServices = new ConcurrentHashMap<>();
 
     // json parser
     private final Gson parser = new GsonBuilder().create();
