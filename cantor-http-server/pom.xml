@@ -47,6 +47,12 @@
             <artifactId>cantor-mysql</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!--CANTOR GRPC-->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-grpc-client</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!--CANTOR MISC-->
         <dependency>
             <groupId>com.salesforce.cantor</groupId>
