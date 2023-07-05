@@ -17,7 +17,7 @@
     <artifactId>cantor-http-service</artifactId>
 
     <properties>
-        <spring.jersey.version>2.6.1</spring.jersey.version>
+        <spring.jersey.version>2.7.13</spring.jersey.version>
         <swagger.version>2.1.11</swagger.version>
         <swagger.classgraph.version>4.8.131</swagger.classgraph.version>
     </properties>

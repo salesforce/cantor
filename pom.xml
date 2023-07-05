@@ -34,6 +34,7 @@
         <gson.version>2.9.0</gson.version>
         <grpc.version>1.44.0</grpc.version>
         <guava.version>31.0.1-jre</guava.version>
+        <jackson.version>2.15.2</jackson.version>
 
         <testng.version>7.0.0</testng.version>
 
@@ -195,6 +196,11 @@
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
                 <version>${guava.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.testng</groupId>
