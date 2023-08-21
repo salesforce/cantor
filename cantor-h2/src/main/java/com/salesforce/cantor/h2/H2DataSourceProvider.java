@@ -38,7 +38,6 @@ public class H2DataSourceProvider {
                         "MODE=MYSQL;" +
                         "COMPRESS=" + String.valueOf(datasourceProperties.isCompressed()).toUpperCase() + ";" +
                         "LOCK_TIMEOUT=30000;" +
-                        "DB_CLOSE_ON_EXIT=FALSE;" +
                         "TRACE_LEVEL_FILE=1;" +
                         "TRACE_MAX_FILE_SIZE=4;" +
                         "AUTOCOMMIT=TRUE;" +
