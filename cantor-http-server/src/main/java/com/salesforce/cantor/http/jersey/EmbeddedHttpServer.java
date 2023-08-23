@@ -8,6 +8,7 @@
 package com.salesforce.cantor.http.jersey;
 
 import com.salesforce.cantor.Cantor;
+import com.salesforce.cantor.grpc.CantorOnGrpc;
 import com.salesforce.cantor.h2.CantorOnH2;
 import com.salesforce.cantor.h2.H2DataSourceProperties;
 import com.salesforce.cantor.h2.H2DataSourceProvider;
@@ -37,7 +38,7 @@ public class EmbeddedHttpServer {
         final ResourceConfig config = new SwaggerJaxrsConfig();
 
         // bind resources with required constructor parameters
-        final Cantor cantor = getCantorOnMysql();
+        final Cantor cantor = getCantorOnGrpc();
         config.register(new AbstractBinder() {
             @Override
             protected void configure() {
@@ -60,6 +61,11 @@ public class EmbeddedHttpServer {
         context.addServlet(DefaultServlet.class, "/");
 
         return server;
+    }
+
+    private Cantor getCantorOnGrpc() {
+        final Cantor cantorOnGrpc = new CantorOnGrpc("localhost:7443");
+        return new LoggableCantor(cantorOnGrpc);
     }
 
     private Cantor getCantorOnMysql() {

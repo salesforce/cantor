@@ -20,12 +20,12 @@
     <parent>
         <groupId>com.salesforce.cantor</groupId>
         <artifactId>cantor-parent</artifactId>
-        <version>0.5.7-SNAPSHOT</version>
+        <version>0.5.10-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <properties>
-        <h2.version>2.1.210</h2.version>
+        <h2.version>2.2.220</h2.version>
     </properties>
 
     <dependencies>
