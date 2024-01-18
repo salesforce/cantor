@@ -25,7 +25,7 @@
     </parent>
 
     <properties>
-        <s3-sdk.version>1.12.501</s3-sdk.version>
+        <s3-sdk.version>1.12.638</s3-sdk.version>
         <mockito.version>2.21.0</mockito.version>
         <s3mock.version>2.1.28</s3mock.version>
     </properties>
@@ -108,6 +108,10 @@
                 <exclusion>
                     <groupId>com.fasterxml.woodstox</groupId>
                     <artifactId>woodstox-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.amazonaws</groupId>
+                    <artifactId>aws-java-sdk-s3</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
