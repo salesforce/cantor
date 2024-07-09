@@ -295,8 +295,11 @@ public class S3Utils {
                 }
                 return results.toString();
             } finally {
+                final long timeSpent = (System.nanoTime() - before) / 1_000_000;
+                logger.debug("s3 select query: bucket={} key={} type={} expression={}; time spent: {}ms",
+                        request.getBucketName(), request.getKey(), request.getExpressionType(), request.getExpression(), timeSpent);
                 logger.info("query object - bucket: {} - key: {}; time spent: {}ms",
-                        request.getBucketName(), request.getKey(), ((System.nanoTime() - before) / 1_000_000)
+                        request.getBucketName(), request.getKey(), timeSpent
                 );
             }
         }
