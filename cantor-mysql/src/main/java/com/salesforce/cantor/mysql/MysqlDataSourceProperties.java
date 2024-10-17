@@ -12,7 +12,7 @@ public class MysqlDataSourceProperties {
     private String hostname = "localhost";
     private int port = 3306;
     private String username = "root";
-    private String password = "root";
+    private String password = null;
 
     public int getPort() {
         return this.port;
