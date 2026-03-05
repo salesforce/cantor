@@ -19,7 +19,7 @@
 
     <properties>
         <jersey.version>4.0.0</jersey.version>
-        <jetty.version>12.1.5</jetty.version>
+        <jetty.version>12.1.6</jetty.version>
         <groovy.version>3.0.8</groovy.version>
         <freemarker.version>2.3.30</freemarker.version>
     </properties>
