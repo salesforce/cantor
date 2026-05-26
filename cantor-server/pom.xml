@@ -24,6 +24,7 @@
     <properties>
         <typesafe-config.version>1.4.2</typesafe-config.version>
         <mysql.version>8.0.28</mysql.version>
+        <multicloudj.version>0.3.5</multicloudj.version>
     </properties>
 
     <dependencies>
@@ -68,6 +69,18 @@
             <groupId>com.salesforce.cantor</groupId>
             <artifactId>cantor-s3</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <!--CANTOR MULTICLOUDJ-->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-multicloudj</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!--MULTICLOUDJ AWS PROVIDER-->
+        <dependency>
+            <groupId>com.salesforce.multicloudj</groupId>
+            <artifactId>blob-aws</artifactId>
+            <version>${multicloudj.version}</version>
         </dependency>
         <!--CANTOR MISC-->
         <dependency>
