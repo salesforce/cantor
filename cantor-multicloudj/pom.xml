@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  ~ Copyright (c) 2020, Salesforce.com, Inc.
+  ~ All rights reserved.
+  ~ SPDX-License-Identifier: BSD-3-Clause
+  ~ For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
+  -->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>cantor-multicloudj</artifactId>
+    <packaging>jar</packaging>
+    <name>cantor-multicloudj</name>
+
+    <description>Cantor on top of multicloudj BucketClient</description>
+
+    <parent>
+        <groupId>com.salesforce.cantor</groupId>
+        <artifactId>cantor-parent</artifactId>
+        <version>0.5.23</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <properties>
+        <multicloudj.version>0.3.5</multicloudj.version>
+    </properties>
+
+    <dependencies>
+        <!-- CANTOR COMMON -->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-common</artifactId>
+        </dependency>
+        <!-- LOGBACK -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+        <!-- MULTICLOUDJ BLOB CLIENT -->
+        <dependency>
+            <groupId>com.salesforce.multicloudj</groupId>
+            <artifactId>blob-client</artifactId>
+            <version>${multicloudj.version}</version>
+        </dependency>
+        <!-- GUAVA -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+        </dependency>
+        <!-- JSON/GSON -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>${gson.version}</version>
+        </dependency>
+
+        <!-- TEST SCOPE BELOW -->
+        <!-- TESTNG -->
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${testng.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- CANTOR COMMON TEST JAR -->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-common</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <!-- MULTICLOUDJ IN-MEMORY BLOB PROVIDER -->
+        <dependency>
+            <groupId>com.salesforce.multicloudj</groupId>
+            <artifactId>blob-inmemory</artifactId>
+            <version>${multicloudj.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
