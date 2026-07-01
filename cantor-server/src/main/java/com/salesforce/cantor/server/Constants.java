@@ -40,4 +40,14 @@ public class Constants {
     public static final String CANTOR_S3_PROXY_PORT = "proxy.port";
     public static final String CANTOR_S3_ENDPOINT_OVERRIDE = "endpoint.override";
     public static final String CANTOR_S3_SETS_TYPE = "sets.type";
+
+    // multicloudj configuration
+    public static final String CANTOR_MULTICLOUDJ_PROVIDER = "provider";
+    public static final String CANTOR_MULTICLOUDJ_BUCKET_NAME = "bucket";
+    public static final String CANTOR_MULTICLOUDJ_BUCKET_REGION = "region";
+    public static final String CANTOR_MULTICLOUDJ_PROXY_HOST = "proxy.host";
+    public static final String CANTOR_MULTICLOUDJ_PROXY_PORT = "proxy.port";
+    public static final String CANTOR_MULTICLOUDJ_ENDPOINT_OVERRIDE = "endpoint.override";
+    public static final String CANTOR_MULTICLOUDJ_BUFFER_DIRECTORY = "buffer.directory";
+    public static final String CANTOR_MULTICLOUDJ_SETS_TYPE = "sets.type";
 }

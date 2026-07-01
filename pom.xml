@@ -115,6 +115,7 @@
         <module>cantor-h2</module>
         <module>cantor-mysql</module>
         <module>cantor-s3</module>
+        <module>cantor-multicloudj</module>
         <module>cantor-misc</module>
         <module>cantor-metrics</module>
         <module>cantor-server</module>

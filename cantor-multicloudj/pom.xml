@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  ~ Copyright (c) 2020, Salesforce.com, Inc.
+  ~ All rights reserved.
+  ~ SPDX-License-Identifier: BSD-3-Clause
+  ~ For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
+  -->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>cantor-multicloudj</artifactId>
+    <packaging>jar</packaging>
+    <name>cantor-multicloudj</name>
+    <description>Cantor on top of MultiCloudJ - cloud-agnostic object storage backend supporting AWS S3, GCP Cloud Storage, Alibaba OSS, and other MultiCloudJ providers.</description>
+
+    <parent>
+        <groupId>com.salesforce.cantor</groupId>
+        <artifactId>cantor-parent</artifactId>
+        <version>0.5.25-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <properties>
+        <multicloudj.version>0.4.0</multicloudj.version>
+        <!-- Override parent's Java 8 baseline: MultiCloudJ requires Java 11+ -->
+        <source.version>11</source.version>
+        <target.version>11</target.version>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <!-- CANTOR COMMON -->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-common</artifactId>
+        </dependency>
+
+        <!-- MULTICLOUDJ BLOB CLIENT -->
+        <dependency>
+            <groupId>com.salesforce.multicloudj</groupId>
+            <artifactId>blob-client</artifactId>
+            <version>${multicloudj.version}</version>
+        </dependency>
+
+        <!-- Provider runtimes: opt-in per consumer -->
+        <dependency>
+            <groupId>com.salesforce.multicloudj</groupId>
+            <artifactId>blob-aws</artifactId>
+            <version>${multicloudj.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.salesforce.multicloudj</groupId>
+            <artifactId>blob-gcp</artifactId>
+            <version>${multicloudj.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.salesforce.multicloudj</groupId>
+            <artifactId>blob-ali</artifactId>
+            <version>${multicloudj.version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- LOGBACK -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+
+        <!-- JSON/GSON -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>${gson.version}</version>
+        </dependency>
+
+        <!-- GUAVA -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+        </dependency>
+
+        <!-- TEST SCOPE BELOW -->
+        <!-- TESTNG -->
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${testng.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- CANTOR COMMON TEST JAR -->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-common</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <!-- MULTICLOUDJ IN-MEMORY PROVIDER -->
+        <dependency>
+            <groupId>com.salesforce.multicloudj</groupId>
+            <artifactId>blob-inmemory</artifactId>
+            <version>${multicloudj.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Re-declare the compiler config to lock source/target to 11
+                 even if the parent ever inlines its 1.8 default. Defense in depth. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${mvn.plugins.compiler.version}</version>
+                <configuration>
+                    <source>11</source>
+                    <target>11</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

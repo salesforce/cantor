@@ -23,16 +23,20 @@ import com.salesforce.cantor.misc.async.AsyncCantor;
 import com.salesforce.cantor.misc.loggable.LoggableCantor;
 import com.salesforce.cantor.misc.rw.ReadWriteCantor;
 import com.salesforce.cantor.misc.sharded.ShardedCantor;
+import com.salesforce.cantor.multicloudj.EventsOnMulticloudj;
+import com.salesforce.cantor.multicloudj.ObjectsOnMulticloudj;
 import com.salesforce.cantor.mysql.CantorOnMysql;
 import com.salesforce.cantor.mysql.MysqlDataSourceProperties;
 import com.salesforce.cantor.mysql.MysqlDataSourceProvider;
 import com.salesforce.cantor.s3.CantorOnS3;
 import com.salesforce.cantor.server.CantorEnvironment;
+import com.salesforce.multicloudj.blob.client.BucketClient;
 import com.typesafe.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -48,6 +52,14 @@ import static com.salesforce.cantor.server.Constants.CANTOR_MYSQL_HOSTNAME;
 import static com.salesforce.cantor.server.Constants.CANTOR_MYSQL_PASSWORD;
 import static com.salesforce.cantor.server.Constants.CANTOR_MYSQL_PORT;
 import static com.salesforce.cantor.server.Constants.CANTOR_MYSQL_USERNAME;
+import static com.salesforce.cantor.server.Constants.CANTOR_MULTICLOUDJ_BUCKET_NAME;
+import static com.salesforce.cantor.server.Constants.CANTOR_MULTICLOUDJ_BUCKET_REGION;
+import static com.salesforce.cantor.server.Constants.CANTOR_MULTICLOUDJ_BUFFER_DIRECTORY;
+import static com.salesforce.cantor.server.Constants.CANTOR_MULTICLOUDJ_ENDPOINT_OVERRIDE;
+import static com.salesforce.cantor.server.Constants.CANTOR_MULTICLOUDJ_PROVIDER;
+import static com.salesforce.cantor.server.Constants.CANTOR_MULTICLOUDJ_PROXY_HOST;
+import static com.salesforce.cantor.server.Constants.CANTOR_MULTICLOUDJ_PROXY_PORT;
+import static com.salesforce.cantor.server.Constants.CANTOR_MULTICLOUDJ_SETS_TYPE;
 import static com.salesforce.cantor.server.Constants.CANTOR_S3_BUCKET_NAME;
 import static com.salesforce.cantor.server.Constants.CANTOR_S3_BUCKET_REGION;
 import static com.salesforce.cantor.server.Constants.CANTOR_S3_ENDPOINT_OVERRIDE;
@@ -89,7 +101,90 @@ public class CantorFactory {
                 }
             });
         }
+        if (storageType.equalsIgnoreCase("multicloudj")) {
+            return createMulticloudjCantor();
+        }
         return getCantorByType(storageType);
+    }
+
+    private Cantor createMulticloudjCantor() throws IOException {
+        final Config config = this.cantorEnvironment.getConfig("multicloudj");
+
+        if (!config.hasPath(CANTOR_MULTICLOUDJ_SETS_TYPE)) {
+            throw new IllegalArgumentException("Missing configuration setting for 'multicloudj." + CANTOR_MULTICLOUDJ_SETS_TYPE + "'");
+        }
+
+        final String providerId = config.hasPath(CANTOR_MULTICLOUDJ_PROVIDER) ? config.getString(CANTOR_MULTICLOUDJ_PROVIDER) : "";
+        if (Strings.isNullOrEmpty(providerId)) {
+            throw new IllegalArgumentException("Provider invalid. Please set 'multicloudj." + CANTOR_MULTICLOUDJ_PROVIDER + "' (supported: aws, gcp, ali)");
+        }
+
+        final String bucketName = config.hasPath(CANTOR_MULTICLOUDJ_BUCKET_NAME) ? config.getString(CANTOR_MULTICLOUDJ_BUCKET_NAME) : "";
+        if (Strings.isNullOrEmpty(bucketName)) {
+            throw new IllegalArgumentException("Bucket name invalid. Please set 'multicloudj." + CANTOR_MULTICLOUDJ_BUCKET_NAME + "'");
+        }
+
+        logger.info("creating multicloudj cantor instance with provider '{}', bucket '{}', sets on {}...",
+                providerId, bucketName, config.getString(CANTOR_MULTICLOUDJ_SETS_TYPE));
+
+        // no support for multicloudj on sets therefore another cantor type must be used
+        final Sets sets = getCantorByType(config.getString(CANTOR_MULTICLOUDJ_SETS_TYPE)).sets();
+
+        final BucketClient bucketClient = createBucketClient(config, providerId, bucketName);
+        final ObjectsOnMulticloudj objects = new ObjectsOnMulticloudj(bucketClient);
+        final EventsOnMulticloudj events = buildEventsOnMulticloudj(config, bucketClient);
+
+        // CantorOnMulticloudj is final, so wrap with a Cantor delegate that supplies the Sets backend
+        return new LoggableCantor(new Cantor() {
+            @Override
+            public com.salesforce.cantor.Objects objects() {
+                return objects;
+            }
+
+            @Override
+            public com.salesforce.cantor.Events events() {
+                return events;
+            }
+
+            @Override
+            public Sets sets() {
+                return sets;
+            }
+        });
+    }
+
+    private static BucketClient createBucketClient(final Config config, final String providerId, final String bucketName) {
+        final String region = config.hasPath(CANTOR_MULTICLOUDJ_BUCKET_REGION) ? config.getString(CANTOR_MULTICLOUDJ_BUCKET_REGION) : "";
+
+        final BucketClient.BlobBuilder builder = BucketClient.builder(providerId)
+                .withBucket(bucketName);
+
+        if (!Strings.isNullOrEmpty(region)) {
+            builder.withRegion(region);
+        }
+
+        final String endpointOverride = config.hasPath(CANTOR_MULTICLOUDJ_ENDPOINT_OVERRIDE)
+                ? config.getString(CANTOR_MULTICLOUDJ_ENDPOINT_OVERRIDE) : "";
+        if (!Strings.isNullOrEmpty(endpointOverride)) {
+            builder.withEndpoint(URI.create(endpointOverride));
+        }
+
+        final String proxyHost = config.hasPath(CANTOR_MULTICLOUDJ_PROXY_HOST) ? config.getString(CANTOR_MULTICLOUDJ_PROXY_HOST) : "";
+        final int proxyPort = config.hasPath(CANTOR_MULTICLOUDJ_PROXY_PORT) ? config.getInt(CANTOR_MULTICLOUDJ_PROXY_PORT) : -1;
+        if (!Strings.isNullOrEmpty(proxyHost) && proxyPort > 0) {
+            builder.withProxyEndpoint(URI.create(String.format("http://%s:%d", proxyHost, proxyPort)));
+        }
+
+        return builder.build();
+    }
+
+    private static EventsOnMulticloudj buildEventsOnMulticloudj(final Config config, final BucketClient bucketClient) throws IOException {
+        final String bufferDirectory = config.hasPath(CANTOR_MULTICLOUDJ_BUFFER_DIRECTORY)
+                ? config.getString(CANTOR_MULTICLOUDJ_BUFFER_DIRECTORY) : "";
+        if (!Strings.isNullOrEmpty(bufferDirectory)) {
+            return new EventsOnMulticloudj(bucketClient, bufferDirectory);
+        }
+        return new EventsOnMulticloudj(bucketClient);
     }
 
     private Cantor getCantorByType(final String storageType) throws IOException {
