@@ -69,6 +69,34 @@
             <artifactId>cantor-s3</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!--CANTOR MULTICLOUDJ-->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-multicloudj</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!--MULTICLOUDJ PROVIDER RUNTIMES (optional; deployers choose which cloud)-->
+        <dependency>
+            <groupId>com.salesforce.multicloudj</groupId>
+            <artifactId>blob-aws</artifactId>
+            <version>0.4.0</version>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.salesforce.multicloudj</groupId>
+            <artifactId>blob-ali</artifactId>
+            <version>0.4.0</version>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.salesforce.multicloudj</groupId>
+            <artifactId>blob-gcp</artifactId>
+            <version>0.4.0</version>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
         <!--CANTOR MISC-->
         <dependency>
             <groupId>com.salesforce.cantor</groupId>
