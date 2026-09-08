@@ -24,6 +24,7 @@
     <properties>
         <typesafe-config.version>1.4.2</typesafe-config.version>
         <mysql.version>8.0.28</mysql.version>
+        <multicloudj.version>0.3.5</multicloudj.version>
     </properties>
 
     <dependencies>
@@ -69,12 +70,32 @@
             <artifactId>cantor-s3</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!--CANTOR MULTICLOUDJ-->
+        <dependency>
+            <groupId>com.salesforce.cantor</groupId>
+            <artifactId>cantor-multicloudj</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!--MULTICLOUDJ AWS PROVIDER-->
+        <dependency>
+            <groupId>com.salesforce.multicloudj</groupId>
+            <artifactId>blob-aws</artifactId>
+            <version>${multicloudj.version}</version>
+        </dependency>
+        <!--MULTICLOUDJ ALI PROVIDER-->
+        <dependency>
+            <groupId>com.salesforce.multicloudj</groupId>
+            <artifactId>blob-ali</artifactId>
+            <version>${multicloudj.version}</version>
+        </dependency>
+
         <!--CANTOR S3 with selector-->
         <dependency>
             <groupId>com.salesforce.cantor</groupId>
             <artifactId>cantor-s3-with-selector</artifactId>
             <version>${project.version}</version>
         </dependency>
+        
         <!--CANTOR MISC-->
         <dependency>
             <groupId>com.salesforce.cantor</groupId>
@@ -118,29 +139,46 @@
 
     <build>
         <plugins>
-            <!--ASSEMBLY-->
+            <!--SHADE-->
             <plugin>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <version>2.5.3</version>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <mainClass>com.salesforce.cantor.server.Application</mainClass>
-                        </manifest>
-                    </archive>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
-                    <finalName>cantor-server</finalName>
-                    <appendAssemblyId>false</appendAssemblyId>
-                </configuration>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.0</version>
                 <executions>
                     <execution>
-                        <id>make-assembly</id>
+                        <id>make-shaded-jar</id>
                         <phase>package</phase>
                         <goals>
-                            <goal>single</goal>
+                            <goal>shade</goal>
                         </goals>
+                        <configuration>
+                            <finalName>cantor-server</finalName>
+                            <filters>
+                                <!-- a signed dependency jar's signature no longer matches once its
+                                     classes are repackaged into the uber jar, which crashes the JVM's
+                                     classloader with a SecurityException at startup unless stripped -->
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <transformers>
+                                <!-- the built-in jar-with-dependencies assembly descriptor overwrites
+                                     same-named META-INF/services files instead of merging them, so only
+                                     one multicloudj provider's ServiceLoader registration would survive
+                                     (breaking every provider except whichever one wins, e.g. provider=ali);
+                                     this transformer concatenates them like the shade plugin does for
+                                     everything else -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>com.salesforce.cantor.server.Application</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

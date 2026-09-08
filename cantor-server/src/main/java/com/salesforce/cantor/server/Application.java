@@ -10,16 +10,25 @@ package com.salesforce.cantor.server;
 import com.salesforce.cantor.server.grpc.GrpcServer;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.ConfigValueFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.TimeZone;
 
 public class Application {
     private static final Logger logger = LoggerFactory.getLogger(Application.class);
+
+    // config paths that must never be written to logs
+    private static final List<String> SECRET_CONFIG_PATHS = List.of(
+            "cantor.multicloudj.access-key-id",
+            "cantor.multicloudj.secret-access-key",
+            "cantor.multicloudj.session-token"
+    );
 
     public static void main(final String[] args) throws IOException {
         if (args.length < 1) {
@@ -33,7 +42,7 @@ public class Application {
         final String configPath = args[0];
         logger.info("loading configs from {}", configPath);
         final Config cantorProperties = ConfigFactory.parseFile(new File(configPath)).resolve();
-        logger.info("configs are: {}", cantorProperties);
+        logger.info("configs are: {}", redactSecrets(cantorProperties));
         final CantorEnvironment environment = new CantorEnvironment(cantorProperties);
 
         printCantor();
@@ -47,6 +56,16 @@ public class Application {
 
         // redirect JUL to slf4j
         SLF4JBridgeHandler.install();
+    }
+
+    private static Config redactSecrets(final Config config) {
+        Config redacted = config;
+        for (final String path : SECRET_CONFIG_PATHS) {
+            if (redacted.hasPath(path)) {
+                redacted = redacted.withValue(path, ConfigValueFactory.fromAnyRef("<redacted>"));
+            }
+        }
+        return redacted;
     }
 
     private static void printUsage() {
