@@ -22,8 +22,9 @@ test harness.
 
 ## Running Integration Tests
 
-Integration tests spin up a real Cantor server (backed by H2, MySQL, or S3) in
-Docker, run the test suite against it, and tear everything down at the end.
+Integration tests spin up a real Cantor server (backed by H2, MySQL, S3, or
+Multicloudj) in Docker, run the test suite against it, and tear everything
+down at the end.
 
 Run from the repository root:
 
@@ -33,11 +34,12 @@ Run from the repository root:
 
 where `<TYPE>` is one of:
 
-| Type            | Storage |
-|-----------------|---------|
-| `CantorOnH2`    | H2      |
-| `CantorOnMySQL` | MySQL   |
-| `CantorOnS3`    | S3      |
+| Type                 | Storage     |
+|----------------------|-------------|
+| `CantorOnH2`         | H2          |
+| `CantorOnMySQL`      | MySQL       |
+| `CantorOnS3`         | S3          |
+| `CantorOnMulticloudj`| Multicloudj |
 
 If `--type` is omitted, it defaults to `CantorOnH2`.
 
@@ -52,14 +54,37 @@ It defaults to `s3` and is ignored for H2 and MySQL.
 ./integration-test.sh --type CantorOnS3 --select local
 ```
 
+### Choosing the cloud provider (CantorOnMulticloudj only)
+
+For `CantorOnMulticloudj`, use `--provider` to choose the backing cloud:
+`aws`, `gcp`, or `ali`. It defaults to `aws` and is ignored for other types.
+
+```bash
+./integration-test.sh --type CantorOnMulticloudj --provider aws
+```
+
+AWS and GCP fall back to their SDK-default credential chains (env vars,
+instance profile, Application Default Credentials, etc.) when no static
+credentials are configured. The `ali` provider has no such fallback and
+requires static credentials to be supplied via `CANTOR_MULTICLOUDJ_ACCESS_KEY_ID`
+and `CANTOR_MULTICLOUDJ_SECRET_ACCESS_KEY` (and optionally
+`CANTOR_MULTICLOUDJ_SESSION_TOKEN` for temporary/STS credentials):
+
+```bash
+export CANTOR_MULTICLOUDJ_ACCESS_KEY_ID=<your-ali-access-key-id>
+export CANTOR_MULTICLOUDJ_SECRET_ACCESS_KEY=<your-ali-secret-access-key>
+./integration-test.sh --type CantorOnMulticloudj --provider ali
+```
+
 ### Available flags
 
-| Flag           | Description                                                                          |
-|----------------|--------------------------------------------------------------------------------------|
-| `-t, --type`   | Storage backend: `CantorOnH2`, `CantorOnMySQL`, or `CantorOnS3` (default `CantorOnH2`) |
-| `-s, --select` | For CantorOnS3 only; `s3` (S3Select) or `local` (LocalSelect); default `s3`          |
-| `-c, --config` | Path to a `cantor-server.conf` file (default `env/dockers/cantor/cantor-server.conf`) |
-| `-h, --help`   | Show the full list of options and exit                                               |
+| Flag             | Description                                                                             |
+|------------------|------------------------------------------------------------------------------------------|
+| `-t, --type`     | Storage backend: `CantorOnH2`, `CantorOnMySQL`, `CantorOnS3`, or `CantorOnMulticloudj` (default `CantorOnH2`) |
+| `-s, --select`   | For CantorOnS3 only; `s3` (S3Select) or `local` (LocalSelect); default `s3`             |
+| `-p, --provider` | For CantorOnMulticloudj only; `aws`, `gcp`, or `ali`; default `aws`                     |
+| `-c, --config`   | Path to a `cantor-server.conf` file (default `env/dockers/cantor/cantor-server.conf`)   |
+| `-h, --help`     | Show the full list of options and exit                                                  |
 
 ## Reports
 

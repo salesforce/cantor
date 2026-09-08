@@ -10,6 +10,7 @@ CONFIG_FILE=""
 TYPE=""
 STORAGE=""
 SELECT=""
+PROVIDER=""
 
 helpMessage() {
   cat <<EOF
@@ -18,19 +19,23 @@ Usage: ./integration-test.sh --type <TYPE> [--config <FILE>]
 Spins up a Cantor server with the requested backend and runs integration tests.
 
 Options:
-  -t, --type TYPE      Storage type. One of: CantorOnH2, CantorOnMySQL, CantorOnS3.
-                        Defaults to CantorOnH2 if omitted.
-  -s, --select SELECT  Only for CantorOnS3. Defines which Select implementation the server
-                        should use: 's3' (S3 Select) or 'local'
-                        (Client-side Select). Defaults to 's3'. Ignores for H2/MySQL.
-  -c, --config FILE    Path to a cantor-server.conf file.
-                        Defaults to env/dockers/cantor/cantor-server.conf
-  -h, --help           Show this help message and exit
+  -t, --type TYPE       Storage type. One of: CantorOnH2, CantorOnMySQL, CantorOnS3,
+                         CantorOnMulticloudj. Defaults to CantorOnH2 if omitted.
+  -s, --select SELECT   Only for CantorOnS3. Defines which Select implementation the server
+                         should use: 's3' (S3 Select) or 'local'
+                         (Client-side Select). Defaults to 's3'. Ignores for H2/MySQL.
+  -p, --provider PROVIDER  Only for CantorOnMulticloudj. Defines which cloud provider
+                         the server should use: 'aws', 'gcp', or 'ali'.
+                         Defaults to 'aws'. Ignored for other storage types.
+  -c, --config FILE     Path to a cantor-server.conf file.
+                         Defaults to env/dockers/cantor/cantor-server.conf
+  -h, --help            Show this help message and exit
 
 Examples:
   ./integration-test.sh --type CantorOnH2
   ./integration-test.sh --type CantorOnS3 --select s3
   ./integration-test.sh --type CantorOnS3 --select local
+  ./integration-test.sh --type CantorOnMulticloudj --provider aws
 EOF
 }
 
@@ -39,14 +44,17 @@ errorMessage() {
 Unknown option. See available options below.
 
 Options:
-  -t, --type TYPE      Storage type. One of: CantorOnH2, CantorOnMySQL, CantorOnS3.
-                        Defaults to CantorOnH2 if omitted.
-  -s, --select SELECT  Only for CantorOnS3. Defines which Select implementation the server
-                        should use: 's3' (S3 Select) or 'local'
-                        (Client-side Select). Defaults to 's3'. Ignores for H2/MySQL.
-  -c, --config FILE    Path to a cantor-server.conf file.
-                        Defaults to env/dockers/cantor/cantor-server.conf
-  -h, --help           Show the help message and exit
+  -t, --type TYPE       Storage type. One of: CantorOnH2, CantorOnMySQL, CantorOnS3,
+                         CantorOnMulticloudj. Defaults to CantorOnH2 if omitted.
+  -s, --select SELECT   Only for CantorOnS3. Defines which Select implementation the server
+                         should use: 's3' (S3 Select) or 'local'
+                         (Client-side Select). Defaults to 's3'. Ignores for H2/MySQL.
+  -p, --provider PROVIDER  Only for CantorOnMulticloudj. Defines which cloud provider
+                         the server should use: 'aws', 'gcp', or 'ali'.
+                         Defaults to 'aws'. Ignored for other storage types.
+  -c, --config FILE     Path to a cantor-server.conf file.
+                         Defaults to env/dockers/cantor/cantor-server.conf
+  -h, --help            Show the help message and exit
 
 EOF
 }
@@ -63,6 +71,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -s|--select)
             SELECT="$2"
+            shift 2
+            ;;
+        -p|--provider)
+            PROVIDER="$2"
             shift 2
             ;;
         -h|--help)
@@ -91,6 +103,8 @@ elif [ "${TYPE}" == "CantorOnMySQL" ]; then
     STORAGE="mysql"
 elif [ "${TYPE}" == "CantorOnS3" ]; then
     STORAGE="s3"
+elif [ "${TYPE}" == "CantorOnMulticloudj" ]; then
+    STORAGE="multicloudj"
 fi
 
 if [ "$STORAGE" == "s3" ]; then
@@ -105,6 +119,20 @@ if [ "$STORAGE" == "s3" ]; then
     esac
     export CANTOR_S3_SELECT_TYPE="$SELECT"
     echo "Using $SELECT-select"
+fi
+
+if [ "$STORAGE" == "multicloudj" ]; then
+    if [ -z "$PROVIDER" ]; then
+        echo "-p/--provider flag is not provided; defaulting to 'aws'"
+        PROVIDER="aws"
+    fi
+    case "$PROVIDER" in
+        aws|gcp|ali) ;;
+        *) echo "Invalid provider. Use 'aws', 'gcp', or 'ali'."; exit 1 ;;
+    esac
+    TYPE="CantorOnMulticloudj-${PROVIDER}"
+    export CANTOR_MULTICLOUDJ_PROVIDER="$PROVIDER"
+    echo "Using $PROVIDER provider"
 fi
 
 echo "Using config: $CONFIG_FILE"
@@ -127,6 +155,13 @@ fi
 
 export CANTOR_S3_BUCKET="${CANTOR_S3_BUCKET:-bucket-place-holder}"
 export CANTOR_S3_REGION="${CANTOR_S3_REGION:-us-west-2}"
+
+export CANTOR_MULTICLOUDJ_BUCKET="${CANTOR_MULTICLOUDJ_BUCKET:-bucket-place-holder}"
+export CANTOR_MULTICLOUDJ_REGION="${CANTOR_MULTICLOUDJ_REGION:-us-west-2}"
+export CANTOR_MULTICLOUDJ_SETS_TYPE="${CANTOR_MULTICLOUDJ_SETS_TYPE:-h2}"
+export CANTOR_MULTICLOUDJ_ACCESS_KEY_ID="${CANTOR_MULTICLOUDJ_ACCESS_KEY_ID:-}"
+export CANTOR_MULTICLOUDJ_SECRET_ACCESS_KEY="${CANTOR_MULTICLOUDJ_SECRET_ACCESS_KEY:-}"
+export CANTOR_MULTICLOUDJ_SESSION_TOKEN="${CANTOR_MULTICLOUDJ_SESSION_TOKEN:-}"
 
 # Build cantor-server jar if it doesn't exist
 SERVER_JAR="${REPO_ROOT}/env/dockers/cantor/cantor-server.jar"

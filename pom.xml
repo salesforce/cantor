@@ -24,10 +24,12 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <additionalparam>-Xdoclint:none</additionalparam>
 
-        <source.version>1.8</source.version>
-        <target.version>1.8</target.version>
+        <source.version>11</source.version>
+        <target.version>11</target.version>
 
         <!--VERSIONS-->
+
+        <jul.to.slf4j.version>2.0.15</jul.to.slf4j.version>
         <slf4j.version>2.0.17</slf4j.version>
         <logback.version>1.5.32</logback.version>
         <gson.version>2.9.0</gson.version>
@@ -115,6 +117,7 @@
         <module>cantor-h2</module>
         <module>cantor-mysql</module>
         <module>cantor-s3</module>
+        <module>cantor-multicloudj</module>
         <module>cantor-s3-with-selector</module>
         <module>cantor-misc</module>
         <module>cantor-metrics</module>
@@ -190,8 +193,76 @@
                 <version>${grpc.version}</version>
             </dependency>
             <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+                <version>3.25.5</version>
+            </dependency>
+            <dependency>
                 <groupId>io.grpc</groupId>
                 <artifactId>grpc-stub</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <!-- pin transitive io.grpc artifacts (pulled in at an older version by
+                 com.google.api:gax-grpc via multicloudj's blob-aws) to the same
+                 grpc.version used elsewhere, to avoid a mixed-version classpath -->
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-api</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-core</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-context</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-inprocess</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-alts</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-grpclb</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-auth</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-googleapis</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-xds</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-services</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-util</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-protobuf-lite</artifactId>
                 <version>${grpc.version}</version>
             </dependency>
             <dependency>

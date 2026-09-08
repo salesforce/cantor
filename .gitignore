@@ -1,6 +1,7 @@
 *.class
 target/
 logs
+dependency-reduced-pom.xml
 
 # TestNG report output (regenerated on every run)
 test-output/
